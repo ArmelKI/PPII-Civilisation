@@ -85,16 +85,43 @@ BarbarianCamp *barbares_init_camps(Map *map, int num_camps, int player_city_x, i
 // Génère une unité barbare chaque tour (plafond N*3)
 int barbares_spawn_unit(BarbarianCamp *camp, Map *map, Unit **units_array, int *num_units, int max_units)
 {
-    // TODO: créer guerrier barbare si camp actif et tuile libre
-
-    (void)max_units;
-
     if (!camp || camp->destroyed || !map || !units_array || !num_units) {
         return 0;
     }
 
-    fprintf(stderr, "[TODO] spawn_unit campement %d\n", camp->id);
-    return 0;
+        if (*num_units >= max_units) {
+            return 0;
+        }
+
+        if (camp->x < 0 || camp->y < 0) {
+            return 0;
+        }
+
+        if (map->tiles[camp->y][camp->x].unit) {
+            return 0;
+        }
+
+        Unit *barb = (Unit *)malloc(sizeof(Unit));
+        if (!barb) {
+            return 0;
+        }
+
+        barb->type = UNIT_BARBARIAN;
+        barb->hp = 15;
+        barb->hp_max = 15;
+        barb->attack = 3;
+        barb->defense = 2;
+        barb->pm = 3;
+        barb->pm_max = 3;
+        barb->x = camp->x;
+        barb->y = camp->y;
+        barb->owner = NULL;
+
+        units_array[*num_units] = barb;
+        (*num_units)++;
+        map->tiles[barb->y][barb->x].unit = barb;
+
+        return 1;
 }
 
 // Pathfinding simple vers cible la plus proche
