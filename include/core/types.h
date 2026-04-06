@@ -25,6 +25,7 @@ notre code*/
 typedef struct City City;
 typedef struct Unit Unit;
 typedef struct Player Player;
+typedef struct BarbarianCamp BarbarianCamp;
 
 
 /* 3. STRUCTURES DE LA CARTE  */
@@ -40,6 +41,15 @@ typedef struct Map{
     int height;      // Hauteur de la carte
     Tile** tiles;    // Grille de tuiles (2D array)
 } Map;
+
+
+/* CAMPEMENT BARBARE */
+
+typedef struct BarbarianCamp {
+    int x, y;                // Coordonnées du campement sur la carte
+    int destroyed;           // 0 si actif, 1 si détruit
+    int id;                  // Identifiant unique (pour déboguer et tracker)
+} BarbarianCamp;
 
 
 /* 4. LA VILLE ET LE JOUEUR */
