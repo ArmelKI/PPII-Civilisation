@@ -8,12 +8,6 @@
 // Place les campements barbares au démarrage
 BarbarianCamp *barbares_init_camps(Map *map, int num_camps, int player_city_x, int player_city_y)
 {
-    // TODO: placement aléatoire avec contrainte distance >= 5 du joueur
-    // TODO: vérifier pas d'eau, pas occupé
-
-    (void)player_city_x;
-    (void)player_city_y;
-
     if (num_camps <= 0 || !map) {
         return NULL;
     }
@@ -25,11 +19,65 @@ BarbarianCamp *barbares_init_camps(Map *map, int num_camps, int player_city_x, i
     }
 
     for (int i = 0; i < num_camps; ++i) {
-        camps[i].destroyed = 1;  // Marqué comme détruit pour déterminer quand placer
         camps[i].id = i;
+        camps[i].destroyed = 1;
+        camps[i].x = -1;
+        camps[i].y = -1;
     }
 
-    fprintf(stderr, "[TODO] %d campements barbares à placer\n", num_camps);
+    for (int i = 0; i < num_camps; ++i) {
+        int placed = 0;
+
+        for (int attempt = 0; attempt < 500 && !placed; ++attempt) {
+            int x = rand() % map->width;
+            int y = rand() % map->height;
+
+            if (map->tiles[y][x].type == TERRAIN_EAU) {
+                continue;
+            }
+
+            if (map->tiles[y][x].city || map->tiles[y][x].unit) {
+                continue;
+            }
+
+            if (abs(x - player_city_x) < 5 && abs(y - player_city_y) < 5) {
+                continue;
+            }
+
+            camps[i].x = x;
+            camps[i].y = y;
+            camps[i].destroyed = 0;
+            placed = 1;
+        }
+
+        if (!placed) {
+            for (int y = 0; y < map->height && !placed; ++y) {
+                for (int x = 0; x < map->width && !placed; ++x) {
+                    if (map->tiles[y][x].type == TERRAIN_EAU) {
+                        continue;
+                    }
+
+                    if (map->tiles[y][x].city || map->tiles[y][x].unit) {
+                        continue;
+                    }
+
+                    if (abs(x - player_city_x) < 5 && abs(y - player_city_y) < 5) {
+                        continue;
+                    }
+
+                    camps[i].x = x;
+                    camps[i].y = y;
+                    camps[i].destroyed = 0;
+                    placed = 1;
+                }
+            }
+        }
+
+        if (!placed) {
+            free(camps);
+            return NULL;
+        }
+    }
 
     return camps;
 }
