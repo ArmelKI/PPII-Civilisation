@@ -8,6 +8,7 @@
 // Place les campements barbares au démarrage
 BarbarianCamp *barbares_init_camps(Map *map, int num_camps, int player_city_x, int player_city_y)
 {
+    // On commence par vérifier les entrées pour éviter les crashes.
     if (num_camps <= 0 || !map) {
         return NULL;
     }
@@ -25,6 +26,8 @@ BarbarianCamp *barbares_init_camps(Map *map, int num_camps, int player_city_x, i
         camps[i].y = -1;
     }
 
+    // Pour chaque campement, on tente un placement aléatoire.
+    // Si ça ne marche pas, on fait un balayage complet de la carte.
     for (int i = 0; i < num_camps; ++i) {
         int placed = 0;
 
@@ -51,6 +54,7 @@ BarbarianCamp *barbares_init_camps(Map *map, int num_camps, int player_city_x, i
         }
 
         if (!placed) {
+            // Solution de secours : on parcourt toute la carte.
             for (int y = 0; y < map->height && !placed; ++y) {
                 for (int x = 0; x < map->width && !placed; ++x) {
                     if (map->tiles[y][x].type == TERRAIN_EAU) {
@@ -85,22 +89,27 @@ BarbarianCamp *barbares_init_camps(Map *map, int num_camps, int player_city_x, i
 // Génère une unité barbare chaque tour (plafond N*3)
 int barbares_spawn_unit(BarbarianCamp *camp, Map *map, Unit **units_array, int *num_units, int max_units)
 {
+    // On refuse tout de suite si les paramètres ne sont pas cohérents.
     if (!camp || camp->destroyed || !map || !units_array || !num_units) {
         return 0;
     }
 
+    // Le sujet impose un plafond global sur les barbares vivants.
         if (*num_units >= max_units) {
             return 0;
         }
 
+    // Si le camp n'a pas de position valide, on ne tente rien.
         if (camp->x < 0 || camp->y < 0) {
             return 0;
         }
 
+    // Si la case du camp est déjà occupée, on attend le tour suivant.
         if (map->tiles[camp->y][camp->x].unit) {
             return 0;
         }
 
+    // Création d'un guerrier barbare simple.
         Unit *barb = (Unit *)malloc(sizeof(Unit));
         if (!barb) {
             return 0;
@@ -128,8 +137,8 @@ int barbares_spawn_unit(BarbarianCamp *camp, Map *map, Unit **units_array, int *
 void barbares_move(Unit *barb, Map *map, City *player_cities[], int num_cities, 
                    Unit *player_units[], int num_player_units)
 {
-    // TODO: trouver cible la plus proche (distance Tchebychev)
-    // TODO: se déplacer d'une tuile vers la cible
+        // Ici il manque encore le vrai déplacement.
+        // L'idée sera de chercher la cible la plus proche puis d'avancer d'une case.
 
     (void)num_cities;
     (void)num_player_units;
@@ -140,6 +149,7 @@ void barbares_move(Unit *barb, Map *map, City *player_cities[], int num_cities,
         return;
     }
 
+    // Message temporaire pour garder une trace pendant le développement.
     fprintf(stderr, "[TODO] move barbare en (%d,%d)\n", barb->x, barb->y);
 }
 
@@ -147,7 +157,7 @@ void barbares_move(Unit *barb, Map *map, City *player_cities[], int num_cities,
 int barbares_attack_if_adjacent(Unit *barb, Map *map, City *player_cities[], int num_cities,
                                  Unit *player_units[], int num_player_units)
 {
-    // TODO: chercher cible à distance 1 et attaquer
+    // Même principe que pour le déplacement : version simple pour l'instant.
 
     (void)num_cities;
     (void)num_player_units;
@@ -158,6 +168,7 @@ int barbares_attack_if_adjacent(Unit *barb, Map *map, City *player_cities[], int
         return 0;
     }
 
+    // Le vrai combat sera ajouté plus tard.
     fprintf(stderr, "[TODO] attack barbare en (%d,%d)\n", barb->x, barb->y);
     return 0;
 }
@@ -165,7 +176,7 @@ int barbares_attack_if_adjacent(Unit *barb, Map *map, City *player_cities[], int
 // Détruit un campement et donne bonus or
 void barbares_destroy_camp(BarbarianCamp *camp, int *total_destroyed, Player *player)
 {
-    // TODO: marquer destroyed, incrémenter compteur, bonus or au joueur
+    // La logique exacte sera reliée au joueur quand la gestion du combat sera prête.
 
     (void)total_destroyed;
     (void)player;
@@ -174,6 +185,7 @@ void barbares_destroy_camp(BarbarianCamp *camp, int *total_destroyed, Player *pl
         return;
     }
 
+    // Placeholder pour l'instant.
     fprintf(stderr, "[TODO] destroy camp %d\n", camp->id);
 }
 
