@@ -14,7 +14,7 @@ typedef enum {
     TERRAIN_VILLE
 } TerrainType;
 
-/*enum pour dire qu'un terrain est dans cette zone et cette zone uniquement, utilse pour l'affichage et pour 
+/*enum pour dire qu'un terrain est dans cette zone et cette zone uniquement, utile pour l'affichage et pour 
 notre code*/ 
 
 /* 2. DÉCLARATION ANTICIPÉES*/
