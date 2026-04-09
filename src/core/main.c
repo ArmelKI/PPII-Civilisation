@@ -35,6 +35,8 @@ int main(int argc, char **argv)
 	int nb_turns = 200;
 	int nb_barbarians = 3;
 
+	// Parsing initial
+
 	for (int i = 1; i < argc; ++i) {
 		if (strcmp(argv[i], "--help") == 0) {
 			print_help();
@@ -78,7 +80,7 @@ int main(int argc, char **argv)
 			continue;
 		}
 
-		fprintf(stderr, "Option invalide: %s\n", argv[i]);
+		fprintf(stderr, "\033[1;31m[Erreur]\033[0m Option invalide: %s\n", argv[i]);
 		print_help();
 		return 1;
 	}
@@ -117,7 +119,7 @@ int main(int argc, char **argv)
 	}
 
 	// mode invalide
-    fprintf(stderr, "Mode invalide: %s\n", mode);
+    fprintf(stderr, "\033[1;31m[Erreur]\033[0m Mode invalide: %s\n", mode);
     print_help();
     free(player);
     return 1;

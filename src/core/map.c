@@ -150,3 +150,22 @@ void free_map(Map* map) {
     free(map->tiles);
     free(map);
 }
+
+void set_unit_at(Map* map, int x, int y, Unit* unit) {
+    if (map == NULL || unit == NULL) return;
+
+    // Hors des limites de la map -> erreur
+    if (x < 0 || x >= map->width || y < 0 || y >= map->height) {
+        fprintf(stderr, "\033[1;31m[Erreur]\033[0m Position (%d, %d) hors limites.\n", x, y);
+        return;
+    }
+
+    // S'il y avait une ancienne unité sur la tuile on la libère
+    if (map->tiles[y][x].unit != NULL && map->tiles[y][x].unit != unit) {
+        free(map->tiles[y][x].unit);
+    }
+
+    unit->x = x;
+    unit->y = y;
+    map->tiles[y][x].unit = unit;
+}
