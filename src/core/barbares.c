@@ -176,17 +176,19 @@ int barbares_attack_if_adjacent(Unit *barb, Map *map, City *player_cities[], int
 // Détruit un campement et donne bonus or
 void barbares_destroy_camp(BarbarianCamp *camp, int *total_destroyed, Player *player)
 {
-    // La logique exacte sera reliée au joueur quand la gestion du combat sera prête.
-
-    (void)total_destroyed;
-    (void)player;
-
     if (!camp || camp->destroyed) {
         return;
     }
 
-    // Placeholder pour l'instant.
-    fprintf(stderr, "[TODO] destroy camp %d\n", camp->id);
+    camp->destroyed = 1;
+
+    if (total_destroyed) {
+        (*total_destroyed)++;
+    }
+
+    if (player && total_destroyed) {
+        player->gold += 5 * (*total_destroyed);
+    }
 }
 
 // Libère la mémoire des campements
