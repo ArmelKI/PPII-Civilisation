@@ -137,20 +137,99 @@ int barbares_spawn_unit(BarbarianCamp *camp, Map *map, Unit **units_array, int *
 void barbares_move(Unit *barb, Map *map, City *player_cities[], int num_cities, 
                    Unit *player_units[], int num_player_units)
 {
-        // Ici il manque encore le vrai déplacement.
-        // L'idée sera de chercher la cible la plus proche puis d'avancer d'une case.
-
-    (void)num_cities;
-    (void)num_player_units;
-    (void)player_cities;
-    (void)player_units;
-
-    if (!barb || !map) {
+    if (!barb || !map || barb->hp <= 0 || barb->pm <= 0) {
         return;
     }
 
-    // Message temporaire pour garder une trace pendant le développement.
-    fprintf(stderr, "[TODO] move barbare en (%d,%d)\n", barb->x, barb->y);
+    int target_x = -1;
+    int target_y = -1;
+    int best_dist = 999999;
+
+    // Cible prioritaire: unités du joueur (ordre du tableau = départage déterministe).
+    for (int i = 0; i < num_player_units; ++i) {
+        Unit *u = player_units[i];
+        if (!u || u->hp <= 0) {
+            continue;
+        }
+
+        int dx = abs(u->x - barb->x);
+        int dy = abs(u->y - barb->y);
+        int dist = (dx > dy) ? dx : dy;
+        if (dist < best_dist) {
+            best_dist = dist;
+            target_x = u->x;
+            target_y = u->y;
+        }
+    }
+
+    // Ensuite les villes (uniquement si plus proches, pas en cas d'égalité).
+    for (int i = 0; i < num_cities; ++i) {
+        City *c = player_cities[i];
+        if (!c || c->hp <= 0) {
+            continue;
+        }
+
+        int dx = abs(c->x - barb->x);
+        int dy = abs(c->y - barb->y);
+        int dist = (dx > dy) ? dx : dy;
+        if (dist < best_dist) {
+            best_dist = dist;
+            target_x = c->x;
+            target_y = c->y;
+        }
+    }
+
+    if (target_x < 0 || target_y < 0) {
+        return;
+    }
+
+    int step_x = 0;
+    int step_y = 0;
+
+    if (target_x > barb->x) {
+        step_x = 1;
+    } else if (target_x < barb->x) {
+        step_x = -1;
+    }
+
+    if (target_y > barb->y) {
+        step_y = 1;
+    } else if (target_y < barb->y) {
+        step_y = -1;
+    }
+
+    int new_x = barb->x + step_x;
+    int new_y = barb->y + step_y;
+
+    if (new_x < 0 || new_x >= map->width || new_y < 0 || new_y >= map->height) {
+        return;
+    }
+
+    if (map->tiles[new_y][new_x].type == TERRAIN_EAU) {
+        return;
+    }
+
+    // On n'empile pas les unités et on ne rentre pas dans une ville.
+    if (map->tiles[new_y][new_x].unit || map->tiles[new_y][new_x].city) {
+        return;
+    }
+
+    int cost = 1;
+    if (map->tiles[new_y][new_x].type == TERRAIN_FORET) {
+        cost = 2;
+    } else if (map->tiles[new_y][new_x].type == TERRAIN_MONTAGNE) {
+        cost = 3;
+    }
+
+    if (barb->pm < cost) {
+        return;
+    }
+
+    map->tiles[barb->y][barb->x].unit = NULL;
+    barb->x = new_x;
+    barb->y = new_y;
+    barb->pm -= cost;
+    map->tiles[barb->y][barb->x].unit = barb;
 }
 
 // Combat automatique si adjacent
