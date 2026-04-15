@@ -157,19 +157,94 @@ void barbares_move(Unit *barb, Map *map, City *player_cities[], int num_cities,
 int barbares_attack_if_adjacent(Unit *barb, Map *map, City *player_cities[], int num_cities,
                                  Unit *player_units[], int num_player_units)
 {
-    // Même principe que pour le déplacement : version simple pour l'instant.
-
-    (void)num_cities;
-    (void)num_player_units;
-    (void)player_cities;
-    (void)player_units;
-
     if (!barb || !map) {
         return 0;
     }
 
-    // Le vrai combat sera ajouté plus tard.
-    fprintf(stderr, "[TODO] attack barbare en (%d,%d)\n", barb->x, barb->y);
+    // Ordre deterministe : on essaie d'abord les unites du joueur, puis les villes.
+    for (int i = 0; i < num_player_units; ++i) {
+        Unit *target = player_units[i];
+        if (!target || target->hp <= 0) {
+            continue;
+        }
+
+        int dx = abs(target->x - barb->x);
+        int dy = abs(target->y - barb->y);
+        if (dx > 1 || dy > 1 || (dx == 0 && dy == 0)) {
+            continue;
+        }
+
+        int dmg_to_target = barb->attack - target->defense;
+        if (dmg_to_target < 1) {
+            dmg_to_target = 1;
+        }
+
+        int dmg_to_barb = target->attack - barb->defense;
+        if (dmg_to_barb < 0) {
+            dmg_to_barb = 0;
+        }
+
+        target->hp -= dmg_to_target;
+        barb->hp -= dmg_to_barb;
+
+        if (target->hp <= 0) {
+            target->hp = 0;
+            if (target->x >= 0 && target->y >= 0) {
+                map->tiles[target->y][target->x].unit = NULL;
+            }
+            player_units[i] = NULL;
+        }
+
+        if (barb->hp <= 0) {
+            barb->hp = 0;
+            if (barb->x >= 0 && barb->y >= 0) {
+                map->tiles[barb->y][barb->x].unit = NULL;
+            }
+        }
+
+        return 1;
+    }
+
+    for (int i = 0; i < num_cities; ++i) {
+        City *city = player_cities[i];
+        if (!city || city->hp <= 0) {
+            continue;
+        }
+
+        int dx = abs(city->x - barb->x);
+        int dy = abs(city->y - barb->y);
+        if (dx > 1 || dy > 1 || (dx == 0 && dy == 0)) {
+            continue;
+        }
+
+        int city_power = city->has_wall ? 30 : 20;
+        int dmg_to_city = barb->attack - city_power;
+        if (dmg_to_city < 1) {
+            dmg_to_city = 1;
+        }
+
+        int dmg_to_barb = city_power - barb->defense;
+        if (dmg_to_barb < 0) {
+            dmg_to_barb = 0;
+        }
+
+        city->hp -= dmg_to_city;
+        barb->hp -= dmg_to_barb;
+
+        if (city->hp <= 0) {
+            city->hp = 0;
+        }
+
+        if (barb->hp <= 0) {
+            barb->hp = 0;
+            if (barb->x >= 0 && barb->y >= 0) {
+                map->tiles[barb->y][barb->x].unit = NULL;
+            }
+        }
+
+        return 1;
+    }
+
     return 0;
 }
 
