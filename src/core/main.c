@@ -11,6 +11,8 @@
 #define MAX_PLAYER_UNITS 8
 #define MAX_BARBARIANS 16
 
+// Je regroupe ici tout ce qui doit vivre pendant la partie.
+// Ça évite de passer 15 paramètres dans chaque fonction.
 typedef struct GameState {
 	Map map;
 	Tile *tile_buffer;
@@ -28,7 +30,8 @@ typedef struct GameState {
 	int game_over;
 } GameState;
 
-// Hooks optionnels pour brancher facilement le code des autres membres.
+// Fonctions externes optionnelles.
+// Si elles existent dans d'autres fichiers, elles prennent la main sans rien casser ici.
 void city_income_wassim(Player *player, City *city) __attribute__((weak));
 void display_state_maxence(const Map *map, const Player *player, const City *city,
 	int turn, int player_units, int barbarians) __attribute__((weak));
@@ -43,13 +46,15 @@ static void print_help(void)
 
 static void init_map(GameState *game)
 {
+	// J'utilise un buffer continu pour les tuiles + un tableau de pointeurs de lignes.
+	// Avantage: accès map.tiles[y][x] simple, sans allocation ligne par ligne.
 	game->map.width = MAP_W;
 	game->map.height = MAP_H;
 	game->tile_buffer = (Tile *)calloc((size_t)MAP_W * (size_t)MAP_H, sizeof(Tile));
 	game->map.tiles = (Tile **)malloc((size_t)MAP_H * sizeof(Tile *));
 
 	if (!game->tile_buffer || !game->map.tiles) {
-		fprintf(stderr, "Erreur allocation map\n");
+		fprintf(stderr, "Erreur d'allocation de la carte\n");
 		exit(1);
 	}
 
@@ -62,6 +67,8 @@ static void init_map(GameState *game)
 		}
 	}
 
+	// Bordures en eau juste pour les tests:
+	// ça force des cas où les déplacements doivent être refusés.
 	for (int x = 0; x < MAP_W; ++x) {
 		game->map.tiles[0][x].type = TERRAIN_EAU;
 		game->map.tiles[MAP_H - 1][x].type = TERRAIN_EAU;
@@ -70,6 +77,7 @@ static void init_map(GameState *game)
 
 static void init_player_and_city(GameState *game)
 {
+	// Valeurs de départ de test pour faire tourner le moteur sans attendre les autres modules.
 	game->player.gold = 10;
 	game->player.science = 0;
 
@@ -86,7 +94,7 @@ static void init_player_and_city(GameState *game)
 
 	Unit *warrior = (Unit *)malloc(sizeof(Unit));
 	if (!warrior) {
-		fprintf(stderr, "Erreur allocation unit\n");
+		fprintf(stderr, "Erreur d'allocation d'unité\n");
 		exit(1);
 	}
 
@@ -108,6 +116,7 @@ static void init_player_and_city(GameState *game)
 
 static void restore_pm(Unit **units, int count)
 {
+	// Début de tour : toutes les unités vivantes récupèrent leurs PM max.
 	for (int i = 0; i < count; ++i) {
 		if (!units[i] || units[i]->hp <= 0) {
 			continue;
@@ -116,7 +125,7 @@ static void restore_pm(Unit **units, int count)
 	}
 }
 
-// Placeholder revenus ville (Wassim)
+// Revenus de ville : j'utilise le hook externe si dispo, sinon un fallback local.
 static void apply_city_income_wassim(Player *player, City *city)
 {
 	if (city_income_wassim) {
@@ -132,7 +141,7 @@ static void apply_city_income_wassim(Player *player, City *city)
 	player->science += 1;
 }
 
-// Affichage temporaire de l'etat (en attendant l'affichage final de Maxence)
+// Affichage d'état : j'utilise le hook externe si dispo, sinon affichage console.
 static void print_state_maxence_stub(const GameState *game)
 {
 	if (display_state_maxence) {
@@ -144,15 +153,17 @@ static void print_state_maxence_stub(const GameState *game)
 	printf("\n=== TOUR %d ===\n", game->turn);
 	printf("Ressources: or=%d science=%d\n", game->player.gold, game->player.science);
 	printf("Ville: hp=%d pop=%d (%d,%d)\n", game->city.hp, game->city.population, game->city.x, game->city.y);
-	printf("Unites joueur: %d | Barbares: %d\n", game->player_unit_count, game->barbarian_count);
+	printf("Unités joueur: %d | Barbares: %d\n", game->player_unit_count, game->barbarian_count);
 }
 
 static void spawn_random_barbarian(GameState *game)
 {
+	// Plafond global de barbares (version test, simple à ajuster ensuite).
 	if (game->barbarian_count >= MAX_BARBARIANS) {
 		return;
 	}
 
+	// Probabilité de spawn à chaque tour.
 	if ((rand() % 100) >= 35) {
 		return;
 	}
@@ -190,6 +201,7 @@ static void spawn_random_barbarian(GameState *game)
 
 static void move_barbarians_random(GameState *game)
 {
+	// Déplacement aléatoire d'une case : utile pour valider la phase Barbares.
 	for (int i = 0; i < game->barbarian_count; ++i) {
 		Unit *barb = game->barbarians[i];
 		if (!barb || barb->hp <= 0) {
@@ -227,11 +239,14 @@ static void move_barbarians_random(GameState *game)
 
 static void next_turn(GameState *game)
 {
+	// 1) Restauration PM
 	restore_pm(game->player_units, game->player_unit_count);
 	restore_pm(game->barbarians, game->barbarian_count);
 
+	// 2) Revenus de ville
 	apply_city_income_wassim(&game->player, &game->city);
 
+	// 3) Phase Barbares (spawn + déplacement)
 	spawn_random_barbarian(game);
 	move_barbarians_random(game);
 }
@@ -289,8 +304,9 @@ int main(int argc, char **argv)
 	init_map(&game);
 	init_player_and_city(&game);
 
-	puts("[CIV] Boucle principale lancee (prototype).\n");
+	puts("[CIV] Boucle principale lancée (prototype).\n");
 
+	// Boucle centrale demandée dans le ticket.
 	while (!game.game_over) {
 		print_state_maxence_stub(&game);
 		next_turn(&game);
