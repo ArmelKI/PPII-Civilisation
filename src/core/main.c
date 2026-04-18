@@ -28,6 +28,11 @@ typedef struct GameState {
 	int game_over;
 } GameState;
 
+// Hooks optionnels pour brancher facilement le code des autres membres.
+void city_income_wassim(Player *player, City *city) __attribute__((weak));
+void display_state_maxence(const Map *map, const Player *player, const City *city,
+	int turn, int player_units, int barbarians) __attribute__((weak));
+
 static void print_help(void)
 {
 	puts("Usage: ./bin/civ [options]");
@@ -114,6 +119,11 @@ static void restore_pm(Unit **units, int count)
 // Placeholder revenus ville (Wassim)
 static void apply_city_income_wassim(Player *player, City *city)
 {
+	if (city_income_wassim) {
+		city_income_wassim(player, city);
+		return;
+	}
+
 	if (!player || !city || city->hp <= 0) {
 		return;
 	}
@@ -125,6 +135,12 @@ static void apply_city_income_wassim(Player *player, City *city)
 // Affichage temporaire de l'etat (en attendant l'affichage final de Maxence)
 static void print_state_maxence_stub(const GameState *game)
 {
+	if (display_state_maxence) {
+		display_state_maxence(&game->map, &game->player, &game->city,
+			game->turn, game->player_unit_count, game->barbarian_count);
+		return;
+	}
+
 	printf("\n=== TOUR %d ===\n", game->turn);
 	printf("Ressources: or=%d science=%d\n", game->player.gold, game->player.science);
 	printf("Ville: hp=%d pop=%d (%d,%d)\n", game->city.hp, game->city.population, game->city.x, game->city.y);
