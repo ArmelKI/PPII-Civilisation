@@ -5,6 +5,18 @@
 #include "core/barbares.h"
 #include "core/types.h"
 
+/*
+ * Fichier de tests unitaires pour le module barbares.
+ *
+ * But:
+ * - valider chaque comportement critique indépendamment
+ * - garder des tests simples à lire pour l'équipe
+ *
+ * Convention:
+ * - un test = une fonction
+ * - EXPECT(...) incrémente g_failed si une vérification échoue
+ */
+
 static int g_failed = 0;
 
 #define EXPECT(cond, msg)                                                       \
@@ -17,11 +29,13 @@ static int g_failed = 0;
 
 static void init_map(Map *map, int w, int h)
 {
+    // Petite map de test allouée dynamiquement.
+    // On utilise un buffer continu pour simplifier la libération.
     Tile *buffer = (Tile *)calloc((size_t)w * (size_t)h, sizeof(Tile));
     Tile **rows = (Tile **)malloc((size_t)h * sizeof(Tile *));
 
     if (!buffer || !rows) {
-        fprintf(stderr, "Erreur allocation map de test\n");
+        fprintf(stderr, "Erreur d'allocation de la map de test\n");
         exit(1);
     }
 
@@ -41,6 +55,7 @@ static void init_map(Map *map, int w, int h)
 
 static void free_map(Map *map)
 {
+    // Libération symétrique de init_map.
     if (!map || !map->tiles) {
         return;
     }
@@ -52,6 +67,10 @@ static void free_map(Map *map)
 
 static void test_init_camps(void)
 {
+    // Vérifie le placement initial des campements:
+    // - pas sur l'eau
+    // - pas trop proche de la ville de départ
+    // - coordonnées valides
     Map map;
     init_map(&map, 20, 12);
 
@@ -68,12 +87,12 @@ static void test_init_camps(void)
     EXPECT(camps != NULL, "barbares_init_camps retourne NULL");
     if (camps) {
         for (int i = 0; i < 3; ++i) {
-            EXPECT(camps[i].destroyed == 0, "campement pas actif apres placement");
-            EXPECT(camps[i].x >= 0 && camps[i].x < map.width, "x campement invalide");
-            EXPECT(camps[i].y >= 0 && camps[i].y < map.height, "y campement invalide");
-            EXPECT(map.tiles[camps[i].y][camps[i].x].type != TERRAIN_EAU, "campement place sur eau");
+                 EXPECT(camps[i].destroyed == 0, "campement pas actif après placement");
+                 EXPECT(camps[i].x >= 0 && camps[i].x < map.width, "x campement invalide");
+                 EXPECT(camps[i].y >= 0 && camps[i].y < map.height, "y campement invalide");
+                 EXPECT(map.tiles[camps[i].y][camps[i].x].type != TERRAIN_EAU, "campement placé sur eau");
             EXPECT(!(abs(camps[i].x - city.x) < 5 && abs(camps[i].y - city.y) < 5),
-                   "campement trop proche de la ville de depart");
+                     "campement trop proche de la ville de départ");
         }
         barbares_cleanup(camps, 3);
     }
@@ -83,6 +102,11 @@ static void test_init_camps(void)
 
 static void test_spawn_unit(void)
 {
+    // Vérifie la création d'un barbare depuis un camp:
+    // - succès nominal
+    // - échec si case occupée
+    // - échec si camp détruit
+    // - échec si plafond atteint
     Map map;
     init_map(&map, 8, 8);
 
@@ -92,23 +116,23 @@ static void test_spawn_unit(void)
     BarbarianCamp camp = {.x = 3, .y = 4, .destroyed = 0, .id = 7};
 
     int ok = barbares_spawn_unit(&camp, &map, barb_slots, &num, 4);
-    EXPECT(ok == 1, "spawn devrait reussir");
-    EXPECT(num == 1, "num_units devrait etre incremente");
+    EXPECT(ok == 1, "spawn devrait réussir");
+    EXPECT(num == 1, "num_units devrait être incrémenté");
     EXPECT(barb_slots[0] != NULL, "slot barbare non rempli");
-    EXPECT(map.tiles[4][3].unit == barb_slots[0], "tuile camp non occupee par le barbare");
+    EXPECT(map.tiles[4][3].unit == barb_slots[0], "tuile camp non occupée par le barbare");
 
     ok = barbares_spawn_unit(&camp, &map, barb_slots, &num, 4);
-    EXPECT(ok == 0, "spawn doit echouer si tuile camp occupee");
+    EXPECT(ok == 0, "spawn doit échouer si tuile camp occupée");
 
     map.tiles[4][3].unit = NULL;
     camp.destroyed = 1;
     ok = barbares_spawn_unit(&camp, &map, barb_slots, &num, 4);
-    EXPECT(ok == 0, "spawn doit echouer si camp detruit");
+    EXPECT(ok == 0, "spawn doit échouer si camp détruit");
 
     camp.destroyed = 0;
     num = 4;
     ok = barbares_spawn_unit(&camp, &map, barb_slots, &num, 4);
-    EXPECT(ok == 0, "spawn doit echouer si plafond atteint");
+    EXPECT(ok == 0, "spawn doit échouer si plafond atteint");
 
     for (int i = 0; i < 4; ++i) {
         free(barb_slots[i]);
@@ -120,6 +144,11 @@ static void test_spawn_unit(void)
 
 static void test_move_barbarian(void)
 {
+    // Vérifie le déplacement:
+    // - avance d'une case vers une cible proche
+    // - consomme des PM
+    // - met à jour correctement l'ancienne et la nouvelle tuile
+    // - refus de déplacement sur eau
     Map map;
     init_map(&map, 10, 10);
 
@@ -133,9 +162,9 @@ static void test_move_barbarian(void)
 
     barbares_move(&barb, &map, cities, 0, targets, 1);
     EXPECT(barb.x == 6 && barb.y == 5, "barbare devrait avancer d'une case vers la cible");
-    EXPECT(barb.pm == 2, "cout PM incorrect sur plaine");
-    EXPECT(map.tiles[5][6].unit == &barb, "nouvelle tuile non mise a jour");
-    EXPECT(map.tiles[5][5].unit == NULL, "ancienne tuile non videe");
+    EXPECT(barb.pm == 2, "coût PM incorrect sur plaine");
+    EXPECT(map.tiles[5][6].unit == &barb, "nouvelle tuile non mise à jour");
+    EXPECT(map.tiles[5][5].unit == NULL, "ancienne tuile non vidée");
 
     map.tiles[5][6].unit = NULL;
     barb.x = 5;
@@ -155,6 +184,9 @@ static void test_move_barbarian(void)
 
 static void test_attack_and_destroy(void)
 {
+    // Vérifie deux comportements:
+    // 1) attaque adjacente (PV de l'ennemi et contre-coup)
+    // 2) destruction de campement + bonus or joueur
     Map map;
     init_map(&map, 8, 8);
 
@@ -167,7 +199,7 @@ static void test_attack_and_destroy(void)
     City *cities[1] = {NULL};
 
     int fought = barbares_attack_if_adjacent(&barb, &map, cities, 0, player_units, 1);
-    EXPECT(fought == 1, "combat adjacent devrait etre detecte");
+    EXPECT(fought == 1, "combat adjacent devrait être détecté");
     EXPECT(enemy.hp < 10, "ennemi devrait perdre des PV");
     EXPECT(barb.hp < 10, "barbare devrait subir le contre-coup");
 
@@ -176,8 +208,8 @@ static void test_attack_and_destroy(void)
     Player p = {.gold = 0, .science = 0};
 
     barbares_destroy_camp(&camp, &destroyed_count, &p);
-    EXPECT(camp.destroyed == 1, "camp devrait etre detruit");
-    EXPECT(destroyed_count == 1, "compteur detruits incorrect");
+    EXPECT(camp.destroyed == 1, "camp devrait être détruit");
+    EXPECT(destroyed_count == 1, "compteur détruits incorrect");
     EXPECT(p.gold == 5, "bonus or incorrect pour 1er camp");
 
     free_map(&map);
@@ -185,6 +217,7 @@ static void test_attack_and_destroy(void)
 
 int main(void)
 {
+    // Exécution séquentielle des tests unitaires du module.
     test_init_camps();
     test_spawn_unit();
     test_move_barbarian();
@@ -195,6 +228,6 @@ int main(void)
         return 0;
     }
 
-    fprintf(stderr, "[FAIL] %d test(s) ont echoue.\n", g_failed);
+    fprintf(stderr, "[FAIL] %d test(s) ont échoué.\n", g_failed);
     return 1;
 }
