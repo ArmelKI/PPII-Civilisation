@@ -11,7 +11,7 @@ typedef enum {
     TERRAIN_MONTAGNE,
     TERRAIN_EAU,
     TERRAIN_DESERT,
-    TERRAIN_VILLE
+    TERRAIN_TOUNDRA,
 } TerrainType;
 
 /*enum pour dire qu'un terrain est dans cette zone et cette zone uniquement, utilse pour l'affichage et pour 
@@ -94,6 +94,31 @@ typedef struct Unit {
 
     Player *owner;       // Pointeur vers le joueur propriétaire de l'unité (NULL pour les barbares)
 } Unit;
+
+/* 5. L'ARBRE TECHNOLOGIQUE(Graphe Orienté)*/
+
+typedef enum {
+    TECH_CHASSE,
+    TECH_AGRICULTURE,
+    TECH_IRRIGATION,
+    TECH_ARTISANAT,
+    TECH_MAÇONNERIE,
+    TECH_ECRITURE,
+    TECH_COMMERCE,
+    TECH_EQUITATION,
+} TechType;
+
+// structure d'une technologie dans l'arbre technologique
+
+typedef struct Tech {
+    TechType type;          // Identifiant(ex: TECH_CHASSE)
+    int cost;               // Coût science
+    int is_unlocked;         // Indique si la technologie est débloquée (1) ou pas (0)
+
+    // Graphe orienté : un tableau de pointeurs vers les technologies dépendantes de celle-ci
+    int num_prerequisites;     // Nombre de technologies prérequises
+    struct Tech** prerequisites; // Tableau dynamique pointant vers les technologies prérequises. c'est un tableau de 
+} Tech;
 
 
 #endif // CORE_TYPES_H
