@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "core/barbares.h"
+#include "core/map.h"
 #include "core/types.h"
 
 /*
@@ -53,7 +54,7 @@ static void init_map(Map *map, int w, int h)
     }
 }
 
-static void free_map(Map *map)
+static void free_test_map(Map *map)
 {
     // Libération symétrique de init_map.
     if (!map || !map->tiles) {
@@ -97,7 +98,7 @@ static void test_init_camps(void)
         barbares_cleanup(camps, 3);
     }
 
-    free_map(&map);
+    free_test_map(&map);
 }
 
 static void test_spawn_unit(void)
@@ -139,7 +140,7 @@ static void test_spawn_unit(void)
         barb_slots[i] = NULL;
     }
 
-    free_map(&map);
+    free_test_map(&map);
 }
 
 static void test_move_barbarian(void)
@@ -179,7 +180,7 @@ static void test_move_barbarian(void)
     barbares_move(&barb, &map, cities, 0, targets, 1);
     EXPECT(barb.x == 5 && barb.y == 5, "barbare ne doit pas entrer sur eau");
 
-    free_map(&map);
+    free_test_map(&map);
 }
 
 static void test_attack_and_destroy(void)
@@ -212,7 +213,70 @@ static void test_attack_and_destroy(void)
     EXPECT(destroyed_count == 1, "compteur détruits incorrect");
     EXPECT(p.gold == 5, "bonus or incorrect pour 1er camp");
 
-    free_map(&map);
+    free_test_map(&map);
+}
+
+static void test_integration_with_map_engine(void)
+{
+    // Test d'intégration:
+    // - on crée une carte avec le moteur map d'Ababacar
+    // - on place les unités avec set_unit_at
+    // - on vérifie que barbares_move fonctionne bien sur cette carte
+
+    Player p = {.gold = 0, .science = 0};
+    Map *map = create_map(20, 12, &p);
+    EXPECT(map != NULL, "create_map retourne NULL");
+    if (!map) {
+        return;
+    }
+
+    Unit *barb = (Unit *)malloc(sizeof(Unit));
+    Unit *target = (Unit *)malloc(sizeof(Unit));
+    EXPECT(barb != NULL && target != NULL, "allocation unités integration");
+    if (!barb || !target) {
+        free(barb);
+        free(target);
+        free_map(map);
+        return;
+    }
+
+    barb->type = UNIT_BARBARIAN;
+    barb->hp = 15;
+    barb->hp_max = 15;
+    barb->attack = 3;
+    barb->defense = 2;
+    barb->pm = 3;
+    barb->pm_max = 3;
+    barb->owner = NULL;
+
+    target->type = UNIT_WARRIOR;
+    target->hp = 15;
+    target->hp_max = 15;
+    target->attack = 3;
+    target->defense = 2;
+    target->pm = 3;
+    target->pm_max = 3;
+    target->owner = &p;
+
+    map->tiles[1][1].type = TERRAIN_PLAINE;
+    map->tiles[1][2].type = TERRAIN_PLAINE;
+    map->tiles[1][3].type = TERRAIN_PLAINE;
+
+    set_unit_at(map, 1, 1, barb);
+    set_unit_at(map, 3, 1, target);
+
+    Unit *players[1] = {target};
+    City *cities[1] = {NULL};
+
+    barbares_move(barb, map, cities, 0, players, 1);
+
+    EXPECT(barb->x == 2 && barb->y == 1, "integration: barbare avance vers cible avec map réel");
+    EXPECT(map->tiles[1][2].unit == barb, "integration: map moteur mise à jour après move");
+
+    map->tiles[target->y][target->x].unit = NULL;
+    free(target);
+
+    free_map(map);
 }
 
 int main(void)
@@ -222,6 +286,7 @@ int main(void)
     test_spawn_unit();
     test_move_barbarian();
     test_attack_and_destroy();
+    test_integration_with_map_engine();
 
     if (g_failed == 0) {
         puts("[OK] Tous les tests barbares passent.");
