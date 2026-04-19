@@ -15,7 +15,7 @@ BarbarianCamp *barbares_init_camps(Map *map, int num_camps, int player_city_x, i
 
     BarbarianCamp *camps = (BarbarianCamp *)malloc(num_camps * sizeof(BarbarianCamp));
     if (!camps) {
-        fprintf(stderr, "[barbares] Erreur allocation campements\n");
+        fprintf(stderr, "[barbares] Erreur d'allocation des campements\n");
         return NULL;
     }
 
