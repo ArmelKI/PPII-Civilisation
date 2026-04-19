@@ -270,8 +270,8 @@ static void test_integration_with_map_engine(void)
 
     barbares_move(barb, map, cities, 0, players, 1);
 
-    EXPECT(barb->x == 2 && barb->y == 1, "integration: barbare avance vers cible avec map réel");
-    EXPECT(map->tiles[1][2].unit == barb, "integration: map moteur mise à jour après move");
+    EXPECT(barb->x == 2 && barb->y == 1, "intégration: barbare avance vers cible avec map réel");
+    EXPECT(map->tiles[1][2].unit == barb, "intégration: map moteur mise à jour après move");
 
     map->tiles[target->y][target->x].unit = NULL;
     free(target);
