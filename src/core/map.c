@@ -232,8 +232,19 @@ void display_map_color(Map* map) {
         for (int w = 0; w < map->width; w++) {
             
             if (map->tiles[h][w].unit != NULL) {
-                printf("\033[1;31mU \033[0m"); 
-            } 
+                switch (map->tiles[h][w].unit->type) {
+                    case UNIT_BARBARIAN:
+                        printf("\033[1;31mB \033[0m"); // B pour les Barbares ennemis
+                        break;
+                    case UNIT_WARRIOR:
+                        printf("\033[1;36mW \033[0m"); // W pour le Guerrier du Joueur
+                        break;
+                    default:
+                        printf("\033[1;35mU \033[0m"); // U Violet (Unité générique) (au cas où)
+                        break;
+                    // A MODIFIER SUREMENT APRES SI ON RAJOUTE LES ARCHERS, ETC
+                }
+            }
             else if (map->tiles[h][w].city != NULL) {
                 printf("\033[1;37mC \033[0m"); 
             } 
