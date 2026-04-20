@@ -51,12 +51,18 @@ typedef struct Player {
 } Player;
 
 typedef struct City {
+    int id;                     // id unique repère d'ancienetté 0 pour la première +1 à chaque nouvelle ville
     int population;             // Nombre d'habitants
     int food_stored;            // Nourriture stockée pour faire agrandir la population
     int production_stored;      // Production stockée pour le projet en cours
     int hp;                     // Points de vie
-    int has_wall;              // Indique si la ville a une muraille (1) ou pas (0)
 
+    int has_wall;              // Indique si la ville a une muraille (1) ou pas (0)
+    int has_granary;           // Grenier
+    int has_workshop;          // Atelier
+    int has_library;           // Bibliothèque
+    int has_market;            // Marché
+    int has_barrack;           // caserne
     // Coordonnées de la ville sur la carte
     int x;
     int y;
@@ -95,5 +101,11 @@ typedef struct Unit {
     Player *owner;       // Pointeur vers le joueur propriétaire de l'unité (NULL pour les barbares)
 } Unit;
 
+typedef struct {
+    int food;
+    int production;
+    int gold;
+    int science;
+} TileYield;             //permet de définir et manipuler le rendement d'une case
 
 #endif // CORE_TYPES_H
