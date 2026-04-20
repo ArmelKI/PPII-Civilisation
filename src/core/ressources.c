@@ -259,6 +259,7 @@ void process_player_gold(Player *player, Map *map) {
 }
 
 
+//fondation d'une ville par un colon
 int found_city(Unit *settler, Map *map, int *city_id_counter){
     if(!settler||!map|| !city_id_counter) return 0;
     if(settler->type != UNIT_SETTLER) {
@@ -330,6 +331,7 @@ int found_city(Unit *settler, Map *map, int *city_id_counter){
 }
 
 
+//gestion de la production de bâtiments et d'unités
 void process_city_production(City *city, Map *map) {
     if (!city || !map) return;
 
@@ -358,7 +360,6 @@ void process_city_production(City *city, Map *map) {
 
         switch (city->current_project) {
             
-            // --- LES BÂTIMENTS ---
             case PROJECT_GRANARY:  city->has_granary = 1;  printf("Grenier construit !\n"); break;
             case PROJECT_WORKSHOP: city->has_workshop = 1; printf("Atelier construit !\n"); break;
             case PROJECT_LIBRARY:  city->has_library = 1;  printf("Bibliothèque construite !\n"); break;
