@@ -386,6 +386,10 @@ int main(int argc, char **argv)
 		game.player_units[0] -> pm = 3;
 		game.player_units[0] -> pm_max = 3;
 
+		game.player_units[0]->type = UNIT_WARRIOR;
+		game.player_units[0] ->attack = 3;
+		game.player_units[0]->defense = 2;
+
         game.player_units[0]->owner = &game.player;
         game.player_unit_count = 1;
         // On la pose sur la carte
@@ -456,7 +460,25 @@ int main(int argc, char **argv)
 					// A. S'il y a un ennemi sur la case cible: Fight !
 					if (target_tile->unit && target_tile->unit->owner != mon_unite->owner) {
 						printf("\n Combat engagé ! \n");
+						printf("-> Avant : Toi (%d PV) vs Barbare (%d PV)\n", mon_unite->hp, target_tile->unit->hp);
 						resolve_combat(mon_unite, target_tile->unit);
+						printf("-> Apres : Toi (%d PV) vs Barbare (%d PV)\n", mon_unite->hp, target_tile->unit->hp);
+
+						// VERDICT DU COMBAT
+
+						if(target_tile->unit->hp <= 0) {
+							printf("VICTOIRE ! Le barbare est mort !\n");
+							target_tile->unit = NULL; //On vide la place de parking du Barbare
+						}
+						else if (mon_unite->hp<=0) {
+							printf(" DEFAITE ! Votre unité a été massacre ... \n");
+							game.map.tiles[mon_unite->y][mon_unite->x].unit = NULL; // on efface notre joueur
+							game.game_over = 1;
+						}
+
+						else {
+							printf(" REPLI ! les deux survivent. le combat continuera...\n");
+						}
 					
 					}
 					// B. S'il n'y a pas d'ennemi, on se déplace normalement
