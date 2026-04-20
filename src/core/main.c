@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <time.h>
+#include "core/ressources.h"
 
 #include "../../include/core/map.h"
 #include <stdlib.h>
