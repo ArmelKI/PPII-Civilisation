@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include "core/ressources.h"
 
 /*
  * Point d'entree minimal du projet.
