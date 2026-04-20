@@ -9,7 +9,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "core/types.h"
+#include "../../include/core/types.h"
 
 #define MAP_W 20
 #define MAP_H 12
@@ -341,10 +341,8 @@ int main(int argc, char **argv)
 	if (!is_seed) {
 		seed = (int)time(NULL);
 	}
-	srand(seed); // On utilise la seed générée ou donnée par l'utilisateur pour générer la carte
 
 	// Initialisation du joueur
-
 	Player* player = malloc(sizeof(Player));
 	player->gold = 0;
 	player->science = 0;
@@ -355,7 +353,7 @@ int main(int argc, char **argv)
 
 	if (strcmp(mode, "cli") == 0) {
 		puts("[CIV] Mode CLI initialise (squelette).");
-		Map* Map = create_map(width, height, player);
+		Map* Map = create_map_noise(width, height, player, seed);
 		display_map(Map);
 		display_map_color(Map);
 		free_map(Map);

@@ -1,8 +1,134 @@
 #include "../../include/core/map.h"
+
+#define STB_PERLIN_IMPLEMENTATION
+#include "../../include/core/stb_perlin.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 
-Map* create_map(int width, int height,Player* player) {
+Map* create_map_noise(int width, int height,Player* player, int seed) {
+    // paramètres modifiables en fonction
+
+    // Allocation de la carte
+    Map* new_map = malloc(sizeof(Map));
+    if (new_map == NULL) return NULL;
+
+    Tile** tuiles = malloc(height * sizeof(Tile*));
+    if (tuiles == NULL) return NULL;
+
+    for (int i = 0; i < height; i++) {
+        tuiles[i] = malloc(width*sizeof(Tile));
+        if (tuiles[i] == NULL) return NULL;
+    }
+
+    // génération avec le bruit de perlin
+
+    // FONCTIONNEMENT : la fonction renvoie un nombre entre -1 et 1 donc ensuite on 
+    // utilise des "range" pour chaque type de terrain
+    for (int h = 0; h < height; h++) {
+        for (int w = 0; w < width; w++) {
+            float scale = 0.2f;
+
+            float noise = stb_perlin_noise3_seed(w*scale, h*scale, (float)seed * 0.1f, 0, 0, 0, (unsigned char) seed);
+
+            // On ramène la valeur entre 0.0 et 1.0 pour que ce soit plus simple
+            float val = (noise + 1.0f) / 2.0f;
+
+            if (val < 0.25f) {
+                tuiles[h][w].type = TERRAIN_EAU;
+            }
+            else if (val < 0.35f) {
+                tuiles[h][w].type = TERRAIN_DESERT;
+            }
+            else if (val < 0.60f) {
+                tuiles[h][w].type = TERRAIN_PLAINE;
+            }
+            else if (val < 0.75f) {
+                tuiles[h][w].type = TERRAIN_FORET;
+            }
+            else if (val < 0.85f) {
+                tuiles[h][w].type = TERRAIN_MONTAGNE;
+            }
+            else {
+                tuiles[h][w].type = TERRAIN_TOUNDRA;
+            }
+
+            tuiles[h][w].city = NULL;
+            tuiles[h][w].unit = NULL;
+        }
+    }
+
+    // Choix de la position de la ville de départ
+    // Recherche depuis le centre en augmentant le rayon de recherche à chaque tour
+    // pour trouver la plaine la plus au centre
+    int start_x = width / 2;
+    int start_y = height / 2;
+    int found = 0;
+
+    for (int rayon = 0; (rayon < width && !found); rayon++) {
+        for (int dy = -rayon; dy <= rayon && !found; dy++) {
+            for (int dx = -rayon; dx <= rayon && !found; dx++) {
+                int cur_y = start_y + dy;
+                int cur_x = start_x + dx;
+
+                // verif des limites de la map
+                if (cur_x >= 0 && cur_x < width && cur_y >= 0 && cur_y < height) {
+                    // On cherche un TERRAIN_PLAINE
+                    if (tuiles[cur_y][cur_x].type == TERRAIN_PLAINE) {
+                        start_x = cur_x;
+                        start_y = cur_y;
+                        found = 1;
+                    }
+                }
+            }
+        }
+    }
+
+    if (!found) {
+        tuiles[start_y][start_x].type = TERRAIN_PLAINE;
+    }
+
+    // Allocation de la ville
+    City* start_city = malloc(sizeof(City));
+    start_city->x = start_x;
+    start_city->y = start_y;
+    start_city->hp = 100;
+    start_city->population = 1;
+    start_city->has_wall = 0;
+    start_city->food_stored = 0;
+    start_city->production_stored = 0;
+
+    start_city->owner = player;
+
+    tuiles[start_y][start_x].city = start_city;
+
+    // Allocation du guerrier au start
+    Unit* start_warrior = malloc(sizeof(Unit));
+    if (start_warrior != NULL) {
+        start_warrior->type = UNIT_WARRIOR;
+        start_warrior->x = start_x;
+        start_warrior->y = start_y;
+        start_warrior->hp = 20;
+        start_warrior->hp_max = 20;
+        start_warrior->attack = 3;
+        start_warrior->defense = 2;
+        start_warrior->pm = 2;
+        start_warrior->pm_max = 2;
+        start_warrior->owner = start_city->owner; // Même joueur que la ville
+
+        tuiles[start_y][start_x].unit = start_warrior;
+    }
+
+    new_map->height = height;
+    new_map->width = width;
+    new_map->tiles = tuiles;
+    return new_map;
+}
+
+Map* create_map(int width, int height,Player* player,int seed) {
+
+	srand(seed); // On utilise la seed générée ou donnée par l'utilisateur 
+                 //pour générer la prochaine suite de nombres
 
     // Allocation de la carte
     Map* new_map = malloc(sizeof(Map));
@@ -89,6 +215,7 @@ void display_map(Map* map) {
                     case TERRAIN_MONTAGNE: printf("^ "); break;
                     case TERRAIN_FORET:    printf("f "); break;
                     case TERRAIN_DESERT:   printf("_ "); break;
+                    case TERRAIN_TOUNDRA:  printf("* "); break;
                     default:               printf("? "); break;
                 }
             }
@@ -121,6 +248,8 @@ void display_map_color(Map* map) {
                         printf("\033[2;32mf \033[0m"); break; // Vert foncé
                     case TERRAIN_DESERT:   
                         printf("\033[0;33;1m_ \033[0m"); break; // Jaune brillant
+                    case TERRAIN_TOUNDRA:
+                        printf("* "); break; // Blanc
                     default:               
                         printf("? "); break;
                 }
