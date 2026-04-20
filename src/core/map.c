@@ -7,7 +7,8 @@
 #include <stdlib.h>
 
 Map* create_map_noise(int width, int height,Player* player, int seed) {
-    // paramètres modifiables en fonction
+    // paramètres modifiables en fonction de nos préférences
+    // FAIRE DANS LE README UN TRUC VRAIMENT BIEN DETAILLÉ
 
     // Allocation de la carte
     Map* new_map = malloc(sizeof(Map));
@@ -24,7 +25,7 @@ Map* create_map_noise(int width, int height,Player* player, int seed) {
     // génération avec le bruit de perlin
 
     // FONCTIONNEMENT : la fonction renvoie un nombre entre -1 et 1 donc ensuite on 
-    // utilise des "range" pour chaque type de terrain
+    // utilise des "paliers" pour chaque type de terrain
     for (int h = 0; h < height; h++) {
         for (int w = 0; w < width; w++) {
             float scale = 0.2f;

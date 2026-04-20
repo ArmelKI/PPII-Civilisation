@@ -354,7 +354,6 @@ int main(int argc, char **argv)
 	if (strcmp(mode, "cli") == 0) {
 		puts("[CIV] Mode CLI initialise (squelette).");
 		Map* Map = create_map_noise(width, height, player, seed);
-		display_map(Map);
 		display_map_color(Map);
 		free_map(Map);
 		free(player);
