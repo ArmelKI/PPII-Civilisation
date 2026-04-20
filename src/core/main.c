@@ -11,9 +11,11 @@
 
 #include "core/types.h"
 
+#include "core/physics.h"
+
 #define MAP_W 20
 #define MAP_H 12
-#define MAX_TURNS 20
+#define MAX_TURNS 200
 #define MAX_PLAYER_UNITS 8
 #define MAX_BARBARIANS 16
 
@@ -337,7 +339,9 @@ int main(int argc, char **argv)
 	}
 	(void)nb_turns; // Pour éviter les warnings sur les variables non utilisées dans ce prototype.
 	(void)nb_barbarians;
-	
+	(void)width;
+	(void)height;
+
 	if (!is_seed) {
 		seed = (int)time(NULL);
 	}
@@ -353,36 +357,16 @@ int main(int argc, char **argv)
 
 // ----------------- AFFICHAGE CLI -----------------
 
-	if (strcmp(mode, "cli") == 0) {
-		puts("[CIV] Mode CLI initialise (squelette).");
-		Map* Map = create_map(width, height, player);
-		display_map(Map);
-		display_map_color(Map);
-		free_map(Map);
-		free(player);
-		return 0;
-	}
-
-// ----------------- AFFICHAGE SDL -----------------
-
 	if (strcmp(mode, "sdl") == 0) {
-		puts("[CIV] Mode SDL initialise (squelette).\nInstallez SDL2 et branchez l'UI plus tard.");
-		free(player);
-		return 0;
-	}
-
-	// mode invalide
-    fprintf(stderr, "\033[1;31m[Erreur]\033[0m Mode invalide: %s\n", mode);
-    print_help();
-    free(player);
-    return 1;
-	if (strcmp(mode, "cli") != 0) {
-		fprintf(stderr, "Mode invalide: %s\n", mode);
-		print_help();
-		return 1;
-	}
-
-	srand((unsigned int)time(NULL));
+        puts("[CIV] Mode SDL initialise (squelette).\nInstallez SDL2 et branchez l'UI plus tard.");
+        free(player);
+        return 0;
+    } else if (strcmp(mode, "cli") != 0) {
+        fprintf(stderr, "Mode invalide: %s\n", mode);
+        print_help();
+        free(player);
+        return 1;
+    }
 
 	GameState game;
 	memset(&game, 0, sizeof(GameState));
@@ -391,14 +375,118 @@ int main(int argc, char **argv)
 
 	puts("[CIV] Boucle principale lancée (prototype).\n");
 
+	// CREATION D'UNE UNITE DE TEST 
+    game.player_units[0] = malloc(sizeof(Unit));
+    if (game.player_units[0] != NULL) {
+        game.player_units[0]->x = 10; // Position X au hasard
+        game.player_units[0]->y = 5;  // Position Y au hasard
+        game.player_units[0]->hp = 15;
+
+		game.player_units[0] -> pm = 3;
+		game.player_units[0] -> pm_max = 3;
+
+        game.player_units[0]->owner = &game.player;
+        game.player_unit_count = 1;
+        // On la pose sur la carte
+        game.map.tiles[5][10].unit = game.player_units[0];
+    }
+    // ------------------------------------
+
 	// Boucle centrale demandée dans le ticket.
 	while (!game.game_over) {
-		print_state_maxence_stub(&game);
-		next_turn(&game);
 
-		game.turn++;
-		if (game.turn >= MAX_TURNS || game.city.hp <= 0) {
+		display_map_color(&game.map);
+
+		// 1. Affichage d'état (hook externe ou console)
+		print_state_maxence_stub(&game);
+		
+		Unit *mon_unite = game.player_units[0];
+
+		// Sécurité : on vérifie que l'unité existe et est en vie
+
+		if (mon_unite == NULL || mon_unite->hp <= 0) {
+			puts("Votre unité est morte ou n'existe pas. Fin de partie.");
 			game.game_over = 1;
+			break;
+		}
+
+		// 2. Pause et lecture de la commande clavier
+		printf("\n[Tour %d] Commande (z/q/s/d pour déplacer, x = Quitter): ", game.turn);
+		char action;
+		if (scanf(" %c", &action) != 1) {
+			printf("Erreur de lecture. Fin de partie.\n");
+			game.game_over = 1;
+			break;
+		}
+
+
+		if (action == 'x') {
+			printf("Fin de partie demandée par le joueur.\n");
+			game.game_over = 1;
+			break;
+		}
+
+		// 3. Calcul des futures coordonnées selon la touche pressée
+		int target_x = mon_unite->x;
+		int target_y = mon_unite->y;
+
+		if (action == 'z') target_y -= 1;   //haut
+		else if (action == 's') target_y += 1;  //Bas
+		else if (action == 'q') target_x -= 1;   // Gauche
+		else if (action == 'd') target_x += 1;  // Droite
+		else {
+			printf("Touche invalide. Utilisez z/q/s/d pour déplacer ou x pour quitter.\n");
+			continue;
+		}
+
+		// 4. Logique de dépacement et application de ma physique (can_move, resolve_combat, etc.)
+
+		if(action == 'z' || action == 's' || action == 'q' || action == 'd') {
+
+			// Vérification des coordonnées de la carte pour éviter des erreurs d'accès mémoire
+			if (target_x >= 0 && target_x < game.map.width && target_y >= 0 && target_y < game.map.height) {
+
+				// On cible la tuile d'arrivée 
+				Tile  *target_tile = &game.map.tiles[target_y][target_x];
+
+				// Appel de la physique du jeu
+				if (can_move(mon_unite, target_tile)) {
+
+					// A. S'il y a un ennemi sur la case cible: Fight !
+					if (target_tile->unit && target_tile->unit->owner != mon_unite->owner) {
+						printf("\n Combat engagé ! \n");
+						resolve_combat(mon_unite, target_tile->unit);
+					
+					}
+					// B. S'il n'y a pas d'ennemi, on se déplace normalement
+					else if(target_tile -> unit == NULL) {
+						// 1. On "vide" l'ancienne tuile de la carte
+						game.map.tiles[mon_unite->y][mon_unite->x].unit = NULL;
+						// 2. On met à jour les coordonnées de l'unité
+						mon_unite->x = target_x;
+						mon_unite->y = target_y;
+						mon_unite -> pm --;
+
+						// 3. On place le pointeur de l'unité sur la nouvelle tuile de la carte 
+						target_tile->unit = mon_unite;
+
+						puts("\nDéplacement réussi !\n");
+					}
+					else {
+						puts("\nDéplacement impossible (pas assez de PM ou terrain bloque) !");
+					}
+				} else {
+					puts("\n Tu essaies de sortir de la carte ou de traverser un terrain infranchissable ");
+				}
+			}
+			// 5. Le joueur a fini de jouer, l'ordinateur (Barbares d'Armel) joue son tour
+			next_turn(&game);
+			game.turn ++;
+
+			if (game.turn >= MAX_TURNS || game.city.hp <= 0) {
+				puts("\nNombre de tours maximum atteint. Fin de partie.");
+				game.game_over = 1;
+			}
 		}
 	}
 
