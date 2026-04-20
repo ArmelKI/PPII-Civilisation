@@ -50,6 +50,18 @@ typedef struct Player {
 
 } Player;
 
+typedef enum {
+    PROJECT_NONE = 0,   // Rien en cours
+    PROJECT_SETTLER,    // Colon (50 prod)
+    PROJECT_WARRIOR,    // Guerrier (40 prod)
+    PROJECT_GRANARY,    // Grenier (30 prod)
+    PROJECT_WORKSHOP,   // Atelier (40 prod)
+    PROJECT_LIBRARY,    // Bibliothèque (50 prod)
+    PROJECT_MARKET,     // Marché (40 prod)
+    PROJECT_BARRACKS,   // Caserne (60 prod)
+    PROJECT_WALL        // Muraille (80 prod)
+} ProjectType;
+
 typedef struct City {
     int id;                     // id unique repère d'ancienetté 0 pour la première +1 à chaque nouvelle ville
     int population;             // Nombre d'habitants
@@ -63,6 +75,8 @@ typedef struct City {
     int has_library;           // Bibliothèque
     int has_market;            // Marché
     int has_barrack;           // caserne
+
+    ProjectType current_project;
     // Coordonnées de la ville sur la carte
     int x;
     int y;
