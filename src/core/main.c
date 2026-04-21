@@ -10,7 +10,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "core/types.h"
+#include "../../include/core/types.h"
 
 #include "core/physics.h"
 
@@ -58,36 +58,7 @@ static void print_help(void)
     puts("  --barbarians N | -b N Nombre de campements barbares initiaux (par défaut: 3)");
 }
 
-static void init_map(GameState *game)
-{
-	// J'utilise un buffer continu pour les tuiles + un tableau de pointeurs de lignes.
-	// Avantage: accès map.tiles[y][x] simple, sans allocation ligne par ligne.
-	game->map.width = MAP_W;
-	game->map.height = MAP_H;
-	game->tile_buffer = (Tile *)calloc((size_t)MAP_W * (size_t)MAP_H, sizeof(Tile));
-	game->map.tiles = (Tile **)malloc((size_t)MAP_H * sizeof(Tile *));
 
-	if (!game->tile_buffer || !game->map.tiles) {
-		fprintf(stderr, "Erreur d'allocation de la carte\n");
-		exit(1);
-	}
-
-	for (int y = 0; y < MAP_H; ++y) {
-		game->map.tiles[y] = &game->tile_buffer[y * MAP_W];
-		for (int x = 0; x < MAP_W; ++x) {
-			game->map.tiles[y][x].type = TERRAIN_PLAINE;
-			game->map.tiles[y][x].city = NULL;
-			game->map.tiles[y][x].unit = NULL;
-		}
-	}
-
-	// Bordures en eau juste pour les tests:
-	// ça force des cas où les déplacements doivent être refusés.
-	for (int x = 0; x < MAP_W; ++x) {
-		game->map.tiles[0][x].type = TERRAIN_EAU;
-		game->map.tiles[MAP_H - 1][x].type = TERRAIN_EAU;
-	}
-}
 
 static void init_player_and_city(GameState *game)
 {
@@ -346,17 +317,17 @@ int main(int argc, char **argv)
 	if (!is_seed) {
 		seed = (int)time(NULL);
 	}
-	srand(seed); // On utilise la seed générée ou donnée par l'utilisateur pour générer la carte
 
 	// Initialisation du joueur
-
 	Player* player = malloc(sizeof(Player));
 	player->gold = 0;
 	player->science = 0;
 
 	printf("[CIV] Generation avec la graine : %d\n", seed);
 
-// ----------------- AFFICHAGE CLI -----------------
+
+
+// ----------------- AFFICHAGE SDL -----------------
 
 	if (strcmp(mode, "sdl") == 0) {
         puts("[CIV] Mode SDL initialise (squelette).\nInstallez SDL2 et branchez l'UI plus tard.");
@@ -371,7 +342,13 @@ int main(int argc, char **argv)
 
 	GameState game;
 	memset(&game, 0, sizeof(GameState));
-	init_map(&game);
+	
+
+	Map *map_generee = create_map_noise(width, height, &game.player, seed);
+
+	game.map = *map_generee;
+	free(map_generee);
+
 	init_player_and_city(&game);
 
 	puts("[CIV] Boucle principale lancée (prototype).\n");
