@@ -372,6 +372,25 @@ int main(int argc, char **argv)
         // On la pose sur la carte
         game.map.tiles[5][10].unit = game.player_units[0];
     }
+
+	game.player_units[1] = malloc(sizeof(Unit));
+    if (game.player_units[1] != NULL) {
+        game.player_units[1]->x = 20; // Position X au hasard
+        game.player_units[1]->y = 10;  // Position Y au hasard
+        game.player_units[1]->hp = 15;
+
+		game.player_units[1] -> pm = 3;
+		game.player_units[1] -> pm_max = 3;
+
+		game.player_units[1]->type = UNIT_SETTLER;
+		game.player_units[1] ->attack = 0;
+		game.player_units[1]->defense = 3;
+
+        game.player_units[1]->owner = &game.player;
+        game.player_unit_count = 1;
+        // On la pose sur la carte
+        game.map.tiles[10][15].unit = game.player_units[1];
+    }
     // ------------------------------------
 
 	// Boucle centrale demandée dans le ticket.
