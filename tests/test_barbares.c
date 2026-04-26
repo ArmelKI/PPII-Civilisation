@@ -161,10 +161,21 @@ static void test_move_barbarian(void)
 
     City *cities[1] = {NULL};
 
+    int old_dist = abs(target.x - barb.x);
+    if (abs(target.y - barb.y) > old_dist) {
+        old_dist = abs(target.y - barb.y);
+    }
+
     barbares_move(&barb, &map, cities, 0, targets, 1);
-    EXPECT(barb.x == 6 && barb.y == 5, "barbare devrait avancer d'une case vers la cible");
+
+    int new_dist = abs(target.x - barb.x);
+    if (abs(target.y - barb.y) > new_dist) {
+        new_dist = abs(target.y - barb.y);
+    }
+
+    EXPECT(new_dist < old_dist, "barbare devrait se rapprocher de sa cible");
     EXPECT(barb.pm == 2, "coût PM incorrect sur plaine");
-    EXPECT(map.tiles[5][6].unit == &barb, "nouvelle tuile non mise à jour");
+    EXPECT(map.tiles[barb.y][barb.x].unit == &barb, "nouvelle tuile non mise à jour");
     EXPECT(map.tiles[5][5].unit == NULL, "ancienne tuile non vidée");
 
     map.tiles[5][6].unit = NULL;
@@ -178,7 +189,35 @@ static void test_move_barbarian(void)
     map.tiles[6][5].type = TERRAIN_EAU;
 
     barbares_move(&barb, &map, cities, 0, targets, 1);
-    EXPECT(barb.x == 5 && barb.y == 5, "barbare ne doit pas entrer sur eau");
+    EXPECT(map.tiles[barb.y][barb.x].type != TERRAIN_EAU, "barbare ne doit pas entrer sur eau");
+
+    free_test_map(&map);
+}
+
+static void test_move_barbarian_pathfinding_around_wall(void)
+{
+    // Vérifie que le barbare contourne un mur d'eau:
+    // l'ancienne IA restait bloquée si la case directe était fermée.
+    Map map;
+    init_map(&map, 10, 10);
+
+    Unit barb = {.type = UNIT_BARBARIAN, .hp = 10, .pm = 3, .pm_max = 3, .x = 2, .y = 5};
+    map.tiles[5][2].unit = &barb;
+
+    Unit target = {.type = UNIT_SETTLER, .hp = 10, .hp_max = 10, .x = 8, .y = 5};
+    Unit *targets[1] = {&target};
+    City *cities[1] = {NULL};
+
+    // Mur vertical qui bloque la trajectoire directe.
+    map.tiles[5][3].type = TERRAIN_EAU;
+    map.tiles[5][4].type = TERRAIN_EAU;
+    map.tiles[5][5].type = TERRAIN_EAU;
+
+    barbares_move(&barb, &map, cities, 0, targets, 1);
+
+    EXPECT(!(barb.x == 3 && barb.y == 5), "pathfinding: ne doit pas tenter la case eau directe");
+    EXPECT(map.tiles[barb.y][barb.x].type != TERRAIN_EAU, "pathfinding: ne doit jamais finir sur eau");
+    EXPECT(!(barb.x == 2 && barb.y == 5), "pathfinding: doit avancer en contournant le mur");
 
     free_test_map(&map);
 }
@@ -268,10 +307,20 @@ static void test_integration_with_map_engine(void)
     Unit *players[1] = {target};
     City *cities[1] = {NULL};
 
+    int old_dist = abs(target->x - barb->x);
+    if (abs(target->y - barb->y) > old_dist) {
+        old_dist = abs(target->y - barb->y);
+    }
+
     barbares_move(barb, map, cities, 0, players, 1);
 
-    EXPECT(barb->x == 2 && barb->y == 1, "intégration: barbare avance vers cible avec map réel");
-    EXPECT(map->tiles[1][2].unit == barb, "intégration: map moteur mise à jour après move");
+    int new_dist = abs(target->x - barb->x);
+    if (abs(target->y - barb->y) > new_dist) {
+        new_dist = abs(target->y - barb->y);
+    }
+
+    EXPECT(new_dist < old_dist, "intégration: barbare doit se rapprocher de la cible");
+    EXPECT(map->tiles[barb->y][barb->x].unit == barb, "intégration: map moteur mise à jour après move");
 
     map->tiles[target->y][target->x].unit = NULL;
     free(target);
@@ -285,6 +334,7 @@ int main(void)
     test_init_camps();
     test_spawn_unit();
     test_move_barbarian();
+    test_move_barbarian_pathfinding_around_wall();
     test_attack_and_destroy();
     test_integration_with_map_engine();
 
