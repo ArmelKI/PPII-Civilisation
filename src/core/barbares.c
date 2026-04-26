@@ -1,9 +1,244 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <limits.h>
 
 #include "core/barbares.h"
 #include "core/types.h"
+
+typedef struct {
+    int x;
+    int y;
+    int kind;      // 0 = unité, 1 = ville
+    int priority;
+    int dist;
+} TargetCandidate;
+
+static int chebyshev_distance(int x1, int y1, int x2, int y2)
+{
+    int dx = abs(x2 - x1);
+    int dy = abs(y2 - y1);
+    return (dx > dy) ? dx : dy;
+}
+
+static int terrain_move_cost(TerrainType type)
+{
+    if (type == TERRAIN_FORET) {
+        return 2;
+    }
+    if (type == TERRAIN_MONTAGNE) {
+        return 3;
+    }
+    return 1;
+}
+
+static int is_inside(const Map *map, int x, int y)
+{
+    return map && x >= 0 && x < map->width && y >= 0 && y < map->height;
+}
+
+static int is_walkable_for_barbarian(const Map *map, int x, int y, const Unit *barb)
+{
+    if (!is_inside(map, x, y)) {
+        return 0;
+    }
+
+    const Tile *tile = &map->tiles[y][x];
+    if (tile->type == TERRAIN_EAU) {
+        return 0;
+    }
+
+    if (tile->city) {
+        return 0;
+    }
+
+    if (tile->unit && !(barb && barb->x == x && barb->y == y)) {
+        return 0;
+    }
+
+    return 1;
+}
+
+static int candidate_cmp(const TargetCandidate *a, const TargetCandidate *b)
+{
+    if (a->priority != b->priority) {
+        return (a->priority > b->priority) ? -1 : 1;
+    }
+    if (a->dist != b->dist) {
+        return (a->dist < b->dist) ? -1 : 1;
+    }
+    return 0;
+}
+
+// Trouve un premier pas vers une case adjacente à la cible en évitant les obstacles.
+static int find_step_towards_target(const Unit *barb, const Map *map, int target_x, int target_y,
+                                    int *out_x, int *out_y)
+{
+    if (!barb || !map || !out_x || !out_y) {
+        return 0;
+    }
+
+    const int w = map->width;
+    const int h = map->height;
+    const int size = w * h;
+    const int start = barb->y * w + barb->x;
+
+    int *parent = (int *)malloc((size_t)size * sizeof(int));
+    unsigned char *visited = (unsigned char *)calloc((size_t)size, sizeof(unsigned char));
+    unsigned char *goals = (unsigned char *)calloc((size_t)size, sizeof(unsigned char));
+    int *queue = (int *)malloc((size_t)size * sizeof(int));
+
+    if (!parent || !visited || !goals || !queue) {
+        free(parent);
+        free(visited);
+        free(goals);
+        free(queue);
+        return 0;
+    }
+
+    for (int i = 0; i < size; ++i) {
+        parent[i] = -1;
+    }
+
+    // Objectif: une case adjacente libre à la cible, pas la case cible elle-même.
+    for (int dy = -1; dy <= 1; ++dy) {
+        for (int dx = -1; dx <= 1; ++dx) {
+            if (dx == 0 && dy == 0) {
+                continue;
+            }
+            int gx = target_x + dx;
+            int gy = target_y + dy;
+            if (!is_walkable_for_barbarian(map, gx, gy, barb)) {
+                continue;
+            }
+            goals[gy * w + gx] = 1;
+        }
+    }
+
+    if (goals[start]) {
+        free(parent);
+        free(visited);
+        free(goals);
+        free(queue);
+        return 0;
+    }
+
+    int q_head = 0;
+    int q_tail = 0;
+    queue[q_tail++] = start;
+    visited[start] = 1;
+
+    int found = -1;
+    while (q_head < q_tail) {
+        int cur = queue[q_head++];
+        if (goals[cur]) {
+            found = cur;
+            break;
+        }
+
+        int cx = cur % w;
+        int cy = cur / w;
+
+        for (int dy = -1; dy <= 1; ++dy) {
+            for (int dx = -1; dx <= 1; ++dx) {
+                if (dx == 0 && dy == 0) {
+                    continue;
+                }
+
+                int nx = cx + dx;
+                int ny = cy + dy;
+                if (!is_walkable_for_barbarian(map, nx, ny, barb)) {
+                    continue;
+                }
+
+                int next_idx = ny * w + nx;
+                if (visited[next_idx]) {
+                    continue;
+                }
+
+                visited[next_idx] = 1;
+                parent[next_idx] = cur;
+                queue[q_tail++] = next_idx;
+            }
+        }
+    }
+
+    if (found < 0) {
+        free(parent);
+        free(visited);
+        free(goals);
+        free(queue);
+        return 0;
+    }
+
+    int step = found;
+    while (parent[step] != -1 && parent[step] != start) {
+        step = parent[step];
+    }
+
+    if (parent[step] == -1) {
+        free(parent);
+        free(visited);
+        free(goals);
+        free(queue);
+        return 0;
+    }
+
+    *out_x = step % w;
+    *out_y = step / w;
+
+    free(parent);
+    free(visited);
+    free(goals);
+    free(queue);
+    return 1;
+}
+
+static int patrol_random_step(Unit *barb, Map *map)
+{
+    int options_x[8];
+    int options_y[8];
+    int count = 0;
+
+    for (int dy = -1; dy <= 1; ++dy) {
+        for (int dx = -1; dx <= 1; ++dx) {
+            if (dx == 0 && dy == 0) {
+                continue;
+            }
+
+            int nx = barb->x + dx;
+            int ny = barb->y + dy;
+            if (!is_walkable_for_barbarian(map, nx, ny, barb)) {
+                continue;
+            }
+
+            int cost = terrain_move_cost(map->tiles[ny][nx].type);
+            if (barb->pm < cost) {
+                continue;
+            }
+
+            options_x[count] = nx;
+            options_y[count] = ny;
+            count++;
+        }
+    }
+
+    if (count == 0) {
+        return 0;
+    }
+
+    int pick = rand() % count;
+    int nx = options_x[pick];
+    int ny = options_y[pick];
+    int cost = terrain_move_cost(map->tiles[ny][nx].type);
+
+    map->tiles[barb->y][barb->x].unit = NULL;
+    barb->x = nx;
+    barb->y = ny;
+    barb->pm -= cost;
+    map->tiles[barb->y][barb->x].unit = barb;
+    return 1;
+}
 
 // Place les campements barbares au démarrage
 BarbarianCamp *barbares_init_camps(Map *map, int num_camps, int player_city_x, int player_city_y)
@@ -141,95 +376,89 @@ void barbares_move(Unit *barb, Map *map, City *player_cities[], int num_cities,
         return;
     }
 
-    int target_x = -1;
-    int target_y = -1;
-    int best_dist = 999999;
+    TargetCandidate candidates[128];
+    int candidate_count = 0;
 
-    // Cible prioritaire: unités du joueur (ordre du tableau = départage déterministe).
+    // Priorité IA: colon > guerrier > ville.
+    // On garde aussi la distance pour ne pas partir à l'opposé sans raison.
     for (int i = 0; i < num_player_units; ++i) {
         Unit *u = player_units[i];
         if (!u || u->hp <= 0) {
             continue;
         }
 
-        int dx = abs(u->x - barb->x);
-        int dy = abs(u->y - barb->y);
-        int dist = (dx > dy) ? dx : dy;
-        if (dist < best_dist) {
-            best_dist = dist;
-            target_x = u->x;
-            target_y = u->y;
+        if (candidate_count >= (int)(sizeof(candidates) / sizeof(candidates[0]))) {
+            break;
         }
+
+        int priority = (u->type == UNIT_SETTLER) ? 300 : 200;
+        if (u->hp <= (u->hp_max / 2)) {
+            priority += 20;
+        }
+
+        candidates[candidate_count].x = u->x;
+        candidates[candidate_count].y = u->y;
+        candidates[candidate_count].kind = 0;
+        candidates[candidate_count].priority = priority;
+        candidates[candidate_count].dist = chebyshev_distance(barb->x, barb->y, u->x, u->y);
+        candidate_count++;
     }
 
-    // Ensuite les villes (uniquement si plus proches, pas en cas d'égalité).
     for (int i = 0; i < num_cities; ++i) {
         City *c = player_cities[i];
         if (!c || c->hp <= 0) {
             continue;
         }
 
-        int dx = abs(c->x - barb->x);
-        int dy = abs(c->y - barb->y);
-        int dist = (dx > dy) ? dx : dy;
-        if (dist < best_dist) {
-            best_dist = dist;
-            target_x = c->x;
-            target_y = c->y;
+        if (candidate_count >= (int)(sizeof(candidates) / sizeof(candidates[0]))) {
+            break;
+        }
+
+        candidates[candidate_count].x = c->x;
+        candidates[candidate_count].y = c->y;
+        candidates[candidate_count].kind = 1;
+        candidates[candidate_count].priority = 100;
+        candidates[candidate_count].dist = chebyshev_distance(barb->x, barb->y, c->x, c->y);
+        candidate_count++;
+    }
+
+    // Tri simple pour garder un code compact et lisible.
+    for (int i = 0; i < candidate_count; ++i) {
+        int best = i;
+        for (int j = i + 1; j < candidate_count; ++j) {
+            if (candidate_cmp(&candidates[j], &candidates[best]) < 0) {
+                best = j;
+            }
+        }
+        if (best != i) {
+            TargetCandidate tmp = candidates[i];
+            candidates[i] = candidates[best];
+            candidates[best] = tmp;
         }
     }
 
-    if (target_x < 0 || target_y < 0) {
+    for (int i = 0; i < candidate_count; ++i) {
+        int new_x = -1;
+        int new_y = -1;
+        if (!find_step_towards_target(barb, map, candidates[i].x, candidates[i].y, &new_x, &new_y)) {
+            continue;
+        }
+
+        int cost = terrain_move_cost(map->tiles[new_y][new_x].type);
+        if (barb->pm < cost) {
+            continue;
+        }
+
+        map->tiles[barb->y][barb->x].unit = NULL;
+        barb->x = new_x;
+        barb->y = new_y;
+        barb->pm -= cost;
+        map->tiles[barb->y][barb->x].unit = barb;
         return;
     }
 
-    int step_x = 0;
-    int step_y = 0;
-
-    if (target_x > barb->x) {
-        step_x = 1;
-    } else if (target_x < barb->x) {
-        step_x = -1;
-    }
-
-    if (target_y > barb->y) {
-        step_y = 1;
-    } else if (target_y < barb->y) {
-        step_y = -1;
-    }
-
-    int new_x = barb->x + step_x;
-    int new_y = barb->y + step_y;
-
-    if (new_x < 0 || new_x >= map->width || new_y < 0 || new_y >= map->height) {
-        return;
-    }
-
-    if (map->tiles[new_y][new_x].type == TERRAIN_EAU) {
-        return;
-    }
-
-    // On n'empile pas les unités et on ne rentre pas dans une ville.
-    if (map->tiles[new_y][new_x].unit || map->tiles[new_y][new_x].city) {
-        return;
-    }
-
-    int cost = 1;
-    if (map->tiles[new_y][new_x].type == TERRAIN_FORET) {
-        cost = 2;
-    } else if (map->tiles[new_y][new_x].type == TERRAIN_MONTAGNE) {
-        cost = 3;
-    }
-
-    if (barb->pm < cost) {
-        return;
-    }
-
-    map->tiles[barb->y][barb->x].unit = NULL;
-    barb->x = new_x;
-    barb->y = new_y;
-    barb->pm -= cost;
-    map->tiles[barb->y][barb->x].unit = barb;
+    // Aucune cible atteignable: patrouille aléatoire contrôlée plutôt que blocage complet.
+    (void)patrol_random_step(barb, map);
 }
 
 // Combat automatique si adjacent
