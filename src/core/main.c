@@ -24,6 +24,74 @@ static void print_help(void)
     puts("  --barbarians N | -b N Nombre de campements barbares initiaux (par défaut: 3)");
 }
 
+// --- MENU PRINCIPAL ---
+// Renvoie 1 si le joueur veut jouer, 0 s'il quitte
+static int run_main_menu(void) {
+    char choice;
+    
+    while (1) {
+        printf("\n\n");
+        printf("  ╔════════════════════════════════════════════╗\n");
+        printf("  ║                                            ║\n");
+        printf("  ║   👑  L E S   I N C I V I L I S É S  ⚔️     ║\n");
+        printf("  ║                                            ║\n");
+        printf("  ╠════════════════════════════════════════════╣\n");
+        printf("  ║                                            ║\n");
+        printf("  ║   [1] 🌍 Nouvelle Partie                   ║\n");
+        printf("  ║   [2] 💾 Charger une partie (Bientôt)      ║\n");
+        printf("  ║   [3] 📜 Règles et Commandes               ║\n");
+        printf("  ║   [4] ⚙️  Options (Bientôt)                 ║\n");
+        printf("  ║                                            ║\n");
+        printf("  ║   [x] 🚪 Quitter                           ║\n");
+        printf("  ║                                            ║\n");
+        printf("  ╚════════════════════════════════════════════╝\n");
+		printf("  Veuillez sélectionner une option pour continuer: ");
+
+        if (scanf(" %c", &choice) != 1) {
+            // Sécurité (si la lecture échoue)
+            return 0; 
+        }
+
+        switch (choice) {
+            case '1':
+                printf("\n  Préparation du monde en cours...\n");
+                return 1;
+
+            case '2':
+				// PARTIE SAUVEGARDE DE BABSS
+            case '4':
+                printf("\n Fonctionnalité en cours de développement ça charbonne \n");
+                break;
+
+            case '3':
+                printf("\n  === 📜 RÈGLES DU JEU ===\n");
+                printf("  Le but est de faire prospérer votre ville et de survivre.\n");
+                printf("  Des barbares apparaîtront et tenteront de vous détruire.\n\n");
+				// RÈGLES PLUS PRÉCISE SANS FAIRE DE TUNNEL
+                printf("  === ⌨️  COMMANDES ===\n");
+                printf("  z/q/s/d : Déplacer votre unité (Haut/Gauche/Bas/Droite)\n");
+                printf("  n       : Finir votre tour (récupérer les PM)\n");
+                printf("  x       : Quitter la partie en cours\n");
+                printf("  Appuyez sur Entrée pour revenir au menu...\n");
+                
+				// On attend que le joueur tappe entrée
+                int c;
+                while ((c = getchar()) != '\n' && c != EOF); // Vide le buffer
+                getchar(); // Attend Entrée
+                break;
+
+            case 'x':
+            case 'X':
+                printf("\n  Arrêt du jeu. À bientôt !\n");
+                return 0;
+
+            default:
+                printf("\n  \033[1;31m Choix invalide. Veuillez sélectionner une option valide.\033[0m\n");
+                break;
+        }
+    }
+}
+
 // Affichage d'état : j'utilise le hook externe si dispo, sinon affichage console.
 static void print_state_maxence_stub(const GameState *game)
 {
@@ -83,7 +151,7 @@ int main(int argc, char **argv) {
 
 	(void)nb_barbarians; // pour éviter les erreurs de compilations avec les variables non utilisées
 
-// ----------------- AFFICHAGE SDL -----------------
+	// GESTION DU MODE D'AFFICHAGE
 
     if (strcmp(mode, "sdl") == 0) {
         puts("[CIV] Mode SDL initialise (squelette).\nInstallez SDL2 et branchez l'UI plus tard.");
@@ -92,6 +160,14 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Mode invalide: %s\n", mode);
         return 1;
     }
+
+	// MENU PRINCIPAL DU JEU
+
+	int state = run_main_menu();
+	if (state == 0) return 0;
+
+
+	// DEBUT DU JEU
 
     GameState game;
     init_game(&game, width, height, seed);
