@@ -239,6 +239,9 @@ void display_map_color(Map* map) {
                     case UNIT_WARRIOR:
                         printf("\033[1;36mW \033[0m"); // W pour le Guerrier du Joueur
                         break;
+                    case UNIT_SETTLER:
+                        printf("\033[1;33mS \033[0m"); // S Jaune brillant pour le Colon
+                        break;
                     default:
                         printf("\033[1;35mU \033[0m"); // U Violet (Unité générique) (au cas où)
                         break;
@@ -246,8 +249,20 @@ void display_map_color(Map* map) {
                 }
             }
             else if (map->tiles[h][w].city != NULL) {
-                printf("\033[1;37mC \033[0m"); 
-            } 
+                if (map->tiles[h][w].city->has_wall) {
+                    printf("\033[1;37;40mC \033[0m"); // Blanc Brillant sur fond noir si muraille
+                } else {
+                    printf("\033[0;37mC \033[0m");    // Blanc simple
+                }
+
+            } else if (map->tiles[h][w].camp != NULL) {
+                if (map->tiles[h][w].camp->destroyed == 0) {
+                    printf("\033[1;31m▲ \033[0m"); // ▲ Rouge vif pour un camp actif
+                } else {
+                    printf("\033[1;30m△ \033[0m"); // △ Gris foncé pour un camp détruit
+                }
+            }
+            
             else {
                 switch (map->tiles[h][w].type) {
                     case TERRAIN_EAU:      
