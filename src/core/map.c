@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-Map* create_map_noise(int width, int height,Player* player, int seed) {
+Map* create_map_noise(int width, int height, int seed) {
     // paramètres modifiables en fonction de nos préférences
     // FAIRE DANS LE README UN TRUC VRAIMENT BIEN DETAILLÉ
 
@@ -56,6 +56,7 @@ Map* create_map_noise(int width, int height,Player* player, int seed) {
 
             tuiles[h][w].city = NULL;
             tuiles[h][w].unit = NULL;
+            tuiles[h][w].camp = NULL;
         }
     }
 
@@ -85,39 +86,11 @@ Map* create_map_noise(int width, int height,Player* player, int seed) {
         }
     }
 
+    new_map->start_x = start_x;
+    new_map->start_y = start_y;
+
     if (!found) {
         tuiles[start_y][start_x].type = TERRAIN_PLAINE;
-    }
-
-    // Allocation de la ville
-    City* start_city = malloc(sizeof(City));
-    start_city->x = start_x;
-    start_city->y = start_y;
-    start_city->hp = 100;
-    start_city->population = 1;
-    start_city->has_wall = 0;
-    start_city->food_stored = 0;
-    start_city->production_stored = 0;
-
-    start_city->owner = player;
-
-    tuiles[start_y][start_x].city = start_city;
-
-    // Allocation du guerrier au start
-    Unit* start_warrior = malloc(sizeof(Unit));
-    if (start_warrior != NULL) {
-        start_warrior->type = UNIT_WARRIOR;
-        start_warrior->x = start_x;
-        start_warrior->y = start_y;
-        start_warrior->hp = 20;
-        start_warrior->hp_max = 20;
-        start_warrior->attack = 3;
-        start_warrior->defense = 2;
-        start_warrior->pm = 2;
-        start_warrior->pm_max = 2;
-        start_warrior->owner = start_city->owner; // Même joueur que la ville
-
-        tuiles[start_y][start_x].unit = start_warrior;
     }
 
     new_map->height = height;
@@ -126,7 +99,7 @@ Map* create_map_noise(int width, int height,Player* player, int seed) {
     return new_map;
 }
 
-Map* create_map(int width, int height,Player* player,int seed) {
+Map* create_map(int width, int height,int seed) {
 
 	srand(seed); // On utilise la seed générée ou donnée par l'utilisateur 
                  //pour générer la prochaine suite de nombres
@@ -149,6 +122,7 @@ Map* create_map(int width, int height,Player* player,int seed) {
             tuiles[h][w].type = (TerrainType)(rand() % 5);
             tuiles[h][w].city = NULL;
             tuiles[h][w].unit = NULL;
+            tuiles[h][w].camp = NULL;
         }
     }
 
@@ -159,37 +133,8 @@ Map* create_map(int width, int height,Player* player,int seed) {
 
     tuiles[start_y][start_x].type = TERRAIN_PLAINE;
 
-    // Allocation de la ville
-    City* start_city = malloc(sizeof(City));
-    start_city->x = start_x;
-    start_city->y = start_y;
-    start_city->hp = 100;
-    start_city->population = 1;
-    start_city->has_wall = 0;
-    start_city->food_stored = 0;
-    start_city->production_stored = 0;
-
-    start_city->owner = player;
-
-    tuiles[start_y][start_x].city = start_city;
-
-    // Allocation du guerrier au start
-    Unit* start_warrior = malloc(sizeof(Unit));
-    if (start_warrior != NULL) {
-        start_warrior->type = UNIT_WARRIOR;
-        start_warrior->x = start_x;
-        start_warrior->y = start_y;
-        start_warrior->hp = 20;
-        start_warrior->hp_max = 20;
-        start_warrior->attack = 3;
-        start_warrior->defense = 2;
-        start_warrior->pm = 2;
-        start_warrior->pm_max = 2;
-        start_warrior->owner = start_city->owner; // Même joueur que la ville
-
-        tuiles[start_y][start_x].unit = start_warrior;
-    }
-
+    new_map->start_x = start_x;
+    new_map->start_y = start_y;
     new_map->height = height;
     new_map->width = width;
     new_map->tiles = tuiles;

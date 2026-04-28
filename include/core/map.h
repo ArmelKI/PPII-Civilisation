@@ -6,8 +6,8 @@
 // ----------------Fonctions de bases---------------------
 
 // Alloue et génère la carte
-Map* create_map(int width, int height,Player* player, int seed);
-Map* create_map_noise(int width, int height,Player* player, int seed);
+Map* create_map(int width, int height, int seed);
+Map* create_map_noise(int width, int height, int seed);
 
 // Affiche la carte dans le terminal (TUI)
 void display_map(Map* map);

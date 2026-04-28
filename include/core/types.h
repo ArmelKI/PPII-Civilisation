@@ -34,12 +34,16 @@ typedef struct Tile{
     TerrainType type; // Type de terrain (Plaine, eau ..)
     City* city;      // Pointeur vers la ville présente sur ce terrain (NULL si aucune)
     Unit* unit;      // Pointeur vers l'unité présente sur ce terrain (NULL si aucune)
+    BarbarianCamp* camp; // Pointeur vers le camp de barbares présent sur ce terrain (NULL si aucun)
 } Tile;
 
 typedef struct Map{
     int width;       // Largeur de la carte
     int height;      // Hauteur de la carte
     Tile** tiles;    // Grille de tuiles (2D array)
+
+    int start_x;     // Coordonnées de la ville de départ
+    int start_y;
 } Map;
 
 
