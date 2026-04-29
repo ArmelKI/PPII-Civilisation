@@ -31,20 +31,20 @@ static int run_main_menu(void) {
     
     while (1) {
         printf("\n\n");
-        printf("  ╔════════════════════════════════════════════╗\n");
-        printf("  ║                                            ║\n");
-        printf("  ║   👑  L E S   I N C I V I L I S É S  ⚔️     ║\n");
-        printf("  ║                                            ║\n");
-        printf("  ╠════════════════════════════════════════════╣\n");
-        printf("  ║                                            ║\n");
-        printf("  ║   [1] 🌍 Nouvelle Partie                   ║\n");
-        printf("  ║   [2] 💾 Charger une partie (Bientôt)      ║\n");
-        printf("  ║   [3] 📜 Règles et Commandes               ║\n");
-        printf("  ║   [4] ⚙️  Options (Bientôt)                 ║\n");
-        printf("  ║                                            ║\n");
-        printf("  ║   [x] 🚪 Quitter                           ║\n");
-        printf("  ║                                            ║\n");
-        printf("  ╚════════════════════════════════════════════╝\n");
+        printf("  ╔═════════════════════════════════════════════╗\n");
+        printf("  ║                                             ║\n");
+		printf("  ║ -=*=-  L E S   I N C I V I L I S É S  -=*=- ║\n");
+        printf("  ║                                             ║\n");
+        printf("  ╠═════════════════════════════════════════════╣\n");
+        printf("  ║                                             ║\n");
+		printf("  ║   [1] + Nouvelle Partie                     ║\n");
+        printf("  ║   [2] > Charger une partie (Bientôt)        ║\n");
+        printf("  ║   [3] i Règles et Commandes                 ║\n");
+        printf("  ║   [4] # Options (Bientôt)                   ║\n");
+        printf("  ║                                             ║\n");
+  		printf("  ║   [x] <- Quitter                            ║\n");
+        printf("  ║                                             ║\n");
+        printf("  ╚═════════════════════════════════════════════╝\n");
 		printf("  Veuillez sélectionner une option pour continuer: ");
 
         if (scanf(" %c", &choice) != 1) {
@@ -64,11 +64,11 @@ static int run_main_menu(void) {
                 break;
 
             case '3':
-                printf("\n  === 📜 RÈGLES DU JEU ===\n");
+                printf("\n  === RÈGLES DU JEU ===\n");
                 printf("  Le but est de faire prospérer votre ville et de survivre.\n");
                 printf("  Des barbares apparaîtront et tenteront de vous détruire.\n\n");
 				// RÈGLES PLUS PRÉCISE SANS FAIRE DE TUNNEL
-                printf("  === ⌨️  COMMANDES ===\n");
+                printf("  === COMMANDES ===\n");
                 printf("  z/q/s/d : Déplacer votre unité (Haut/Gauche/Bas/Droite)\n");
                 printf("  n       : Finir votre tour (récupérer les PM)\n");
                 printf("  x       : Quitter la partie en cours\n");
@@ -183,22 +183,139 @@ int main(int argc, char **argv) {
         // 1. Affichage d'état (hook externe ou console)
         print_state_maxence_stub(&game);
         
-        Unit *mon_unite = game.player_units[0];
+        printf("\n[Or : %d] Action ? 1: Deplacer unite | 2: Recruter | 3: Passer le tour | x: Quitter\n", game.player.gold);
+        printf("Votre choix : ");
+        
+        char choice;
+        if (scanf(" %c", &choice) != 1) continue;
+
+        switch (choice) {
+            case 'x':
+            case 'X':
+                printf("\nArret du jeu. A bientot !\n");
+                game.game_over = 1;
+                continue;
+
+            case '3':
+            case 'n':
+                // 5. Le joueur a fini de jouer, l'ordinateur (Barbares d'Armel) joue son tour
+                next_turn(&game);
+                if (game.turn >= nb_turns || game.city.hp <= 0) {
+                    game.game_over = 1;
+                }
+                continue;
+
+            case '2':
+                printf("\nQuelle unité souhaitez-vous recruter ?\n");
+                printf("[1] Guerrier (10 Or) - Force: 3, PM: 3\n");
+                printf("[2] Colon (20 Or) - Fonde une ville, PM: 2\n");
+                printf("[x] Annuler\n");
+                printf("Votre choix : ");
+
+                char rec_choice;
+                if (scanf(" %c", &rec_choice) != 1 || rec_choice == 'x') {
+                    continue;
+                }
+
+                int cost = 0;
+                int type = 0;
+
+                if (rec_choice == '1') {
+                    cost = 10;
+                    type = UNIT_WARRIOR;
+                } else if (rec_choice == '2') {
+                    cost = 20;
+                    type = UNIT_SETTLER;
+                } else {
+                    printf("\n\033[1;31mChoix invalide.\033[0m\n");
+                    continue;
+                }
+
+                if (game.player.gold >= cost) {
+                    if (game.player_unit_count < 8) { 
+                        Tile *city_tile = &game.map.tiles[game.city.y][game.city.x];
+                        
+                        if (city_tile->unit == NULL) {
+                            Unit *new_unit = malloc(sizeof(Unit));
+                            if (new_unit) {
+                                new_unit->type = type;
+                                new_unit->x = game.city.x; 
+                                new_unit->y = game.city.y;
+                                new_unit->owner = &game.player;
+                                
+                                if (type == UNIT_WARRIOR) {
+                                    new_unit->hp = 15; new_unit->hp_max = 15;
+                                    new_unit->attack = 3; new_unit->defense = 2;
+                                    new_unit->pm = 3; new_unit->pm_max = 3;
+                                } else { 
+                                    new_unit->hp = 10; new_unit->hp_max = 10;
+                                    new_unit->attack = 0; new_unit->defense = 1;
+                                    new_unit->pm = 2; new_unit->pm_max = 2;
+                                }
+                                
+                                game.player_units[game.player_unit_count++] = new_unit;
+                                city_tile->unit = new_unit;
+                                
+                                game.player.gold -= cost;
+                                printf("\n\033[1;32m[+] Unite recrutee avec succes sur la ville !\033[0m\n");
+                            }
+                        } else {
+                            printf("\n\033[1;31m[!] La ville est deja occupee. Deplacez l'unite presente d'abord.\033[0m\n");
+                        }
+                    } else {
+                        printf("\n\033[1;31m[!] Vous avez atteint la limite d'unites actives.\033[0m\n");
+                    }
+                } else {
+                    printf("\n\033[1;31m[!] Or insuffisant. Il vous faut %d Or.\033[0m\n", cost);
+                }
+                continue;
+
+            case '1':
+                break; // Sort du match pour lancer la logique de deplacement juste en dessous
+
+            default:
+                printf("\n\033[1;31mAction invalide.\033[0m\n");
+                continue;
+        }
+
+        printf("\nUnites disponibles :\n");
+        for (int i = 0; i < game.player_unit_count; i++) {
+            Unit *u = game.player_units[i];
+            if (u && u->hp > 0) {
+                const char* nom_unite = (u->type == UNIT_WARRIOR) ? "Guerrier" : "Colon";
+                printf("[%d] %s en (%d,%d) - %d/%d PM\n", i, nom_unite, u->x, u->y, u->pm, u->pm_max);
+            }
+        }
+        
+        printf("Quelle unite selectionner ? (0 a %d, ou x pour annuler) : ", game.player_unit_count - 1);
+        char idx_choice;
+        if (scanf(" %c", &idx_choice) != 1 || idx_choice == 'x') {
+            continue;
+        }
+
+        int unit_idx = idx_choice - '0';
+        if (unit_idx < 0 || unit_idx >= game.player_unit_count) {
+            printf("\n\033[1;31mIndex invalide.\033[0m\n");
+            continue;
+        }
+
+        Unit *mon_unite = game.player_units[unit_idx];
 
         // Sécurité : on vérifie que l'unité existe et est en vie
-
         if (mon_unite == NULL || mon_unite->hp <= 0) {
-            puts("Votre unité est morte ou n'existe pas. Fin de partie.");
-            break;
+            printf("\n\033[1;31mCette unite est morte ou n'existe pas.\033[0m\n");
+            continue;
+        }
+
+        if (mon_unite->pm <= 0) {
+            printf("\n\033[1;33mCette unite n'a plus de PM. Choisissez-en une autre.\033[0m\n");
+            continue;
         }
 
         // 2. Pause et lecture de la commande clavier
-        printf("\n[Tour %d] Commande (z/q/s/d pour déplacer, x = Quitter): ", game.turn);
+        printf("Direction (z:Haut / q:Gauche / s:Bas / d:Droite) : ");
         char action;
-        if (scanf(" %c", &action) != 1 || action == 'x') {
-            if (action == 'x') printf("Fin de partie demandée par le joueur.\n");
-            break;
-        }
+        if (scanf(" %c", &action) != 1) continue;
 
         // 3. Calcul des futures coordonnées selon la touche pressée
         int target_x = mon_unite->x;
@@ -262,13 +379,6 @@ int main(int argc, char **argv) {
             }
         } else {
             puts("\n Tu essaies de sortir de la carte ");
-        }
-
-        // 5. Le joueur a fini de jouer, l'ordinateur (Barbares d'Armel) joue son tour
-        next_turn(&game);
-
-        if (game.turn >= nb_turns || game.city.hp <= 0) {
-            game.game_over = 1;
         }
     }
 
