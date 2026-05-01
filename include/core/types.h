@@ -41,6 +41,9 @@ typedef struct Map{
     int width;       // Largeur de la carte
     int height;      // Hauteur de la carte
     Tile** tiles;    // Grille de tuiles (2D array)
+
+    int start_x;     // Coordonnées de la ville de départ
+    int start_y;
 } Map;
 
 
