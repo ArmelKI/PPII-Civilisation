@@ -104,7 +104,7 @@ Map* create_map_noise(int width, int height,Player* player, int seed) {
     tuiles[start_y][start_x].city = start_city;
 
     // Allocation du guerrier au start
-    Unit* start_warrior = malloc(sizeof(Unit));
+    Unit*start_warrior = malloc(sizeof(Unit));
     if (start_warrior != NULL) {
         start_warrior->type = UNIT_WARRIOR;
         start_warrior->x = start_x;
@@ -130,6 +130,7 @@ Map* create_map(int width, int height,Player* player,int seed) {
 
 	srand(seed); // On utilise la seed générée ou donnée par l'utilisateur 
                  //pour générer la prochaine suite de nombres
+
 
     // Allocation de la carte
     Map* new_map = malloc(sizeof(Map));
