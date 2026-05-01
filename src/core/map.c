@@ -28,26 +28,26 @@ Map* create_map_noise(int width, int height,Player* player, int seed) {
     // utilise des "paliers" pour chaque type de terrain
     for (int h = 0; h < height; h++) {
         for (int w = 0; w < width; w++) {
-            float scale = 0.2f;
+            float scale = 0.1f;
 
             float noise = stb_perlin_noise3_seed(w*scale, h*scale, (float)seed * 0.1f, 0, 0, 0, (unsigned char) seed);
 
             // On ramène la valeur entre 0.0 et 1.0 pour que ce soit plus simple
             float val = (noise + 1.0f) / 2.0f;
 
-            if (val < 0.25f) {
+            if (val < 0.40f) {
                 tuiles[h][w].type = TERRAIN_EAU;
             }
-            else if (val < 0.35f) {
+            else if (val < 0.43f) {
                 tuiles[h][w].type = TERRAIN_DESERT;
             }
-            else if (val < 0.60f) {
+            else if (val < 0.65f) {
                 tuiles[h][w].type = TERRAIN_PLAINE;
             }
-            else if (val < 0.75f) {
+            else if (val < 0.74f) {
                 tuiles[h][w].type = TERRAIN_FORET;
             }
-            else if (val < 0.85f) {
+            else if (val < 0.82f) {
                 tuiles[h][w].type = TERRAIN_MONTAGNE;
             }
             else {
@@ -239,6 +239,9 @@ void display_map_color(Map* map) {
                     case UNIT_WARRIOR:
                         printf("\033[1;36mW \033[0m"); // W pour le Guerrier du Joueur
                         break;
+                    case UNIT_SETTLER:
+                        printf("\033[1;33mS \033[0m"); // S Jaune brillant pour le Colon
+                        break;
                     default:
                         printf("\033[1;35mU \033[0m"); // U Violet (Unité générique) (au cas où)
                         break;
@@ -246,8 +249,20 @@ void display_map_color(Map* map) {
                 }
             }
             else if (map->tiles[h][w].city != NULL) {
-                printf("\033[1;37mC \033[0m"); 
-            } 
+                if (map->tiles[h][w].city->has_wall) {
+                    printf("\033[1;37;40mC \033[0m"); // Blanc Brillant sur fond noir si muraille
+                } else {
+                    printf("\033[0;37mC \033[0m");    // Blanc simple
+                }
+
+            } else if (map->tiles[h][w].camp != NULL) {
+                if (map->tiles[h][w].camp->destroyed == 0) {
+                    printf("\033[1;31m▲ \033[0m"); // ▲ Rouge vif pour un camp actif
+                } else {
+                    printf("\033[1;30m△ \033[0m"); // △ Gris foncé pour un camp détruit
+                }
+            }
+            
             else {
                 switch (map->tiles[h][w].type) {
                     case TERRAIN_EAU:      
