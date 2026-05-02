@@ -6,3 +6,4 @@ civ
 build/
 bin/
 *.o
+*.sav

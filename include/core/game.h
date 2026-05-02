@@ -8,6 +8,7 @@
 #define MAX_PLAYER_UNITS 8
 #define MAX_BARBARIANS 16
 #define MAX_TURNS 200
+#define MAX_CITIES 10
 
 // Je regroupe ici tout ce qui doit vivre pendant la partie.
 // Ça évite de passer 15 paramètres dans chaque fonction.
@@ -17,7 +18,8 @@ typedef struct GameState {
     Tile *tile_buffer;
 
     Player player;
-    City city;
+    City *cities[MAX_CITIES];
+    int city_count;
 
     Unit *player_units[MAX_PLAYER_UNITS];
     int player_unit_count;

@@ -3,11 +3,13 @@
 #include <string.h>
 #include <stdbool.h>
 #include <time.h>
+#include <string.h>
 
 #include "../../include/core/game.h"
 #include "../../include/core/map.h"
 #include "../../include/core/types.h"
 #include "../../include/core/physics.h"
+#include "../../include/core/save.h"
 
 #define MAX_TURNS 200
 
@@ -38,7 +40,7 @@ static int run_main_menu(void) {
         printf("  ╠═════════════════════════════════════════════╣\n");
         printf("  ║                                             ║\n");
 		printf("  ║   [1] + Nouvelle Partie                     ║\n");
-        printf("  ║   [2] > Charger une partie (Bientôt)        ║\n");
+        printf("  ║   [2] > Charger une partie                  ║\n");
         printf("  ║   [3] i Règles et Commandes                 ║\n");
         printf("  ║   [4] # Options (Bientôt)                   ║\n");
         printf("  ║                                             ║\n");
@@ -54,11 +56,11 @@ static int run_main_menu(void) {
 
         switch (choice) {
             case '1':
-                printf("\n  Préparation du monde en cours...\n");
+                printf("\n  Chargement de la partie en cours...\n");
                 return 1;
 
             case '2':
-				// PARTIE SAUVEGARDE DE BABSS
+                return 2;
             case '4':
                 printf("\n Fonctionnalité en cours de développement ça charbonne \n");
                 break;
@@ -96,14 +98,14 @@ static int run_main_menu(void) {
 static void print_state_maxence_stub(const GameState *game)
 {
     if (display_state_maxence) {
-        display_state_maxence(&game->map, &game->player, &game->city,
+        display_state_maxence(&game->map, &game->player, game->cities[0],
             game->turn, game->player_unit_count, game->barbarian_count);
         return;
     }
 
     printf("\n=== TOUR %d ===\n", game->turn);
     printf("Ressources: or=%d science=%d\n", game->player.gold, game->player.science);
-    printf("Ville: hp=%d pop=%d (%d,%d)\n", game->city.hp, game->city.population, game->city.x, game->city.y);
+    printf("Ville: hp=%d pop=%d (%d,%d)\n", game->cities[0]->hp, game->cities[0]->population, game->cities[0]->x, game->cities[0]->y);
     printf("Unités joueur: %d | Barbares: %d\n", game->player_unit_count, game->barbarian_count);
 }
 
@@ -161,18 +163,28 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-	// MENU PRINCIPAL DU JEU
 
-	int state = run_main_menu();
-	if (state == 0) return 0;
-
+    // MENU PRINCIPAL
+    int state = run_main_menu();
+    if (state == 0) return 0;
+	
 
 	// DEBUT DU JEU
 
     GameState game;
-    init_game(&game, width, height, seed);
+    memset(&game, 0, sizeof(GameState)); // Sécurité : on initialise tout à 0 pour éviter les valeurs indéterminées.
+    if (state == 1) {
+        init_game(&game, width, height, seed);
+        printf("[CIV] Nouvelle partie; Generation avec la graine : %d\n", seed);
+    } else if(state == 2) {
+        if (!load_game("savegame.sav", &game)) {
+            printf("Échec du chargement de la partie. Démarrage d'une nouvelle partie.\n");
+            init_game(&game, width, height, seed);
+            printf("[CIV] Nouvelle partie; Generation avec la graine : %d\n", seed);
+        } 
 
-    printf("[CIV] Generation avec la graine : %d\n", seed);
+    }
+
     puts("[CIV] Boucle principale lancée (prototype).\n");
 
     // Boucle centrale demandée dans le ticket.
@@ -183,7 +195,7 @@ int main(int argc, char **argv) {
         // 1. Affichage d'état (hook externe ou console)
         print_state_maxence_stub(&game);
         
-        printf("\n[Or : %d] Action ? 1: Deplacer unite | 2: Recruter | 3: Passer le tour | x: Quitter\n", game.player.gold);
+        printf("\n[Or : %d] Action ? 1: Deplacer unite | 2: Recruter | 3: Passer le tour | s: Sauvegarder | x: Quitter\n", game.player.gold);
         printf("Votre choix : ");
         
         char choice;
@@ -195,12 +207,17 @@ int main(int argc, char **argv) {
                 printf("\nArret du jeu. A bientot !\n");
                 game.game_over = 1;
                 continue;
+            case 's':
+            case 'S':
+                printf("\nSauvegarde en cours...\n");
+                save_game("savegame.sav", &game);
+                continue;
 
             case '3':
             case 'n':
                 // 5. Le joueur a fini de jouer, l'ordinateur (Barbares d'Armel) joue son tour
                 next_turn(&game);
-                if (game.turn >= nb_turns || game.city.hp <= 0) {
+                if (game.turn >= nb_turns || game.cities[0]->hp <= 0) {
                     game.game_over = 1;
                 }
                 continue;
@@ -233,14 +250,14 @@ int main(int argc, char **argv) {
 
                 if (game.player.gold >= cost) {
                     if (game.player_unit_count < 8) { 
-                        Tile *city_tile = &game.map.tiles[game.city.y][game.city.x];
+                        Tile *city_tile = &game.map.tiles[game.cities[0]->y][game.cities[0]->x];
                         
                         if (city_tile->unit == NULL) {
                             Unit *new_unit = malloc(sizeof(Unit));
                             if (new_unit) {
                                 new_unit->type = type;
-                                new_unit->x = game.city.x; 
-                                new_unit->y = game.city.y;
+                                new_unit->x = game.cities[0]->x;
+                                new_unit->y = game.cities[0]->y;
                                 new_unit->owner = &game.player;
                                 
                                 if (type == UNIT_WARRIOR) {

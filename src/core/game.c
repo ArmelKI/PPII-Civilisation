@@ -20,16 +20,19 @@ void init_game(GameState *game, int width, int height, int seed) {
     free(map_ptr);
 
     // Initialisation de la Ville de départ (algo dans le create_map_noise)
-    game->city.x = game->map.start_x;
-    game->city.y = game->map.start_y;
-    game->city.hp = 20;
-    game->city.population = 2;
-    game->city.owner = &game->player;
-    game->map.tiles[game->city.y][game->city.x].city = &game->city;
-
+    game -> cities[0] = malloc(sizeof(City));
+    game ->city_count = 1;
+    if (game -> cities[0] != NULL) {
+        game->cities[0]->x = game->map.start_x;
+        game->cities[0]->y = game->map.start_y;
+        game->cities[0]->hp = 20;
+        game->cities[0]->population = 2;
+        game->cities[0]->owner = &game->player;
+        game->map.tiles[game->cities[0]->y][game->cities[0]->x].city = game->cities[0];
+}
     // Initialisation Guerrier de départ
     Unit *warrior = malloc(sizeof(Unit));
-    if (warrior) {
+    if (warrior && game->cities[0] != NULL) {
         warrior->type = UNIT_WARRIOR;
         warrior->hp = 15;
         warrior->hp_max = 15;
@@ -37,8 +40,8 @@ void init_game(GameState *game, int width, int height, int seed) {
         warrior->defense = 2;
         warrior->pm = 3;
         warrior->pm_max = 3;
-        warrior->x = game->city.x;
-        warrior->y = game->city.y;
+        warrior->x = game->cities[0]->x;
+        warrior->y = game->cities[0]->y;
         warrior->owner = &game->player;
         
         game->player_units[0] = warrior;
@@ -156,7 +159,7 @@ void next_turn(GameState *game) {
     restore_pm(game->barbarians, game->barbarian_count);
 
     // 2) Revenus de ville
-    apply_city_income_wassim(&game->player, &game->city);
+    apply_city_income_wassim(&game->player, game->cities[0]);
 
     // 3) Phase Barbares (spawn + déplacement)
     spawn_random_barbarian(game);
@@ -166,8 +169,15 @@ void next_turn(GameState *game) {
 }
 
 void cleanup_game(GameState *game) {
+    for (int i = 0; i < game->city_count; ++i) {
+        if (game->cities[i]) {
+            free(game->cities[i]);
+        }
+    }
     for (int i = 0; i < game->player_unit_count; ++i) {
-        free(game->player_units[i]);
+        if (game->player_units[i]) {
+            free(game->player_units[i]);
+        }
     }
 
     for (int i = 0; i < game->barbarian_count; ++i) {
