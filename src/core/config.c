@@ -3,6 +3,14 @@
 #include <string.h>
 #include <stdlib.h>
 
+static GameConfig g_active_config = {
+    .difficulty = DIFF_NORMAL,
+    .production_multiplier = 1.0f,
+    .growth_threshold_multiplier = 1.0f,
+    .barbarian_spawn_multiplier = 1.0f,
+    .famine_enabled = true,
+};
+
 static int parse_full_float(const char *value, float *out)
 {
     char *end = NULL;
@@ -53,6 +61,65 @@ void game_config_apply_preset(GameConfig *cfg, Difficulty d)
             cfg->barbarian_spawn_multiplier = 1.0f;
             cfg->famine_enabled = true;
             break;
+    }
+}
+
+void game_config_set_active(const GameConfig *cfg)
+{
+    if (!cfg) {
+        game_config_init_default(&g_active_config);
+        return;
+    }
+
+    g_active_config = *cfg;
+}
+
+const GameConfig *game_config_get_active(void)
+{
+    return &g_active_config;
+}
+
+int game_config_barbarian_spawn_chance(void)
+{
+    const GameConfig *cfg = game_config_get_active();
+    float multiplier = cfg ? cfg->barbarian_spawn_multiplier : 1.0f;
+    int chance = (int)(35.0f * multiplier + 0.5f);
+
+    if (chance < 5) {
+        chance = 5;
+    } else if (chance > 95) {
+        chance = 95;
+    }
+
+    return chance;
+}
+
+void game_config_apply_barbarian_stats(Unit *barbarian)
+{
+    if (!barbarian) {
+        return;
+    }
+
+    const GameConfig *cfg = game_config_get_active();
+    float multiplier = cfg ? cfg->barbarian_spawn_multiplier : 1.0f;
+
+    barbarian->hp = (int)(15.0f * multiplier + 0.5f);
+    barbarian->hp_max = barbarian->hp;
+    if (barbarian->hp < 1) {
+        barbarian->hp = 1;
+        barbarian->hp_max = 1;
+    }
+
+    barbarian->attack = (int)(3.0f * multiplier + 0.5f);
+    if (barbarian->attack < 1) {
+        barbarian->attack = 1;
+    }
+
+    barbarian->pm = (int)(3.0f * multiplier + 0.5f);
+    barbarian->pm_max = barbarian->pm;
+    if (barbarian->pm < 1) {
+        barbarian->pm = 1;
+        barbarian->pm_max = 1;
     }
 }
 

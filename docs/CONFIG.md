@@ -31,5 +31,9 @@ Les surcharges détaillées sont également disponibles au lancement:
   - famine_enabled: true
 
 Remarques:
-- Les multiplicateurs sont appliqués par le moteur de jeu aux valeurs standards (production, seuils, fréquence de spawn des barbares).
+- Les multiplicateurs sont appliqués par le moteur de jeu aux valeurs standards:
+  - production des villes
+  - seuil de croissance
+  - fréquence de spawn des barbares
+  - statistiques de base des barbares générés
 - Les paramètres peuvent être raffinés ou exposés en ligne de commande / fichier `config.txt` dans les livrables suivants.

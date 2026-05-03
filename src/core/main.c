@@ -233,6 +233,7 @@ int main(int argc, char **argv) {
     if (has_famine_override) {
         cfg.famine_enabled = famine_override;
     }
+    game_config_set_active(&cfg);
     printf("[CIV] Difficulty: %s | prod=%.2f | croissance=%.2f | barbares=%.2f | famine=%s\n",
            difficulty_to_string(cfg.difficulty),
            cfg.production_multiplier,

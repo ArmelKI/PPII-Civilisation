@@ -342,6 +342,10 @@ int main(void)
     test_move_barbarian_pathfinding_around_wall();
     test_attack_and_destroy();
     test_integration_with_map_engine();
+    extern int run_test_difficulty_effects(void);
+    if (run_test_difficulty_effects() != 0) {
+        g_failed++;
+    }
 
     if (g_failed == 0) {
         puts("[OK] Tous les tests barbares passent.");

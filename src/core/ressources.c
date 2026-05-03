@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "core/types.h"
 #include "core/game.h"
+#include "core/config.h"
 
 // mise en place du rendement en fonction du type de case
 TileYield get_terrain_yield(TerrainType type) {
@@ -90,6 +91,8 @@ City* get_tile_owner(int target_x, int target_y, Map* map){
 //fonction qui actualise la ville à chaque tour
 void process_city_resources(City *city, Map *map) {
     if (!city || !city->owner || !map) return;
+    const GameConfig *config = game_config_get_active();
+    float production_multiplier = config ? config->production_multiplier : 1.0f;
 
     //rayon d'exploitation de la ville
     int rayon = 1;
@@ -142,7 +145,12 @@ void process_city_resources(City *city, Map *map) {
     
     // Maj des ressources de city et player
     city->food_stored += (total_yield.food - food_consumed);
-    city->production_stored += total_yield.production;
+
+    int scaled_production = (int)(total_yield.production * production_multiplier + 0.5f);
+    if (total_yield.production > 0 && scaled_production < 1) {
+        scaled_production = 1;
+    }
+    city->production_stored += scaled_production;
     
     city->owner->gold += total_yield.gold;
     city->owner->science += total_yield.science;
@@ -155,10 +163,19 @@ void process_city_growth(City *city,Map *map){
 
     if (!city || !map) return;
 
+    const GameConfig *config = game_config_get_active();
+    float growth_multiplier = config ? config->growth_threshold_multiplier : 1.0f;
+    int famine_enabled = !config || config->famine_enabled;
+
     int growth_seuil= 20 + (10* city -> population);
 
     if(city -> has_granary){
         growth_seuil = (growth_seuil*2)/3;
+    }
+
+    growth_seuil = (int)(growth_seuil * growth_multiplier + 0.5f);
+    if (growth_seuil < 1) {
+        growth_seuil = 1;
     }
 
     if( city -> food_stored >= growth_seuil){
@@ -171,7 +188,7 @@ void process_city_growth(City *city,Map *map){
         city -> hp = new_hp;
     }
 
-    if( city -> food_stored < 0){
+    if( city -> food_stored < 0 && famine_enabled){
 
         city -> population -= 1; //demander aux autres si on remet a zero ou pas (ajuster si jeu trop difficile)
         city->food_stored = 0;
@@ -189,8 +206,9 @@ void process_city_growth(City *city,Map *map){
                 city -> hp = new_hp;
             }
         }
+    } else if (city->food_stored < 0) {
+        city->food_stored = 0;
     }
-
 }
 
 //fonction qui gère les dépenses en or et la réserve
@@ -428,10 +446,17 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
 void control_city_project(City *city) {
     if (!city) return;
 
+    const GameConfig *config = game_config_get_active();
+    float growth_multiplier = config ? config->growth_threshold_multiplier : 1.0f;
+
     // Calcul du seuil de croissance pour l'affichage (identique à process_city_growth)
     int seuil_croissance = 20 + (10 * city->population);
     if (city->has_granary) {
         seuil_croissance = (seuil_croissance * 2) / 3;
+    }
+    seuil_croissance = (int)(seuil_croissance * growth_multiplier + 0.5f);
+    if (seuil_croissance < 1) {
+        seuil_croissance = 1;
     }
 
     printf("\n╔════════════════════════════════════════════════════════╗\n");
