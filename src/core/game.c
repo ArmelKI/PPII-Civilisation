@@ -157,7 +157,7 @@ void next_turn(GameState *game) {
         if (game->cities[i] != NULL) {
             process_city_resources(game->cities[i], &game->map);
             process_city_growth(game->cities[i], &game->map);
-            process_city_production(game->cities[i], &game->map);
+            process_city_production(game->cities[i], &game->map, game->player_units, &game->player_unit_count);
         }
     }
     

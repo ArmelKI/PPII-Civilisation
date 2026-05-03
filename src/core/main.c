@@ -248,7 +248,10 @@ int main(int argc, char **argv) {
                     continue;
                 }
 
-                found_city(mon_unite, &game.map, &city_id_counter);
+                if (found_city(mon_unite, &game.map, &city_id_counter, game.cities, &game.city_count)) {
+                    game.player_units[unit_idx] = NULL; 
+                }
+                
                 continue;
 
             case 'v':
