@@ -57,11 +57,31 @@ static void test_parse_difficulty(void)
     EXPECT(difficulty_from_string("invalid", &diff) == 0, "invalid difficulty should be rejected");
 }
 
+static void test_parse_overrides(void)
+{
+    float value = 0.0f;
+    bool enabled = false;
+
+    EXPECT(config_parse_float("1.50", &value) == 1, "parse float override");
+    EXPECT(fabsf(value - 1.5f) < 1e-6f, "parsed float value should match");
+
+    EXPECT(config_parse_float("abc", &value) == 0, "invalid float should be rejected");
+
+    EXPECT(config_parse_bool("true", &enabled) == 1, "parse true");
+    EXPECT(enabled == true, "true should map to true");
+
+    EXPECT(config_parse_bool("off", &enabled) == 1, "parse off");
+    EXPECT(enabled == false, "off should map to false");
+
+    EXPECT(config_parse_bool("maybe", &enabled) == 0, "invalid bool should be rejected");
+}
+
 int run_test_config(void)
 {
     test_default_preset();
     test_presets_values();
     test_parse_difficulty();
+    test_parse_overrides();
 
     if (g_failed == 0) {
         puts("[OK] Config tests passed.");

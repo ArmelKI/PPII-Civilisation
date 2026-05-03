@@ -1,6 +1,25 @@
 #include "../../include/core/config.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+
+static int parse_full_float(const char *value, float *out)
+{
+    char *end = NULL;
+    float parsed_value;
+
+    if (!value || !out) {
+        return 0;
+    }
+
+    parsed_value = strtof(value, &end);
+    if (end == value || *end != '\0') {
+        return 0;
+    }
+
+    *out = parsed_value;
+    return 1;
+}
 
 void game_config_init_default(GameConfig *cfg)
 {
@@ -66,6 +85,30 @@ int difficulty_from_string(const char *value, Difficulty *out)
 
     if (strcmp(value, "difficile") == 0 || strcmp(value, "hard") == 0) {
         *out = DIFF_HARD;
+        return 1;
+    }
+
+    return 0;
+}
+
+int config_parse_float(const char *value, float *out)
+{
+    return parse_full_float(value, out);
+}
+
+int config_parse_bool(const char *value, bool *out)
+{
+    if (!value || !out) {
+        return 0;
+    }
+
+    if (strcmp(value, "1") == 0 || strcmp(value, "true") == 0 || strcmp(value, "vrai") == 0 || strcmp(value, "yes") == 0 || strcmp(value, "on") == 0 || strcmp(value, "active") == 0) {
+        *out = true;
+        return 1;
+    }
+
+    if (strcmp(value, "0") == 0 || strcmp(value, "false") == 0 || strcmp(value, "faux") == 0 || strcmp(value, "no") == 0 || strcmp(value, "off") == 0 || strcmp(value, "desactive") == 0) {
+        *out = false;
         return 1;
     }
 

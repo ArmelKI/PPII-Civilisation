@@ -7,3 +7,4 @@ build/
 bin/
 *.o
 *.sav
+compile_flags.txt

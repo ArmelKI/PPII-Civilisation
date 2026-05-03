@@ -6,6 +6,12 @@ Presets disponibles : Facile / Normal / Difficile
 
 La difficulté se choisit au lancement avec `--difficulty` ou `-d` et accepte les valeurs `facile`, `normal` ou `difficile`.
 
+Les surcharges détaillées sont également disponibles au lancement:
+- `--production-multiplier` / `-p`
+- `--growth-multiplier` / `-g`
+- `--barbarian-spawn-multiplier` / `-B`
+- `--famine` / `-f` avec `on`, `off`, `true`, `false`, `1`, `0`
+
 - Facile (DIFF_EASY)
   - production_multiplier: 1.25
   - growth_threshold_multiplier: 0.75
