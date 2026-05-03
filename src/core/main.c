@@ -22,6 +22,7 @@ static void print_help(void)
     puts("Options:");
     puts("  --help                 Affiche cette aide");
     puts("  --mode MODE | -m MODE  MODE = cli ou sdl");
+    puts("  --difficulty N | -d N  N = facile, normal ou difficile");
     puts("  --seed N    | -s N    Graine de génération de la carte (aléatoire par défaut)");
     puts("  --width W   | -W W    Largeur de la carte en tuiles (par défaut: 50)");
     puts("  --height H  | -H H    Hauteur de la carte en tuiles (par défaut: 30)");
@@ -114,6 +115,7 @@ static void print_state_maxence_stub(const GameState *game)
 
 int main(int argc, char **argv) {
     const char *mode = "cli";
+    Difficulty difficulty = DIFF_NORMAL;
     int width = 50;
     int height = 30;
     int seed = (int)time(NULL);
@@ -131,6 +133,14 @@ int main(int argc, char **argv) {
 
         if ((strcmp(argv[i], "--mode") == 0 || strcmp(argv[i], "-m") == 0) && i + 1 < argc) {
             mode = argv[++i];
+        } else if ((strcmp(argv[i], "--difficulty") == 0 || strcmp(argv[i], "-d") == 0) && i + 1 < argc) {
+            Difficulty parsed_difficulty;
+            if (!difficulty_from_string(argv[++i], &parsed_difficulty)) {
+                fprintf(stderr, "\033[1;31m[Erreur]\033[0m Niveau de difficulte invalide: %s\n", argv[i]);
+                print_help();
+                return 1;
+            }
+            difficulty = parsed_difficulty;
         } else if ((strcmp(argv[i], "--seed") == 0 || strcmp(argv[i], "-s") == 0) && i + 1 < argc) {
             seed = atoi(argv[++i]);
             is_seed = true;
@@ -170,6 +180,7 @@ int main(int argc, char **argv) {
     // Initialisation de la configuration de jeu (difficulty presets)
     GameConfig cfg;
     game_config_init_default(&cfg);
+    game_config_apply_preset(&cfg, difficulty);
     printf("[CIV] Difficulty: %s\n", difficulty_to_string(cfg.difficulty));
 
     // MENU PRINCIPAL

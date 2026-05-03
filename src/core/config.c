@@ -1,5 +1,6 @@
 #include "../../include/core/config.h"
 #include <stdio.h>
+#include <string.h>
 
 void game_config_init_default(GameConfig *cfg)
 {
@@ -45,4 +46,28 @@ const char *difficulty_to_string(Difficulty d)
         default:
             return "Normal";
     }
+}
+
+int difficulty_from_string(const char *value, Difficulty *out)
+{
+    if (!value || !out) {
+        return 0;
+    }
+
+    if (strcmp(value, "facile") == 0 || strcmp(value, "easy") == 0) {
+        *out = DIFF_EASY;
+        return 1;
+    }
+
+    if (strcmp(value, "normal") == 0 || strcmp(value, "moyen") == 0) {
+        *out = DIFF_NORMAL;
+        return 1;
+    }
+
+    if (strcmp(value, "difficile") == 0 || strcmp(value, "hard") == 0) {
+        *out = DIFF_HARD;
+        return 1;
+    }
+
+    return 0;
 }

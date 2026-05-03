@@ -4,6 +4,8 @@ Ce fichier documente les valeurs par défaut utilisées dans le Socle de Difficu
 
 Presets disponibles : Facile / Normal / Difficile
 
+La difficulté se choisit au lancement avec `--difficulty` ou `-d` et accepte les valeurs `facile`, `normal` ou `difficile`.
+
 - Facile (DIFF_EASY)
   - production_multiplier: 1.25
   - growth_threshold_multiplier: 0.75

@@ -41,10 +41,27 @@ static void test_presets_values(void)
     EXPECT(cfg.famine_enabled == true, "hard should enable famine");
 }
 
+static void test_parse_difficulty(void)
+{
+    Difficulty diff = DIFF_NORMAL;
+
+    EXPECT(difficulty_from_string("facile", &diff) == 1, "parse facile");
+    EXPECT(diff == DIFF_EASY, "facile should map to DIFF_EASY");
+
+    EXPECT(difficulty_from_string("normal", &diff) == 1, "parse normal");
+    EXPECT(diff == DIFF_NORMAL, "normal should map to DIFF_NORMAL");
+
+    EXPECT(difficulty_from_string("difficile", &diff) == 1, "parse difficile");
+    EXPECT(diff == DIFF_HARD, "difficile should map to DIFF_HARD");
+
+    EXPECT(difficulty_from_string("invalid", &diff) == 0, "invalid difficulty should be rejected");
+}
+
 int run_test_config(void)
 {
     test_default_preset();
     test_presets_values();
+    test_parse_difficulty();
 
     if (g_failed == 0) {
         puts("[OK] Config tests passed.");

@@ -19,6 +19,7 @@ typedef struct GameConfig {
 
 void game_config_init_default(GameConfig *cfg);
 void game_config_apply_preset(GameConfig *cfg, Difficulty d);
+int difficulty_from_string(const char *value, Difficulty *out);
 const char *difficulty_to_string(Difficulty d);
 
 #endif // CORE_CONFIG_H
