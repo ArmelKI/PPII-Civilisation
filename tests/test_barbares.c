@@ -88,12 +88,12 @@ static void test_init_camps(void)
     EXPECT(camps != NULL, "barbares_init_camps retourne NULL");
     if (camps) {
         for (int i = 0; i < 3; ++i) {
-                 EXPECT(camps[i].destroyed == 0, "campement pas actif après placement");
-                 EXPECT(camps[i].x >= 0 && camps[i].x < map.width, "x campement invalide");
-                 EXPECT(camps[i].y >= 0 && camps[i].y < map.height, "y campement invalide");
-                 EXPECT(map.tiles[camps[i].y][camps[i].x].type != TERRAIN_EAU, "campement placé sur eau");
+                EXPECT(camps[i].destroyed == 0, "campement pas actif après placement");
+                EXPECT(camps[i].x >= 0 && camps[i].x < map.width, "x campement invalide");
+                EXPECT(camps[i].y >= 0 && camps[i].y < map.height, "y campement invalide");
+                EXPECT(map.tiles[camps[i].y][camps[i].x].type != TERRAIN_EAU, "campement placé sur eau");
             EXPECT(!(abs(camps[i].x - city.x) < 5 && abs(camps[i].y - city.y) < 5),
-                     "campement trop proche de la ville de départ");
+                    "campement trop proche de la ville de départ");
         }
         barbares_cleanup(camps, 3);
     }
@@ -192,8 +192,6 @@ static void test_move_barbarian(void)
     EXPECT(map.tiles[barb.y][barb.x].type != TERRAIN_EAU, "barbare ne doit pas entrer sur eau");
 
     free_test_map(&map);
-<<<<<<< HEAD
-=======
 }
 
 static void test_move_barbarian_pathfinding_around_wall(void)
@@ -222,7 +220,6 @@ static void test_move_barbarian_pathfinding_around_wall(void)
     EXPECT(!(barb.x == 2 && barb.y == 5), "pathfinding: doit avancer en contournant le mur");
 
     free_test_map(&map);
->>>>>>> bdd7209 (test(tests): enhance barbarian movement tests for pathfinding and edge cases)
 }
 
 static void test_attack_and_destroy(void)
@@ -265,8 +262,8 @@ static void test_integration_with_map_engine(void)
     // - on place les unités avec set_unit_at
     // - on vérifie que barbares_move fonctionne bien sur cette carte
 
-    Player p = {.gold = 0, .science = 0};
-    Map *map = create_map(20, 12, &p);
+    Player p = {.gold = 0, .science = 0, .current_research = TECH_NONE, .unlocked_techs = {0}};
+    Map *map = create_map(20, 12, 1234);
     EXPECT(map != NULL, "create_map retourne NULL");
     if (!map) {
         return;
@@ -310,12 +307,6 @@ static void test_integration_with_map_engine(void)
     Unit *players[1] = {target};
     City *cities[1] = {NULL};
 
-<<<<<<< HEAD
-    barbares_move(barb, map, cities, 0, players, 1);
-
-    EXPECT(barb->x == 2 && barb->y == 1, "intégration: barbare avance vers cible avec map réel");
-    EXPECT(map->tiles[1][2].unit == barb, "intégration: map moteur mise à jour après move");
-=======
     int old_dist = abs(target->x - barb->x);
     if (abs(target->y - barb->y) > old_dist) {
         old_dist = abs(target->y - barb->y);
@@ -330,7 +321,6 @@ static void test_integration_with_map_engine(void)
 
     EXPECT(new_dist < old_dist, "intégration: barbare doit se rapprocher de la cible");
     EXPECT(map->tiles[barb->y][barb->x].unit == barb, "intégration: map moteur mise à jour après move");
->>>>>>> bdd7209 (test(tests): enhance barbarian movement tests for pathfinding and edge cases)
 
     map->tiles[target->y][target->x].unit = NULL;
     free(target);
@@ -340,6 +330,11 @@ static void test_integration_with_map_engine(void)
 
 int main(void)
 {
+    /* appeler les autres suites de tests intégrées */
+    extern int run_test_physique(void);
+    extern int run_test_config(void);
+    run_test_physique();
+    run_test_config();
     // Exécution séquentielle des tests unitaires du module.
     test_init_camps();
     test_spawn_unit();

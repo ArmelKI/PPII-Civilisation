@@ -12,6 +12,7 @@
 #include "../../include/core/save.h"
 #include "../../include/core/tech.h"
 #include "../../include/core/ressources.h"
+#include "../../include/core/config.h"
 
 #define MAX_TURNS 200
 
@@ -166,6 +167,11 @@ int main(int argc, char **argv) {
     }
 
 
+    // Initialisation de la configuration de jeu (difficulty presets)
+    GameConfig cfg;
+    game_config_init_default(&cfg);
+    printf("[CIV] Difficulty: %s\n", difficulty_to_string(cfg.difficulty));
+
     // MENU PRINCIPAL
     int state = run_main_menu();
     if (state == 0) return 0;
@@ -265,8 +271,8 @@ int main(int argc, char **argv) {
                 for (int i = 0; i < game.city_count; i++) {
                     if (game.cities[i] && game.cities[i]->hp > 0) {
                         printf("[%d] Ville en (%d, %d) - Pop: %d - Prod: %d\n", 
-                               i, game.cities[i]->x, game.cities[i]->y, 
-                               game.cities[i]->population, game.cities[i]->production_stored);
+                            i, game.cities[i]->x, game.cities[i]->y, 
+                            game.cities[i]->population, game.cities[i]->production_stored);
                     }
                 }
                 
