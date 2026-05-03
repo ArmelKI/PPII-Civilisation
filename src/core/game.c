@@ -4,6 +4,7 @@
 #include "../../include/core/game.h"
 #include "../../include/core/physics.h"
 #include "../../include/core/tech.h"
+#include "../../include/core/ressources.h"
 
 void init_game(GameState *game, int width, int height, int seed) {
     memset(game, 0, sizeof(GameState));
@@ -146,27 +147,22 @@ void move_barbarians_random(GameState *game) {
     }
 }
 
-void apply_city_income_wassim(Player *player, City *city) {
-	if (city_income_wassim) {
-		city_income_wassim(player, city);
-		return;
-	}
-
-	if (!player || !city || city->hp <= 0) {
-		return;
-	}
-
-	player->gold += city->population;
-	player->science += 1;
-}
-
 void next_turn(GameState *game) {
     // 1) Restauration PM
     restore_pm(game->player_units, game->player_unit_count);
     restore_pm(game->barbarians, game->barbarian_count);
 
-    // 2) Revenus de ville
-    apply_city_income_wassim(&game->player, game->cities[0]);
+    // 2) Revenus des villes (Boucle sur toutes les villes possédées)
+    for (int i = 0; i < game->city_count; i++) {
+        if (game->cities[i] != NULL) {
+            process_city_resources(game->cities[i], &game->map);
+            process_city_growth(game->cities[i], &game->map);
+            process_city_production(game->cities[i], &game->map, game->player_units, &game->player_unit_count);
+        }
+    }
+    
+    // Le joueur paie l'entretien global (une seule fois par tour, avec le &)
+    process_player_gold(&game->player, &game->map);
 
     // 3) Phase Barbares (spawn + déplacement)
     spawn_random_barbarian(game);

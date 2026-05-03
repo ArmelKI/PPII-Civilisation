@@ -11,6 +11,7 @@
 #include "../../include/core/physics.h"
 #include "../../include/core/save.h"
 #include "../../include/core/tech.h"
+#include "../../include/core/ressources.h"
 
 #define MAX_TURNS 200
 
@@ -188,6 +189,8 @@ int main(int argc, char **argv) {
 
     puts("[CIV] Boucle principale lancée (prototype).\n");
 
+    int city_id_counter=1;
+
     // Boucle centrale demandée dans le ticket.
     while (!game.game_over) {
         // On calcule ce que le joueur a le droit de voir(Brouillard de Guerre)
@@ -197,7 +200,7 @@ int main(int argc, char **argv) {
         // 1. Affichage d'état (hook externe ou console)
         print_state_maxence_stub(&game);
         
-        printf("\n[Or : %d] Action ? 1: Deplacer unite | 2: Recruter | 3: Passer le tour | t: Technologies | s: Sauvegarder | x: Quitter\n", game.player.gold);
+        printf("\n[Or : %d] Action ? 1: Deplacer unite | 2: Recruter | 3: Passer le tour | t: Technologies | f : fonder une ville | v : gérer les villes | s: Sauvegarder | x: Quitter\n", game.player.gold);
         printf("Votre choix : ");
         
         char choice;
@@ -209,6 +212,82 @@ int main(int argc, char **argv) {
                 printf("\nArret du jeu. A bientot !\n");
                 game.game_over = 1;
                 continue;
+
+            case 'f':
+                printf("\nUnites disponibles :\n");
+                for (int i = 0; i < game.player_unit_count; i++) {
+                    Unit *u = game.player_units[i];
+                    if (u && u->hp > 0) {
+                        const char* nom_unite = (u->type == UNIT_WARRIOR) ? "Guerrier" : "Colon";
+                        printf("[%d] %s en (%d,%d) - %d/%d PM\n", i, nom_unite, u->x, u->y, u->pm, u->pm_max);
+                    }
+                }
+        
+                printf("Quelle unite selectionner ? (0 a %d, ou x pour annuler) : ", game.player_unit_count - 1);
+                char idx_choice;
+                if (scanf(" %c", &idx_choice) != 1 || idx_choice == 'x') {
+                    continue;
+                }
+
+                int unit_idx = idx_choice - '0';
+                if (unit_idx < 0 || unit_idx >= game.player_unit_count) {
+                    printf("\n\033[1;31mIndex invalide.\033[0m\n");
+                    continue;
+                }
+
+                Unit *mon_unite = game.player_units[unit_idx];
+
+                // Sécurité : on vérifie que l'unité existe et est en vie
+                if (mon_unite == NULL || mon_unite->hp <= 0) {
+                printf("\n\033[1;31mCette unite est morte ou n'existe pas.\033[0m\n");
+                continue;
+                }
+
+                if (mon_unite->pm <= 0) {
+                    printf("\n\033[1;33mCette unite n'a plus de PM. Choisissez-en une autre.\033[0m\n");
+                    continue;
+                }
+
+                if (found_city(mon_unite, &game.map, &city_id_counter, game.cities, &game.city_count)) {
+                    game.player_units[unit_idx] = NULL; 
+                }
+                
+                continue;
+
+            case 'v':
+            case 'V':
+                if (game.city_count == 0) {
+                    printf("\n\033[1;31mVous ne possedez aucune ville !\033[0m\n");
+                    continue;
+                }
+
+                printf("\n=== VOS VILLES ===\n");
+                for (int i = 0; i < game.city_count; i++) {
+                    if (game.cities[i] && game.cities[i]->hp > 0) {
+                        printf("[%d] Ville en (%d, %d) - Pop: %d - Prod: %d\n", 
+                               i, game.cities[i]->x, game.cities[i]->y, 
+                               game.cities[i]->population, game.cities[i]->production_stored);
+                    }
+                }
+                
+                printf("\nQuelle ville voulez-vous gerer ? (0 a %d, ou x pour annuler) : ", game.city_count - 1);
+                char city_choice;
+                if (scanf(" %c", &city_choice) != 1 || city_choice == 'x') {
+                    continue;
+                }
+
+                int city_idx = city_choice - '0';
+                
+                // Sécurité : on vérifie que l'index est valide et que la ville existe
+                if (city_idx < 0 || city_idx >= game.city_count || game.cities[city_idx] == NULL || game.cities[city_idx]->hp <= 0) {
+                    printf("\n\033[1;31mIndex de ville invalide.\033[0m\n");
+                    continue;
+                }
+
+                // On envoie la ville sélectionnée à la fonction de gestion
+                control_city_project(game.cities[city_idx]);
+                continue;
+                
             case 't':
             case 'T':
                 printf("\n === ARBRE TECHNOLOGIQUE ===\n");
