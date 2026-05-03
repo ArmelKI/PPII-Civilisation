@@ -21,11 +21,20 @@ int get_terrain_pm_cost(TerrainType type) {
 }
 
 //2. Vérification de la possibilité de déplacement
-int can_move(Unit *unit, Tile *destination) {
+int can_move(Unit *unit, Tile *destination, Player *player) {
     if (unit == NULL || destination == NULL) {
         return 0; // Impossible de déplacer si l'unité ou la destination est NULL
     }
     int cost = get_terrain_pm_cost(destination->type);
+
+    // Logique de Navigation maritime (Technologie bateau)
+    // Si la cible est de l'eau, on vérifie l'arbre technologique du joueur
+    if (destination->type == TERRAIN_EAU) {
+        // Vérification de la technologie bateau
+        if (player != NULL && !player->unlocked_techs[TECH_BATEAU]) {
+            cost = 2; // Le cout passe à 2PM au lieu de 999
+        }
+    }
 
     // L'unité a t'elle assez de PM pour se déplacer sur ce terrain ?
     if (unit->pm < cost) {
