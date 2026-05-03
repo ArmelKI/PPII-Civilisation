@@ -11,5 +11,6 @@ void process_city_growth(City *city,Map *map);
 void process_player_gold(Player *player, Map *map);
 int found_city(Unit *settler, Map *map, int *city_id_counter);
 void process_city_production(City *city, Map *map);
+void control_city_project(City *city);
 
 #endif

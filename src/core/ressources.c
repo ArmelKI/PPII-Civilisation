@@ -403,3 +403,88 @@ void process_city_production(City *city, Map *map) {
         city->current_project = PROJECT_NONE;
     }
 }
+
+
+void control_city_project(City *city) {
+    if (!city) return;
+
+    printf("\n╔════════════════════════════════════════════════════════╗\n");
+    printf("║ GESTION DE LA VILLE - Position [%d, %d]\n", city->x, city->y);
+    printf("╠════════════════════════════════════════════════════════╣\n");
+    printf("║ Population : %d\t PV : %d\n", city->population, city->hp);
+    printf("║ Nourriture : %d\t Production stockee : %d\n", city->food_stored, city->production_stored);
+    
+    // Affichage dynamique du projet en cours
+    printf("║ Projet actuel : ");
+    switch(city->current_project) {
+        case PROJECT_NONE: printf("Aucun\n"); break;
+        case PROJECT_SETTLER: printf("Colon\n"); break;
+        case PROJECT_WARRIOR: printf("Guerrier\n"); break;
+        case PROJECT_GRANARY: printf("Grenier\n"); break;
+        case PROJECT_WORKSHOP: printf("Atelier\n"); break;
+        case PROJECT_LIBRARY: printf("Bibliotheque\n"); break;
+        case PROJECT_MARKET: printf("Marche\n"); break;
+        case PROJECT_BARRACKS: printf("Caserne\n"); break;
+        case PROJECT_WALL: printf("Muraille\n"); break;
+        default: printf("Inconnu\n"); break;
+    }
+
+    printf("╠════════════════════════════════════════════════════════╣\n");
+    printf("║ Batiments construits : ");
+    int has_buildings = 0;
+    if (city->has_granary) { printf("Grenier "); has_buildings = 1; }
+    if (city->has_workshop) { printf("Atelier "); has_buildings = 1; }
+    if (city->has_library) { printf("Bibliotheque "); has_buildings = 1; }
+    if (city->has_market) { printf("Marche "); has_buildings = 1; }
+    if (city->has_barrack) { printf("Caserne "); has_buildings = 1; }
+    if (city->has_wall) { printf("Muraille "); has_buildings = 1; }
+    if (!has_buildings) printf("Aucun");
+    printf("\n╚════════════════════════════════════════════════════════╝\n\n");
+
+    printf("Que voulez-vous produire ?\n");
+    printf("0. Rien (Garder le projet actuel ou Annuler)\n");
+    printf("1. Colon (50 Prod)\n");
+    
+    if (city->has_barrack) {
+        printf("2. Guerrier (40 Prod)\n");
+    } else {
+        printf("2. [BLOQUÉ] Guerrier (Nécessite une Caserne)\n");
+    }
+    
+    if (!city->has_granary)  printf("3. Grenier (30 Prod)      - Bonus : +3 Nourriture/tour\n");
+    if (!city->has_workshop) printf("4. Atelier (40 Prod)      - Bonus : +3 Production/tour\n");
+    if (!city->has_library)  printf("5. Bibliotheque (50 Prod) - Bonus : +4 Science/tour\n");
+    if (!city->has_market)   printf("6. Marche (40 Prod)       - Bonus : +3 Or/tour\n");
+    if (!city->has_barrack)  printf("7. Caserne (60 Prod)      - Bonus : Permet de recruter des Guerriers\n");
+    if (!city->has_wall)     printf("8. Muraille (80 Prod)     - Bonus : Double les PV max de la ville\n");
+
+    printf("\nVotre choix : ");
+    
+    int choix;
+    if (scanf("%d", &choix) != 1) {
+        printf("\033[1;31mEntree invalide.\033[0m\n");
+        return;
+    }
+
+    // On applique le choix (réinitialisation de la prod si on change de projet)
+    switch (choix) {
+        case 0: break;
+        case 1: city->current_project = PROJECT_SETTLER; city->production_stored = 0; printf("\033[1;32mProjet defini : Colon\033[0m\n"); break;
+        case 2: 
+            if (city->has_barrack) {
+                city->current_project = PROJECT_WARRIOR; 
+                city->production_stored = 0;
+                printf("\033[1;32mProjet defini : Guerrier\033[0m\n");
+            } else {
+                printf("\033[1;31mImpossible : Vous n'avez pas de caserne !\033[0m\n");
+            }
+            break;
+        case 3: city->current_project = PROJECT_GRANARY; city->production_stored = 0; printf("\033[1;32mProjet defini : Grenier\033[0m\n"); break;
+        case 4: city->current_project = PROJECT_WORKSHOP; city->production_stored = 0; printf("\033[1;32mProjet defini : Atelier\033[0m\n"); break;
+        case 5: city->current_project = PROJECT_LIBRARY; city->production_stored = 0; printf("\033[1;32mProjet defini : Bibliotheque\033[0m\n"); break;
+        case 6: city->current_project = PROJECT_MARKET; city->production_stored = 0; printf("\033[1;32mProjet defini : Marche\033[0m\n"); break;
+        case 7: city->current_project = PROJECT_BARRACKS; city->production_stored = 0; printf("\033[1;32mProjet defini : Caserne\033[0m\n"); break;
+        case 8: city->current_project = PROJECT_WALL; city->production_stored = 0; printf("\033[1;32mProjet defini : Muraille\033[0m\n"); break;
+        default: printf("\033[1;31mChoix inconnu.\033[0m\n"); break;
+    }
+}
