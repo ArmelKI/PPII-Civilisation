@@ -420,6 +420,9 @@ Les Barbares sont des **unités ennemies autonomes** présentes sur la carte dè
 
 - Chaque tour, chaque campement encore en vie **génère une unité Barbare** (un guerrier) si sa tuile est libre.
 - Le nombre d’unités barbares simultanément en vie est plafonné à `N × 3`.
+- Une partie des générations de barbares peut produire des unités avancées : **Archer barbare** ou **Cavalier barbare**.
+- Le Guerrier barbare reste l’unité la plus fréquente ; les unités avancées apparaissent avec une probabilité plus faible, renforcée en difficulté Difficile.
+- Les unités barbares avancées suivent les mêmes règles de déplacement et d’attaque que les autres barbares, mais avec leurs statistiques propres.
 
 #### 8.3 Comportement
 

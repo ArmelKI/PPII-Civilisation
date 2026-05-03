@@ -76,12 +76,20 @@ static void test_parse_overrides(void)
     EXPECT(config_parse_bool("maybe", &enabled) == 0, "invalid bool should be rejected");
 }
 
+static void test_difficulty_labels(void)
+{
+    EXPECT(strcmp(difficulty_to_string(DIFF_EASY), "Facile") == 0, "easy label should be Facile");
+    EXPECT(strcmp(difficulty_to_string(DIFF_NORMAL), "Normal") == 0, "normal label should be Normal");
+    EXPECT(strcmp(difficulty_to_string(DIFF_HARD), "Difficile") == 0, "hard label should be Difficile");
+}
+
 int run_test_config(void)
 {
     test_default_preset();
     test_presets_values();
     test_parse_difficulty();
     test_parse_overrides();
+    test_difficulty_labels();
 
     if (g_failed == 0) {
         puts("[OK] Config tests passed.");
