@@ -3,6 +3,7 @@
 #include <math.h>
 #include <limits.h>
 
+#include "core/config.h"
 #include "core/barbares.h"
 #include "core/types.h"
 
@@ -350,16 +351,11 @@ int barbares_spawn_unit(BarbarianCamp *camp, Map *map, Unit **units_array, int *
             return 0;
         }
 
-        barb->type = UNIT_BARBARIAN;
-        barb->hp = 15;
-        barb->hp_max = 15;
-        barb->attack = 3;
-        barb->defense = 2;
-        barb->pm = 3;
-        barb->pm_max = 3;
+        barb->type = game_config_select_barbarian_type(rand() % 100);
         barb->x = camp->x;
         barb->y = camp->y;
         barb->owner = NULL;
+        game_config_apply_barbarian_stats(barb);
 
         units_array[*num_units] = barb;
         (*num_units)++;

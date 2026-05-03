@@ -26,6 +26,7 @@ int difficulty_from_string(const char *value, Difficulty *out);
 int config_parse_float(const char *value, float *out);
 int config_parse_bool(const char *value, bool *out);
 int game_config_barbarian_spawn_chance(void);
+UnitType game_config_select_barbarian_type(int roll_0_99);
 void game_config_apply_barbarian_stats(Unit *barbarian);
 const char *difficulty_to_string(Difficulty d);
 

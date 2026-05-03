@@ -118,11 +118,32 @@ static void test_barbarian_profile(void)
 
     EXPECT(game_config_barbarian_spawn_chance() == 70, "la chance d'apparition barbare doit suivre le multiplicateur");
 
+    EXPECT(game_config_select_barbarian_type(5) == UNIT_CAVALIER, "un faible tirage doit pouvoir produire un Cavalier barbare");
+    EXPECT(game_config_select_barbarian_type(20) == UNIT_ARCHER, "un tirage intermédiaire doit pouvoir produire un Archer barbare");
+    EXPECT(game_config_select_barbarian_type(80) == UNIT_BARBARIAN, "un tirage élevé doit rester sur le barbare de base");
+
     Unit barbarian = {0};
+    barbarian.type = UNIT_BARBARIAN;
     game_config_apply_barbarian_stats(&barbarian);
     EXPECT(barbarian.hp == 30, "les PV barbares doivent être renforcés");
     EXPECT(barbarian.attack == 6, "l'attaque barbare doit être renforcée");
     EXPECT(barbarian.pm == 6, "les PM barbares doivent être renforcés");
+
+    Unit archer_barbarian = {0};
+    archer_barbarian.type = UNIT_ARCHER;
+    game_config_apply_barbarian_stats(&archer_barbarian);
+    EXPECT(archer_barbarian.hp == 24, "les PV de l'Archer barbare doivent suivre le multiplicateur");
+    EXPECT(archer_barbarian.attack == 8, "l'attaque de l'Archer barbare doit suivre le multiplicateur");
+    EXPECT(archer_barbarian.defense == 1, "la défense de l'Archer barbare doit rester faible");
+    EXPECT(archer_barbarian.pm == 4, "les PM de l'Archer barbare doivent suivre le multiplicateur");
+
+    Unit cavalier_barbarian = {0};
+    cavalier_barbarian.type = UNIT_CAVALIER;
+    game_config_apply_barbarian_stats(&cavalier_barbarian);
+    EXPECT(cavalier_barbarian.hp == 30, "les PV du Cavalier barbare doivent suivre le multiplicateur");
+    EXPECT(cavalier_barbarian.attack == 6, "l'attaque du Cavalier barbare doit suivre le multiplicateur");
+    EXPECT(cavalier_barbarian.defense == 3, "la défense du Cavalier barbare doit rester supérieure");
+    EXPECT(cavalier_barbarian.pm == 8, "les PM du Cavalier barbare doivent suivre le multiplicateur");
 
     game_config_init_default(&cfg);
     game_config_set_active(&cfg);

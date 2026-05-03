@@ -29,6 +29,17 @@ static int parse_full_float(const char *value, float *out)
     return 1;
 }
 
+static int clamp_int(int value, int min_value, int max_value)
+{
+    if (value < min_value) {
+        return min_value;
+    }
+    if (value > max_value) {
+        return max_value;
+    }
+    return value;
+}
+
 void game_config_init_default(GameConfig *cfg)
 {
     if (!cfg) return;
@@ -94,6 +105,24 @@ int game_config_barbarian_spawn_chance(void)
     return chance;
 }
 
+UnitType game_config_select_barbarian_type(int roll_0_99)
+{
+    const GameConfig *cfg = game_config_get_active();
+    float multiplier = cfg ? cfg->barbarian_spawn_multiplier : 1.0f;
+    int advanced_chance = clamp_int((int)(20.0f * multiplier + 0.5f), 5, 60);
+    int cavalry_chance = clamp_int(advanced_chance / 3, 1, advanced_chance - 1);
+
+    if (roll_0_99 < cavalry_chance) {
+        return UNIT_CAVALIER;
+    }
+
+    if (roll_0_99 < advanced_chance) {
+        return UNIT_ARCHER;
+    }
+
+    return UNIT_BARBARIAN;
+}
+
 void game_config_apply_barbarian_stats(Unit *barbarian)
 {
     if (!barbarian) {
@@ -103,19 +132,38 @@ void game_config_apply_barbarian_stats(Unit *barbarian)
     const GameConfig *cfg = game_config_get_active();
     float multiplier = cfg ? cfg->barbarian_spawn_multiplier : 1.0f;
 
-    barbarian->hp = (int)(15.0f * multiplier + 0.5f);
+    int base_hp = 15;
+    int base_attack = 3;
+    int base_defense = 2;
+    int base_pm = 3;
+
+    if (barbarian->type == UNIT_ARCHER) {
+        base_hp = 12;
+        base_attack = 4;
+        base_defense = 1;
+        base_pm = 2;
+    } else if (barbarian->type == UNIT_CAVALIER) {
+        base_hp = 15;
+        base_attack = 3;
+        base_defense = 3;
+        base_pm = 4;
+    }
+
+    barbarian->hp = (int)(base_hp * multiplier + 0.5f);
     barbarian->hp_max = barbarian->hp;
     if (barbarian->hp < 1) {
         barbarian->hp = 1;
         barbarian->hp_max = 1;
     }
 
-    barbarian->attack = (int)(3.0f * multiplier + 0.5f);
+    barbarian->attack = (int)(base_attack * multiplier + 0.5f);
     if (barbarian->attack < 1) {
         barbarian->attack = 1;
     }
 
-    barbarian->pm = (int)(3.0f * multiplier + 0.5f);
+    barbarian->defense = base_defense;
+
+    barbarian->pm = (int)(base_pm * multiplier + 0.5f);
     barbarian->pm_max = barbarian->pm;
     if (barbarian->pm < 1) {
         barbarian->pm = 1;

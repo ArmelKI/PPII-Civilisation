@@ -97,8 +97,7 @@ void spawn_random_barbarian(GameState *game) {
         return;
     }
 
-    barb->type = UNIT_BARBARIAN;
-    barb->defense = 2;
+    barb->type = game_config_select_barbarian_type(rand() % 100);
     barb->x = x;
     barb->y = y;
     barb->owner = NULL;
