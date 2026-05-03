@@ -74,3 +74,28 @@ void resolve_combat(Unit *attacker, Unit *defender) {
     if (defender->hp < 0) defender->hp = 0;
     if (attacker->hp < 0) attacker->hp = 0;
 }
+
+// 4. Résolution des combats contre les Villes
+
+void resolve_combat_city(Unit *attacker, City *city) {
+    if (attacker == NULL || city == NULL) {
+        return;
+    }
+
+    if (attacker->attack == 0) return; // Un colon ne peut pas attaquer une ville
+
+    // Règle du Readme : Force du bâtiment = 20(30 si muraille)
+    int city_strength = city->has_wall ? 30 : 20;
+
+    // Calcul des dégâts
+    int dmg_to_city = max(1, attacker->attack - city_strength);
+    int dmg_to_attacker = max(0, city_strength - attacker->defense);
+
+    // Application des dégâts
+    city->hp -= dmg_to_city;
+    attacker->hp -= dmg_to_attacker;
+
+    // Empêcher les PV négatifs
+    if (city->hp < 0) city->hp = 0;
+    if (attacker->hp < 0) attacker->hp = 0;
+}

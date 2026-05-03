@@ -359,9 +359,12 @@ int main(int argc, char **argv) {
             // Appel de la physique du jeu
             if (can_move(mon_unite, target_tile)) {
 
-                // A. S'il y a un ennemi sur la case cible: Fight !
+                int has_attacked = 0; // Permet de savoir si on a donné un coup pour détruire le PM
+
+
+                // A1. Combat contre une unité ennemie (Barbare)
                 if (target_tile->unit && target_tile->unit->owner != mon_unite->owner) {
-                    printf("\n Combat engagé ! \n");
+                    printf("\n Combat engagé contre le barbare ! \n");
                     printf("-> Avant : Toi (%d PV) vs Barbare (%d PV)\n", mon_unite->hp, target_tile->unit->hp);
                     resolve_combat(mon_unite, target_tile->unit);
                     printf("-> Apres : Toi (%d PV) vs Barbare (%d PV)\n", mon_unite->hp, target_tile->unit->hp);
@@ -372,14 +375,42 @@ int main(int argc, char **argv) {
                         printf("VICTOIRE ! Le barbare est mort !\n");
                         target_tile->unit = NULL; //On vide la place de parking du Barbare
                     }
-                    if (mon_unite->hp <= 0) {
-                        printf(" DEFAITE ! Votre unité a été massacre ... \n");
-                        game.map.tiles[mon_unite->y][mon_unite->x].unit = NULL; // on efface notre joueur
-                        game.game_over = 1;
+                }
+
+                // A2. Combat contre une ville ennemie (Barbare)
+                else if (target_tile->city && target_tile->city->owner != mon_unite->owner) {
+                    has_attacked = 1;
+                    printf("\n Attaque de la ville ennemie ! \n");
+                    printf("-> Avant : Toi (%d PV) vs Ville (%d PV)\n", mon_unite->hp, target_tile->city->hp);
+                    resolve_combat_city(mon_unite, target_tile->city);
+                    printf("-> Apres : Toi (%d PV) vs Ville (%d PV)\n", mon_unite->hp, target_tile->city->hp);
+
+                    if (target_tile->city->hp <= 0) {
+                        printf("VICTOIRE ! La ville a été rasée !\n");
+                        free(target_tile->city);
+                        target_tile->city = NULL; //On vide la place de parking de la ville
                     }
                 }
+
+                // A3. Pillage d'un camp barbare
+                else if (target_tile->camp != NULL && target_tile->camp->destroyed == 0) {
+                    printf("\n Vous avez détruit un campement barbare ! \n");
+                    target_tile->camp->destroyed = 1; // On détruit le camp(pas de combat)
+                }
+
+                // VERDICT DU MOUVEMENT APRÈS LES COMBATS
+
+
+
+
+                if (mon_unite->hp <= 0) {
+                    printf(" DEFAITE ! Votre unité a été massacre ... \n");
+                    game.map.tiles[mon_unite->y][mon_unite->x].unit = NULL; // on efface notre joueur
+                    game.game_over = 1;
+                }
+                
                 // B. S'il n'y a pas d'ennemi, on se déplace normalement
-                else if(target_tile->unit == NULL) {
+                else if(target_tile->unit == NULL && target_tile->city == NULL) {
                     // 1. On "vide" l'ancienne tuile de la carte
                     game.map.tiles[mon_unite->y][mon_unite->x].unit = NULL;
                     // 2. On met à jour les coordonnées de l'unité
@@ -392,6 +423,12 @@ int main(int argc, char **argv) {
 
                     puts("\nDéplacement réussi !\n");
                 }
+
+                // C. L'obstacle est toujours lè(l'ennemi a surcécu, le mouvement est annulé)
+                else if (has_attacked) {
+                    mon_unite->pm--; // Même si on a attaqué, le mouvement est annulé mais on perd quand même le PM
+                    puts("\n La cible a survécu à votre attaque, Déplacement annulé mais PM consommé ! ");
+                }
             } else {
                 puts("\nDéplacement impossible (pas assez de PM ou terrain bloque) !");
             }
@@ -399,6 +436,7 @@ int main(int argc, char **argv) {
             puts("\n Tu essaies de sortir de la carte ");
         }
     }
+    
 
     puts("\nFin de partie (prototype).\n");
     cleanup_game(&game);
