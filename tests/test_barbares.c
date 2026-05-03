@@ -334,9 +334,13 @@ int main(void)
     extern int run_test_physique(void);
     extern int run_test_config(void);
     extern int run_test_archer(void);
+    extern int run_test_cavalier(void);
     run_test_physique();
     run_test_config();
     if (run_test_archer() != 0) {
+        g_failed++;
+    }
+    if (run_test_cavalier() != 0) {
         g_failed++;
     }
     // Exécution séquentielle des tests unitaires du module.

@@ -124,6 +124,8 @@ static const char *unit_label(UnitType type)
             return "Guerrier";
         case UNIT_ARCHER:
             return "Archer";
+        case UNIT_CAVALIER:
+            return "Cavalier";
         case UNIT_SETTLER:
         default:
             return "Colon";

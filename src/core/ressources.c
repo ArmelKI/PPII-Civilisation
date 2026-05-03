@@ -242,7 +242,7 @@ void process_player_gold(Player *player, Map *map) {
                 player_units[unit_count] = u;
                 unit_count++;
 
-                if (u->type == UNIT_WARRIOR || u->type == UNIT_ARCHER) {
+                if (u->type == UNIT_WARRIOR || u->type == UNIT_ARCHER || u->type == UNIT_CAVALIER) {
                     total_maintenance += 1;
                 }
 
@@ -379,17 +379,24 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
         case PROJECT_SETTLER:  cost = 50; break;
         case PROJECT_WARRIOR:  cost = 40; break;
         case PROJECT_ARCHER:   cost = 55; break;
+        case PROJECT_CAVALIER: cost = 60; break;
         default: return;
     }
 
     // Les unités militaires avancées exigent une caserne.
-    if ((city->current_project == PROJECT_WARRIOR || city->current_project == PROJECT_ARCHER) && !city->has_barrack) {
+    if ((city->current_project == PROJECT_WARRIOR || city->current_project == PROJECT_ARCHER || city->current_project == PROJECT_CAVALIER) && !city->has_barrack) {
         return;
     }
 
     // L'archer nécessite la technologie Chasse.
     if (city->current_project == PROJECT_ARCHER &&
         (!city->owner || !city->owner->unlocked_techs[TECH_CHASSE])) {
+        return;
+    }
+
+    // Le cavalier nécessite la technologie Équitation.
+    if (city->current_project == PROJECT_CAVALIER &&
+        (!city->owner || !city->owner->unlocked_techs[TECH_EQUITATION])) {
         return;
     }
 
@@ -414,6 +421,7 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
 
             case PROJECT_WARRIOR:
             case PROJECT_ARCHER:
+            case PROJECT_CAVALIER:
             case PROJECT_SETTLER: {
                 // Sécurité : On vérifie qu'on n'a pas atteint la limite d'unités actives (8 max)
                 if (*player_unit_count >= 8) {
@@ -429,6 +437,8 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
                         new_unit->type = UNIT_WARRIOR;
                     } else if (city->current_project == PROJECT_ARCHER) {
                         new_unit->type = UNIT_ARCHER;
+                    } else if (city->current_project == PROJECT_CAVALIER) {
+                        new_unit->type = UNIT_CAVALIER;
                     } else {
                         new_unit->type = UNIT_SETTLER;
                     }
@@ -443,6 +453,11 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
                         new_unit->attack = 4;
                         new_unit->defense = 1;
                         new_unit->pm_max = 2;
+                    } else if (new_unit->type == UNIT_CAVALIER) {
+                        new_unit->hp_max = 15;
+                        new_unit->attack = 3;
+                        new_unit->defense = 3;
+                        new_unit->pm_max = 4;
                     } else {
                         new_unit->hp_max = 10;
                         new_unit->attack = 0;
@@ -513,6 +528,7 @@ void control_city_project(City *city) {
         case PROJECT_SETTLER: printf("Colon\n"); break;
         case PROJECT_WARRIOR: printf("Guerrier\n"); break;
         case PROJECT_ARCHER: printf("Archer\n"); break;
+        case PROJECT_CAVALIER: printf("Cavalier\n"); break;
         case PROJECT_GRANARY: printf("Grenier\n"); break;
         case PROJECT_WORKSHOP: printf("Atelier\n"); break;
         case PROJECT_LIBRARY: printf("Bibliotheque\n"); break;

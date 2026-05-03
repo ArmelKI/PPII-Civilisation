@@ -230,6 +230,9 @@ void display_map_color(Map* map) {
                         case UNIT_ARCHER:
                             printf("\033[1;35mA \033[0m"); // A pour l'Archer
                             break;
+                        case UNIT_CAVALIER:
+                            printf("\033[1;32mV \033[0m"); // V pour le Cavalier en vert
+                            break;
                         case UNIT_SETTLER:
                             printf("\033[1;33mS \033[0m"); // S Jaune brillant pour le Colon
                             break;
