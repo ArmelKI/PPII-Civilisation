@@ -1,0 +1,79 @@
+#include "../../include/core/game.h"
+#include <stdio.h>
+
+
+// Le catalogue en dur conformément au readme
+
+const TechnologyDef TECH_CATALOG[MAX_TECHNOLOGIES] = {
+    {TECH_CHASSE,       "Chasse",             50 ,  TECH_NONE,         TECH_NONE},
+    {TECH_AGRICULTURE,  "Agriculture",        60,   TECH_NONE,         TECH_NONE},
+    {TECH_ARTISANAT,    "Artisanat",          70,   TECH_NONE,         TECH_NONE},
+    {TECH_ECRITURE,     "Écriture",           80,   TECH_NONE,         TECH_NONE},
+    {TECH_EQUITATION,   "Équitation",         100,  TECH_NONE,         TECH_NONE},
+    {TECH_IRRIGATION,   "Irrigation",         90,   TECH_AGRICULTURE,  TECH_NONE},
+    {TECH_MAÇONNERIE,   "Maçonnerie",         100,  TECH_ARTISANAT,    TECH_NONE},
+    {TECH_COMMERCE,     "Commerce",            90,  TECH_ARTISANAT,    TECH_NONE}, // Nouvelle technologie bateau
+};
+
+//Vérifie si une technologie peut être recherchée par le joueur (en fonction de ce qu'il a déjà débloqué)
+
+int can_research(Player *p, TechType tech) {
+    if (tech < 0 || tech >= MAX_TECHNOLOGIES) {
+        return 0; // Technologie invalide
+    }
+
+    //Déja débloquée
+    if (p->unlocked_techs[tech]) {
+        return 0;
+    }
+
+    const TechnologyDef *def = &TECH_CATALOG[tech];
+
+    // Vérification du prérequis 1
+    if (def->req1 != TECH_NONE && !p->unlocked_techs[def->req1]) {
+        return 0; // Prérequis 1 non satisfait
+    }
+    //Vérification du prérequis 2
+    if (def->req2 != TECH_NONE && !p->unlocked_techs[def->req2]) {
+        return 0; // Prérequis 2 non satisfait
+    }
+
+    return 1; // Tous les prérequis sont satisfaits
+}
+
+
+// Fonction à appeler quand le joueur choisit une nouvelle recherche
+void start_research(Player *p, TechType tech) {
+    if (!can_research(p, tech)) {
+        printf("Vous ne pouvez pas rechercher cette technologie pour le moment(Voir prérequis).\n");
+        return;
+    }
+
+    // Règle du Readme : changer en cours de route vide la cagnotte de moitié
+    if (p->current_research != TECH_NONE && p->current_research != tech) {
+        printf("\n Attention : Changement de projet ! Cagnotte divisée par 2 ! \n");
+        p->science /= 2;  // Division entière par 2
+    }
+
+    p->current_research = tech;
+    printf("Recherche lancée : %s\n", TECH_CATALOG[tech].name);
+}
+
+
+// Fonction à appeler à chaque FIN DE TOUR pour vérifier si on a trouvé
+void update_research(Player *p) {
+    if (p->current_research == TECH_NONE) return; // Pas de recherche en cours
+
+    TechType tech = p->current_research;
+    int cost = TECH_CATALOG[tech].cost;
+
+    if(p->science >= cost) {
+        // Technologie débloquée !
+        p->unlocked_techs[tech] = 1;
+
+        //Règle du Readme: la cagnotte est remise à zéro(surplus perdu)
+        p->science = 0;
+        p->current_research = TECH_NONE;
+        printf("\n\033[1;36m[SCIENCE] Eureka ! Vous avez decouvert : %s !\033[0m\n", TECH_CATALOG[tech].name);
+    }
+}

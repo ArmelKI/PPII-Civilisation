@@ -28,6 +28,30 @@ typedef struct Player Player;
 typedef struct BarbarianCamp BarbarianCamp;
 
 
+//Énumération des technologies disponibles
+typedef enum {
+    TECH_NONE = -1,  //Aucune recherche en cours
+    TECH_CHASSE = 0,
+    TECH_AGRICULTURE = 1,
+    TECH_ARTISANAT = 2,
+    TECH_ECRITURE = 3,
+    TECH_EQUITATION = 4,
+    TECH_IRRIGATION = 5,
+    TECH_MAÇONNERIE = 6,
+    TECH_COMMERCE = 7,
+    TECH_BATEAU = 8,    //Ajout de la technologie bateau
+    MAX_TECHNOLOGIES = 9,
+} TechType;
+
+// Structure pour définir une technologie dans le catalogue
+typedef struct {
+    TechType id;                  // Identifiant de la technologie
+    const char* name;             // Nom de la technologie
+    int cost;                     // Coût en science pour débloquer la technologie
+    TechType req1;             // Première technologie prérequise (TECH_NONE si aucune)
+    TechType req2;             // Seconde technologie prérequise (Pour commerce notamment)
+} TechnologyDef;
+
 /* 3. STRUCTURES DE LA CARTE  */
 typedef enum{
     FOG_HIDDEN = 0, // Noir total(jamais exploré)
@@ -67,6 +91,10 @@ typedef struct BarbarianCamp {
 typedef struct Player {
     int gold;
     int science;
+
+    // Gestion des technologies
+    TechType current_research; // Technologie en cours de recherche
+    int unlocked_techs[MAX_TECHNOLOGIES]; // Tableau indiquant les technologies débloquées (1) ou non (0)
 
 } Player;
 
@@ -137,28 +165,10 @@ typedef struct Unit {
 
 /* 5. L'ARBRE TECHNOLOGIQUE(Graphe Orienté)*/
 
-typedef enum {
-    TECH_CHASSE,
-    TECH_AGRICULTURE,
-    TECH_IRRIGATION,
-    TECH_ARTISANAT,
-    TECH_MAÇONNERIE,
-    TECH_ECRITURE,
-    TECH_COMMERCE,
-    TECH_EQUITATION,
-} TechType;
 
 // structure d'une technologie dans l'arbre technologique
 
-typedef struct Tech {
-    TechType type;          // Identifiant(ex: TECH_CHASSE)
-    int cost;               // Coût science
-    int is_unlocked;         // Indique si la technologie est débloquée (1) ou pas (0)
 
-    // Graphe orienté : un tableau de pointeurs vers les technologies dépendantes de celle-ci
-    int num_prerequisites;     // Nombre de technologies prérequises
-    struct Tech** prerequisites; // Tableau dynamique pointant vers les technologies prérequises. c'est un tableau de 
-} Tech;
 
 typedef struct {
     int food;
@@ -166,5 +176,11 @@ typedef struct {
     int gold;
     int science;
 } TileYield;             //permet de définir et manipuler le rendement d'une case
+
+
+
+
+
+
 
 #endif // CORE_TYPES_H

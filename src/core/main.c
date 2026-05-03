@@ -10,6 +10,7 @@
 #include "../../include/core/types.h"
 #include "../../include/core/physics.h"
 #include "../../include/core/save.h"
+#include "../../include/core/tech.h"
 
 #define MAX_TURNS 200
 
@@ -196,7 +197,7 @@ int main(int argc, char **argv) {
         // 1. Affichage d'état (hook externe ou console)
         print_state_maxence_stub(&game);
         
-        printf("\n[Or : %d] Action ? 1: Deplacer unite | 2: Recruter | 3: Passer le tour | s: Sauvegarder | x: Quitter\n", game.player.gold);
+        printf("\n[Or : %d] Action ? 1: Deplacer unite | 2: Recruter | 3: Passer le tour | t: Technologies | s: Sauvegarder | x: Quitter\n", game.player.gold);
         printf("Votre choix : ");
         
         char choice;
@@ -208,6 +209,41 @@ int main(int argc, char **argv) {
                 printf("\nArret du jeu. A bientot !\n");
                 game.game_over = 1;
                 continue;
+            case 't':
+            case 'T':
+                printf("\n === ARBRE TECHNOLOGIQUE ===\n");
+                printf("Cagnotte de science : %d\n", game.player.science);
+                if (game.player.current_research != TECH_NONE) {
+                    printf("Recherche en cours : %s (%d / %d)\n", TECH_CATALOG[game.player.current_research].name, game.player.science, TECH_CATALOG[game.player.current_research].cost);
+                } else {
+                    printf("Aucune recherche en cours.\n");
+                }
+                printf("\nTechnologies disponibles à la recherche :\n");
+                int tech_found = 0;
+                for (int i = 0; i < MAX_TECHNOLOGIES; i++) {
+                    // On affiche seulement ce qu'on a le droit de rechercher
+                    if (can_research(&game.player, i)) {
+                        printf("[%d] %s (Cout: %d Science)\n", i, TECH_CATALOG[i].name, TECH_CATALOG[i].cost);
+                        tech_found = 1; 
+                    }
+                }
+                if (!tech_found) {
+                    printf("Aucune technologie disponible à la recherche pour le moment.\n");
+                }
+                printf("[x] Annuler\n");
+                printf("Quelle technologie souhaitez-vous rechercher ? ");
+                char tech_choice;
+                if (scanf(" %c", &tech_choice) != 1 || tech_choice == 'x') {
+                    continue;
+                }
+                int tech_idx = tech_choice - '0';
+                if (tech_idx >= 0 && tech_idx < MAX_TECHNOLOGIES) {
+                    start_research(&game.player, tech_idx);
+                } else {
+                    printf("\n\033[1;31mChoix invalide.\033[0m\n");
+                }
+                continue;
+
             case 's':
             case 'S':
                 printf("\nSauvegarde en cours...\n");
@@ -357,7 +393,7 @@ int main(int argc, char **argv) {
             Tile *target_tile = &game.map.tiles[target_y][target_x];
 
             // Appel de la physique du jeu
-            if (can_move(mon_unite, target_tile)) {
+            if (can_move(mon_unite, target_tile, &game.player)) {
 
                 int has_attacked = 0; // Permet de savoir si on a donné un coup pour détruire le PM
 

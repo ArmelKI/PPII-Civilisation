@@ -3,6 +3,7 @@
 #include <string.h>
 #include "../../include/core/game.h"
 #include "../../include/core/physics.h"
+#include "../../include/core/tech.h"
 
 void init_game(GameState *game, int width, int height, int seed) {
     memset(game, 0, sizeof(GameState));
@@ -13,6 +14,12 @@ void init_game(GameState *game, int width, int height, int seed) {
     // Initialisation Joueur
     game->player.gold = 10;
     game->player.science = 0;
+
+    // Initialisation de l'arbre technologique 
+    game->player.current_research = TECH_NONE;
+    for (int i = 0; i < MAX_TECHNOLOGIES; i++) {
+        game->player.unlocked_techs[i] = 0;
+    }
 
     // Génération de la map
     Map *map_ptr = create_map_noise(width, height, seed);
@@ -164,6 +171,9 @@ void next_turn(GameState *game) {
     // 3) Phase Barbares (spawn + déplacement)
     spawn_random_barbarian(game);
     move_barbarians_random(game);
+
+    // 4) mise à jour de la recherche des technologies
+    update_research(&game->player);
 
     game->turn++;
 }
