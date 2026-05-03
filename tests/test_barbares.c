@@ -333,8 +333,12 @@ int main(void)
     /* appeler les autres suites de tests intégrées */
     extern int run_test_physique(void);
     extern int run_test_config(void);
+    extern int run_test_archer(void);
     run_test_physique();
     run_test_config();
+    if (run_test_archer() != 0) {
+        g_failed++;
+    }
     // Exécution séquentielle des tests unitaires du module.
     test_init_camps();
     test_spawn_unit();

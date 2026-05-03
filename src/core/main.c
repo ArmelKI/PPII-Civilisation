@@ -117,6 +117,19 @@ static void print_state_maxence_stub(const GameState *game)
     printf("Unités joueur: %d | Barbares: %d\n", game->player_unit_count, game->barbarian_count);
 }
 
+static const char *unit_label(UnitType type)
+{
+    switch (type) {
+        case UNIT_WARRIOR:
+            return "Guerrier";
+        case UNIT_ARCHER:
+            return "Archer";
+        case UNIT_SETTLER:
+        default:
+            return "Colon";
+    }
+}
+
 int main(int argc, char **argv) {
     const char *mode = "cli";
     Difficulty difficulty = DIFF_NORMAL;
@@ -293,7 +306,7 @@ int main(int argc, char **argv) {
                 for (int i = 0; i < game.player_unit_count; i++) {
                     Unit *u = game.player_units[i];
                     if (u && u->hp > 0) {
-                        const char* nom_unite = (u->type == UNIT_WARRIOR) ? "Guerrier" : "Colon";
+                        const char* nom_unite = unit_label(u->type);
                         printf("[%d] %s en (%d,%d) - %d/%d PM\n", i, nom_unite, u->x, u->y, u->pm, u->pm_max);
                     }
                 }
@@ -490,7 +503,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < game.player_unit_count; i++) {
             Unit *u = game.player_units[i];
             if (u && u->hp > 0) {
-                const char* nom_unite = (u->type == UNIT_WARRIOR) ? "Guerrier" : "Colon";
+                const char* nom_unite = unit_label(u->type);
                 printf("[%d] %s en (%d,%d) - %d/%d PM\n", i, nom_unite, u->x, u->y, u->pm, u->pm_max);
             }
         }

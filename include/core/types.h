@@ -102,6 +102,7 @@ typedef enum {
     PROJECT_NONE = 0,   // Rien en cours
     PROJECT_SETTLER,    // Colon (50 prod)
     PROJECT_WARRIOR,    // Guerrier (40 prod)
+    PROJECT_ARCHER,     // Archer (55 prod)
     PROJECT_GRANARY,    // Grenier (30 prod)
     PROJECT_WORKSHOP,   // Atelier (40 prod)
     PROJECT_LIBRARY,    // Bibliothèque (50 prod)
@@ -139,6 +140,7 @@ typedef struct City {
 typedef enum {
     UNIT_SETTLER,       //Le colon (Fonde les villes, attaque 0, defense 1)
     UNIT_WARRIOR,        //Le guerrier du joueur(Militaire, attaque 3, defense 2)
+    UNIT_ARCHER,         //L'archer du joueur(Militaire a distance simplifie)
     UNIT_BARBARIAN,       //Le Guerrier barbare (Ennemi contrôlé par le jeu)
 } UnitType;
 
