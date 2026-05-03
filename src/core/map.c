@@ -1,4 +1,6 @@
 #include "../../include/core/map.h"
+#include "../../include/core/types.h"
+#include "../../include/core/game.h"
 
 #define STB_PERLIN_IMPLEMENTATION
 #include "../../include/core/stb_perlin.h"
@@ -207,40 +209,69 @@ void display_map_color(Map* map) {
 
     for (int h = 0; h < map->height; h++) {
         for (int w = 0; w < map->width; w++) {
+            Tile *tile = &map->tiles[h][w];
+
+             // 1. Zone INCONNUE (Brouillard de guerre) -> Noir total
+            if (tile->visibility == FOG_HIDDEN) {
+                printf("  "); // Deux espaces pour masquer totalement la case
+                continue;
+            }
+            // 2. Zone Visible -> On affiche les unités, villes et camps si présents
+            if (tile->visibility == FOG_VISIBLE) {
             
-            if (map->tiles[h][w].unit != NULL) {
-                switch (map->tiles[h][w].unit->type) {
-                    case UNIT_BARBARIAN:
-                        printf("\033[1;31mB \033[0m"); // B pour les Barbares ennemis
-                        break;
-                    case UNIT_WARRIOR:
-                        printf("\033[1;36mW \033[0m"); // W pour le Guerrier du Joueur
-                        break;
-                    case UNIT_SETTLER:
-                        printf("\033[1;33mS \033[0m"); // S Jaune brillant pour le Colon
-                        break;
-                    default:
-                        printf("\033[1;35mU \033[0m"); // U Violet (Unité générique) (au cas où)
-                        break;
-                    // A MODIFIER SUREMENT APRES SI ON RAJOUTE LES ARCHERS, ETC
+                if (map->tiles[h][w].unit != NULL) {
+                    switch (map->tiles[h][w].unit->type) {
+                        case UNIT_BARBARIAN:
+                            printf("\033[1;31mB \033[0m"); // B pour les Barbares ennemis
+                            break;
+                        case UNIT_WARRIOR:
+                            printf("\033[1;36mW \033[0m"); // W pour le Guerrier du Joueur
+                            break;
+                        case UNIT_SETTLER:
+                            printf("\033[1;33mS \033[0m"); // S Jaune brillant pour le Colon
+                            break;
+                        default:
+                            printf("\033[1;35mU \033[0m"); // U Violet (Unité générique) (au cas où)
+                            break;
+                        // A MODIFIER SUREMENT APRES SI ON RAJOUTE LES ARCHERS, ETC
+                    }
+                    continue; // Si il y a une unité on affiche que ça et on passe à la case suivante
+                }
+                else if (map->tiles[h][w].city != NULL) {
+                    if (map->tiles[h][w].city->has_wall) {
+                        printf("\033[1;37;40mC \033[0m"); // Blanc Brillant sur fond noir si muraille
+                    } else {
+                        printf("\033[0;37mC \033[0m");    // Blanc simple
+                    }
+                    continue; // Si il y a une ville on affiche que ça et on passe à la case suivante
+
+                } else if (map->tiles[h][w].camp != NULL) {
+                    if (map->tiles[h][w].camp->destroyed == 0) {
+                        printf("\033[1;31m▲ \033[0m"); // ▲ Rouge vif pour un camp actif
+                    } else {
+                        printf("\033[1;30m△ \033[0m"); // △ Gris foncé pour un camp détruit
+                    }
+                    continue; // Si il y a un camp on affiche que ça et on passe à la case suivante
                 }
             }
-            else if (map->tiles[h][w].city != NULL) {
-                if (map->tiles[h][w].city->has_wall) {
-                    printf("\033[1;37;40mC \033[0m"); // Blanc Brillant sur fond noir si muraille
-                } else {
-                    printf("\033[0;37mC \033[0m");    // Blanc simple
-                }
 
-            } else if (map->tiles[h][w].camp != NULL) {
-                if (map->tiles[h][w].camp->destroyed == 0) {
-                    printf("\033[1;31m▲ \033[0m"); // ▲ Rouge vif pour un camp actif
-                } else {
-                    printf("\033[1;30m△ \033[0m"); // △ Gris foncé pour un camp détruit
+            if (tile->visibility == FOG_EXPLORED) {
+                // Si juste "Explorée", on affiche uniquement le caractère du terrain en gris foncé
+                char t_char = '?';
+                switch (tile->type) {
+                    case TERRAIN_EAU:      t_char = '~'; break;
+                    case TERRAIN_PLAINE:   t_char = '.'; break;
+                    case TERRAIN_MONTAGNE: t_char = '^'; break;
+                    case TERRAIN_FORET:    t_char = 'f'; break;
+                    case TERRAIN_DESERT:   t_char = '_'; break;
+                    case TERRAIN_TOUNDRA:  t_char = '*'; break;
+                    default:               t_char = '?'; break;
                 }
+                printf("\033[0;30m%c \033[0m", t_char); // Gris foncé
             }
             
             else {
+                // Zone visible et vide : On affiche le terrain avec ses vraies couleurs
                 switch (map->tiles[h][w].type) {
                     case TERRAIN_EAU:      
                         printf("\033[0;34m~ \033[0m"); break; // Bleu
@@ -261,6 +292,48 @@ void display_map_color(Map* map) {
         }
         printf("\n");
     }
+}
+// Fonction utilitaore pour révéler une zone(Distance de Tchebychev)
+void reveal_area(GameState *game, int center_x, int center_y, int radius) {
+    for (int dy = -radius; dy <= radius; dy++) {
+        for (int dx = -radius; dx <= radius; dx++) {
+            int nx = center_x + dx;
+            int ny = center_y + dy;
+            //Vérifier qu'on ne sort pas des limites de la carte
+            if (nx >= 0 && nx < game->map.width && ny >= 0 && ny < game->map.height) {
+                game->map.tiles[ny][nx].visibility = FOG_VISIBLE;
+            }
+        }
+    }
+}
+
+// Fonction utilitaire à appeler à chaque tour/action pour mettre à jour la carte
+void update_fog_of_war(GameState *game) {
+    // 1. Assombrir ce qui n'est plus dans le champ de vision
+    // Tout ce qui est visible devient simplement EXPLORED
+    for (int y=0; y<game->map.height; y++) {
+        for (int x=0; x<game->map.width; x++) {
+            if (game->map.tiles[y][x].visibility == FOG_VISIBLE) {
+                game->map.tiles[y][x].visibility = FOG_EXPLORED;
+            }
+        }
+    }
+
+    // 2. Éclairer autour des villes (Rayon 3 d'après le Readme)
+    for (int i=0; i<game->city_count; i++) {
+        if (game->cities[i] != NULL) {
+            reveal_area(game, game->cities[i]->x, game->cities[i]->y, 3);
+        }
+    }
+
+    // 3. Éclairer autour des unités (Rayon 2 d'après le Readme)
+    for (int i=0; i<game->player_unit_count; i++) {
+        Unit *u = game->player_units[i];
+        if (u != NULL && u->hp > 0) {
+            reveal_area(game, u->x, u->y, 2);
+        }
+    }
+
 }
 
 void free_map(Map* map) {

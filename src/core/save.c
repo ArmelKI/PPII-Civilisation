@@ -41,6 +41,7 @@ int save_game(const char*filename, GameState * state) {
     for (int y=0; y< state->map.height; y++) {
         for (int x=0; x< state->map.width; x++) {
             fwrite(&state->map.tiles[y][x], sizeof(Tile), 1, file);
+            fwrite(&state->map.tiles[y][x].visibility, sizeof(FogState), 1, file); // Sauvegarde de l'état de visibilité de chaque tuile
         }
     }
 
@@ -118,6 +119,7 @@ int load_game(const char*filename, GameState *state) {
             state->map.tiles[y][x].unit = NULL;
             state->map.tiles[y][x].camp = NULL;
             fread(&state->map.tiles[y][x], sizeof(Tile), 1, file);
+            fread(&state->map.tiles[y][x].visibility, sizeof(FogState), 1, file); // Lecture de l'état de visibilité de chaque tuile
         }
     }
 

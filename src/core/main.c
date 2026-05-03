@@ -189,7 +189,8 @@ int main(int argc, char **argv) {
 
     // Boucle centrale demandée dans le ticket.
     while (!game.game_over) {
-
+        // On calcule ce que le joueur a le droit de voir(Brouillard de Guerre)
+        update_fog_of_war(&game);
         display_map_color(&game.map);
 
         // 1. Affichage d'état (hook externe ou console)

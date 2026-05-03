@@ -29,9 +29,15 @@ typedef struct BarbarianCamp BarbarianCamp;
 
 
 /* 3. STRUCTURES DE LA CARTE  */
+typedef enum{
+    FOG_HIDDEN = 0, // Noir total(jamais exploré)
+    FOG_EXPLORED = 1, // Grise (déja visité, on se souvient du terrain)
+    FOG_VISIBLE = 2, // Éclairé(champ de vision actuel d'une unité/ville)
+} FogState;
 
 typedef struct Tile{
     TerrainType type; // Type de terrain (Plaine, eau ..)
+    FogState visibility; // État de visibilité de la tuile (inexplorée, explorée, visible) 
     City* city;      // Pointeur vers la ville présente sur ce terrain (NULL si aucune)
     Unit* unit;      // Pointeur vers l'unité présente sur ce terrain (NULL si aucune)
     BarbarianCamp* camp; // Pointeur vers le camp de barbares présent sur ce terrain (NULL si aucun)
