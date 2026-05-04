@@ -12,6 +12,7 @@
 #include "../../include/core/save.h"
 #include "../../include/core/tech.h"
 #include "../../include/core/ressources.h"
+#include "../../include/core/config.h"
 
 #define MAX_TURNS 200
 
@@ -21,6 +22,11 @@ static void print_help(void)
     puts("Options:");
     puts("  --help                 Affiche cette aide");
     puts("  --mode MODE | -m MODE  MODE = cli ou sdl");
+    puts("  --difficulty N | -d N  N = facile, normal ou difficile");
+    puts("  --production-multiplier N | -p N  Multiplie la production de base");
+    puts("  --growth-multiplier N     | -g N  Multiplie le seuil de croissance");
+    puts("  --barbarian-spawn-multiplier N | -B N  Multiplie la fréquence des barbares");
+    puts("  --famine N | -f N  N = on/off, true/false, 1/0");
     puts("  --seed N    | -s N    Graine de génération de la carte (aléatoire par défaut)");
     puts("  --width W   | -W W    Largeur de la carte en tuiles (par défaut: 50)");
     puts("  --height H  | -H H    Hauteur de la carte en tuiles (par défaut: 30)");
@@ -111,14 +117,38 @@ static void print_state_maxence_stub(const GameState *game)
     printf("Unités joueur: %d | Barbares: %d\n", game->player_unit_count, game->barbarian_count);
 }
 
+static const char *unit_label(UnitType type)
+{
+    switch (type) {
+        case UNIT_WARRIOR:
+            return "Guerrier";
+        case UNIT_ARCHER:
+            return "Archer";
+        case UNIT_CAVALIER:
+            return "Cavalier";
+        case UNIT_SETTLER:
+        default:
+            return "Colon";
+    }
+}
+
 int main(int argc, char **argv) {
     const char *mode = "cli";
+    Difficulty difficulty = DIFF_NORMAL;
     int width = 50;
     int height = 30;
     int seed = (int)time(NULL);
     bool is_seed = false;
     int nb_turns = 200;
     int nb_barbarians = 3;
+    bool has_production_override = false;
+    bool has_growth_override = false;
+    bool has_barbarian_spawn_override = false;
+    bool has_famine_override = false;
+    float production_multiplier_override = 1.0f;
+    float growth_multiplier_override = 1.0f;
+    float barbarian_spawn_multiplier_override = 1.0f;
+    bool famine_override = true;
 
     // Parsing initial
 
@@ -130,6 +160,42 @@ int main(int argc, char **argv) {
 
         if ((strcmp(argv[i], "--mode") == 0 || strcmp(argv[i], "-m") == 0) && i + 1 < argc) {
             mode = argv[++i];
+        } else if ((strcmp(argv[i], "--difficulty") == 0 || strcmp(argv[i], "-d") == 0) && i + 1 < argc) {
+            Difficulty parsed_difficulty;
+            if (!difficulty_from_string(argv[++i], &parsed_difficulty)) {
+                fprintf(stderr, "\033[1;31m[Erreur]\033[0m Niveau de difficulte invalide: %s\n", argv[i]);
+                print_help();
+                return 1;
+            }
+            difficulty = parsed_difficulty;
+        } else if ((strcmp(argv[i], "--production-multiplier") == 0 || strcmp(argv[i], "-p") == 0) && i + 1 < argc) {
+            if (!config_parse_float(argv[++i], &production_multiplier_override)) {
+                fprintf(stderr, "\033[1;31m[Erreur]\033[0m Multiplicateur de production invalide: %s\n", argv[i]);
+                print_help();
+                return 1;
+            }
+            has_production_override = true;
+        } else if ((strcmp(argv[i], "--growth-multiplier") == 0 || strcmp(argv[i], "-g") == 0) && i + 1 < argc) {
+            if (!config_parse_float(argv[++i], &growth_multiplier_override)) {
+                fprintf(stderr, "\033[1;31m[Erreur]\033[0m Multiplicateur de croissance invalide: %s\n", argv[i]);
+                print_help();
+                return 1;
+            }
+            has_growth_override = true;
+        } else if ((strcmp(argv[i], "--barbarian-spawn-multiplier") == 0 || strcmp(argv[i], "-B") == 0) && i + 1 < argc) {
+            if (!config_parse_float(argv[++i], &barbarian_spawn_multiplier_override)) {
+                fprintf(stderr, "\033[1;31m[Erreur]\033[0m Multiplicateur barbare invalide: %s\n", argv[i]);
+                print_help();
+                return 1;
+            }
+            has_barbarian_spawn_override = true;
+        } else if ((strcmp(argv[i], "--famine") == 0 || strcmp(argv[i], "-f") == 0) && i + 1 < argc) {
+            if (!config_parse_bool(argv[++i], &famine_override)) {
+                fprintf(stderr, "\033[1;31m[Erreur]\033[0m Valeur de famine invalide: %s\n", argv[i]);
+                print_help();
+                return 1;
+            }
+            has_famine_override = true;
         } else if ((strcmp(argv[i], "--seed") == 0 || strcmp(argv[i], "-s") == 0) && i + 1 < argc) {
             seed = atoi(argv[++i]);
             is_seed = true;
@@ -165,6 +231,30 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+
+    // Initialisation de la configuration de jeu (difficulty presets)
+    GameConfig cfg;
+    game_config_init_default(&cfg);
+    game_config_apply_preset(&cfg, difficulty);
+    if (has_production_override) {
+        cfg.production_multiplier = production_multiplier_override;
+    }
+    if (has_growth_override) {
+        cfg.growth_threshold_multiplier = growth_multiplier_override;
+    }
+    if (has_barbarian_spawn_override) {
+        cfg.barbarian_spawn_multiplier = barbarian_spawn_multiplier_override;
+    }
+    if (has_famine_override) {
+        cfg.famine_enabled = famine_override;
+    }
+    game_config_set_active(&cfg);
+    printf("[CIV] Difficulty: %s | prod=%.2f | croissance=%.2f | barbares=%.2f | famine=%s\n",
+           difficulty_to_string(cfg.difficulty),
+           cfg.production_multiplier,
+           cfg.growth_threshold_multiplier,
+           cfg.barbarian_spawn_multiplier,
+           cfg.famine_enabled ? "on" : "off");
 
     // MENU PRINCIPAL
     int state = run_main_menu();
@@ -218,7 +308,7 @@ int main(int argc, char **argv) {
                 for (int i = 0; i < game.player_unit_count; i++) {
                     Unit *u = game.player_units[i];
                     if (u && u->hp > 0) {
-                        const char* nom_unite = (u->type == UNIT_WARRIOR) ? "Guerrier" : "Colon";
+                        const char* nom_unite = unit_label(u->type);
                         printf("[%d] %s en (%d,%d) - %d/%d PM\n", i, nom_unite, u->x, u->y, u->pm, u->pm_max);
                     }
                 }
@@ -265,8 +355,8 @@ int main(int argc, char **argv) {
                 for (int i = 0; i < game.city_count; i++) {
                     if (game.cities[i] && game.cities[i]->hp > 0) {
                         printf("[%d] Ville en (%d, %d) - Pop: %d - Prod: %d\n", 
-                               i, game.cities[i]->x, game.cities[i]->y, 
-                               game.cities[i]->population, game.cities[i]->production_stored);
+                            i, game.cities[i]->x, game.cities[i]->y, 
+                            game.cities[i]->population, game.cities[i]->production_stored);
                     }
                 }
                 
@@ -415,7 +505,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < game.player_unit_count; i++) {
             Unit *u = game.player_units[i];
             if (u && u->hp > 0) {
-                const char* nom_unite = (u->type == UNIT_WARRIOR) ? "Guerrier" : "Colon";
+                const char* nom_unite = unit_label(u->type);
                 printf("[%d] %s en (%d,%d) - %d/%d PM\n", i, nom_unite, u->x, u->y, u->pm, u->pm_max);
             }
         }

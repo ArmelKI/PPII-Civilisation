@@ -2,22 +2,22 @@
 #include "core/types.h"
 #include "core/physics.h"
 
-int main() {
+int run_test_physique(void) {
     printf("--- TEST DE LA PHYSIQUE ---\n");
 
-    // 1. Création de faux joueurs (Mock)
-    Player joueur1 = {100, 0};
-    Player barbare = {0, 0};
+    // 1. Création de faux joueurs (Mock) avec initialiseurs désignés
+    Player joueur1 = {.gold = 100, .science = 0, .current_research = TECH_NONE, .unlocked_techs = {0}};
+    Player barbare = {.gold = 0, .science = 0, .current_research = TECH_NONE, .unlocked_techs = {0}};
 
-    // 2. Création de fausses unités (Mock)
-    Unit mon_guerrier = {UNIT_WARRIOR, 15, 15, 3, 2, 3, 3, 0, 0, &joueur1};
-    Unit ennemi = {UNIT_BARBARIAN, 15, 15, 3, 2, 1, 1, 1, 1, &barbare};
-    // 3. Création de fausses tuiles (Mock)
-    Tile case_montagne = {TERRAIN_MONTAGNE, NULL, NULL};
-    Tile case_plaine = {TERRAIN_PLAINE, NULL, &ennemi};
+    // 2. Création de fausses unités (Mock) en utilisant des initialiseurs désignés
+    Unit mon_guerrier = {.type = UNIT_WARRIOR, .hp = 15, .hp_max = 15, .attack = 3, .defense = 2, .pm = 3, .pm_max = 3, .x = 0, .y = 0, .owner = &joueur1};
+    Unit ennemi = {.type = UNIT_BARBARIAN, .hp = 15, .hp_max = 15, .attack = 3, .defense = 2, .pm = 1, .pm_max = 1, .x = 1, .y = 0, .owner = &barbare};
 
-    // TEST MOUVEMENT
-    printf("Peut bouger sur Montagne ? %s\n", can_move(&mon_guerrier, &case_montagne) ? "OUI" : "NON");
+    // 3. Création de fausses tuiles (Mock) avec champs explicités
+    Tile case_montagne = {.type = TERRAIN_MONTAGNE, .visibility = FOG_VISIBLE, .city = NULL, .unit = NULL, .camp = NULL};
+
+    // TEST MOUVEMENT: on passe le joueur en troisième argument conforme à can_move
+    printf("Peut bouger sur Montagne ? %s\n", can_move(&mon_guerrier, &case_montagne, &joueur1) ? "OUI" : "NON");
     
     // TEST COMBAT
     printf("\nAvant combat :\n");

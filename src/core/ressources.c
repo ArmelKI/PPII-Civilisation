@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "core/types.h"
 #include "core/game.h"
+#include "core/config.h"
 
 // mise en place du rendement en fonction du type de case
 TileYield get_terrain_yield(TerrainType type) {
@@ -90,6 +91,8 @@ City* get_tile_owner(int target_x, int target_y, Map* map){
 //fonction qui actualise la ville à chaque tour
 void process_city_resources(City *city, Map *map) {
     if (!city || !city->owner || !map) return;
+    const GameConfig *config = game_config_get_active();
+    float production_multiplier = config ? config->production_multiplier : 1.0f;
 
     //rayon d'exploitation de la ville
     int rayon = 1;
@@ -142,7 +145,12 @@ void process_city_resources(City *city, Map *map) {
     
     // Maj des ressources de city et player
     city->food_stored += (total_yield.food - food_consumed);
-    city->production_stored += total_yield.production;
+
+    int scaled_production = (int)(total_yield.production * production_multiplier + 0.5f);
+    if (total_yield.production > 0 && scaled_production < 1) {
+        scaled_production = 1;
+    }
+    city->production_stored += scaled_production;
     
     city->owner->gold += total_yield.gold;
     city->owner->science += total_yield.science;
@@ -155,10 +163,19 @@ void process_city_growth(City *city,Map *map){
 
     if (!city || !map) return;
 
+    const GameConfig *config = game_config_get_active();
+    float growth_multiplier = config ? config->growth_threshold_multiplier : 1.0f;
+    int famine_enabled = !config || config->famine_enabled;
+
     int growth_seuil= 20 + (10* city -> population);
 
     if(city -> has_granary){
         growth_seuil = (growth_seuil*2)/3;
+    }
+
+    growth_seuil = (int)(growth_seuil * growth_multiplier + 0.5f);
+    if (growth_seuil < 1) {
+        growth_seuil = 1;
     }
 
     if( city -> food_stored >= growth_seuil){
@@ -171,7 +188,7 @@ void process_city_growth(City *city,Map *map){
         city -> hp = new_hp;
     }
 
-    if( city -> food_stored < 0){
+    if( city -> food_stored < 0 && famine_enabled){
 
         city -> population -= 1; //demander aux autres si on remet a zero ou pas (ajuster si jeu trop difficile)
         city->food_stored = 0;
@@ -189,8 +206,9 @@ void process_city_growth(City *city,Map *map){
                 city -> hp = new_hp;
             }
         }
+    } else if (city->food_stored < 0) {
+        city->food_stored = 0;
     }
-
 }
 
 //fonction qui gère les dépenses en or et la réserve
@@ -224,7 +242,7 @@ void process_player_gold(Player *player, Map *map) {
                 player_units[unit_count] = u;
                 unit_count++;
 
-                if(u -> type == UNIT_WARRIOR){
+                if (u->type == UNIT_WARRIOR || u->type == UNIT_ARCHER || u->type == UNIT_CAVALIER) {
                     total_maintenance += 1;
                 }
 
@@ -360,7 +378,26 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
         case PROJECT_WALL:     cost = 80; break;
         case PROJECT_SETTLER:  cost = 50; break;
         case PROJECT_WARRIOR:  cost = 40; break;
+        case PROJECT_ARCHER:   cost = 55; break;
+        case PROJECT_CAVALIER: cost = 60; break;
         default: return;
+    }
+
+    // Les unités militaires avancées exigent une caserne.
+    if ((city->current_project == PROJECT_WARRIOR || city->current_project == PROJECT_ARCHER || city->current_project == PROJECT_CAVALIER) && !city->has_barrack) {
+        return;
+    }
+
+    // L'archer nécessite la technologie Chasse.
+    if (city->current_project == PROJECT_ARCHER &&
+        (!city->owner || !city->owner->unlocked_techs[TECH_CHASSE])) {
+        return;
+    }
+
+    // Le cavalier nécessite la technologie Équitation.
+    if (city->current_project == PROJECT_CAVALIER &&
+        (!city->owner || !city->owner->unlocked_techs[TECH_EQUITATION])) {
+        return;
     }
 
     if (city->production_stored >= cost) {
@@ -383,6 +420,8 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
 
 
             case PROJECT_WARRIOR:
+            case PROJECT_ARCHER:
+            case PROJECT_CAVALIER:
             case PROJECT_SETTLER: {
                 // Sécurité : On vérifie qu'on n'a pas atteint la limite d'unités actives (8 max)
                 if (*player_unit_count >= 8) {
@@ -394,13 +433,39 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
             
                 Unit *new_unit = malloc(sizeof(Unit));
                 if (new_unit) {
-                    new_unit->type = (city->current_project == PROJECT_WARRIOR) ? UNIT_WARRIOR : UNIT_SETTLER;
-                    
-                    new_unit->hp_max = (new_unit->type == UNIT_WARRIOR) ? 15 : 10;
+                    if (city->current_project == PROJECT_WARRIOR) {
+                        new_unit->type = UNIT_WARRIOR;
+                    } else if (city->current_project == PROJECT_ARCHER) {
+                        new_unit->type = UNIT_ARCHER;
+                    } else if (city->current_project == PROJECT_CAVALIER) {
+                        new_unit->type = UNIT_CAVALIER;
+                    } else {
+                        new_unit->type = UNIT_SETTLER;
+                    }
+
+                    if (new_unit->type == UNIT_WARRIOR) {
+                        new_unit->hp_max = 15;
+                        new_unit->attack = 3;
+                        new_unit->defense = 2;
+                        new_unit->pm_max = 3;
+                    } else if (new_unit->type == UNIT_ARCHER) {
+                        new_unit->hp_max = 12;
+                        new_unit->attack = 4;
+                        new_unit->defense = 1;
+                        new_unit->pm_max = 2;
+                    } else if (new_unit->type == UNIT_CAVALIER) {
+                        new_unit->hp_max = 15;
+                        new_unit->attack = 3;
+                        new_unit->defense = 3;
+                        new_unit->pm_max = 4;
+                    } else {
+                        new_unit->hp_max = 10;
+                        new_unit->attack = 0;
+                        new_unit->defense = 1;
+                        new_unit->pm_max = 2;
+                    }
+
                     new_unit->hp = new_unit->hp_max;
-                    new_unit->attack = (new_unit->type == UNIT_WARRIOR) ? 3 : 0;
-                    new_unit->defense = (new_unit->type == UNIT_WARRIOR) ? 2 : 1;
-                    new_unit->pm_max = (new_unit->type == UNIT_WARRIOR) ? 3 : 2;
                     new_unit->pm = new_unit->pm_max;
                     
                     new_unit->x = city->x;
@@ -428,10 +493,17 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
 void control_city_project(City *city) {
     if (!city) return;
 
+    const GameConfig *config = game_config_get_active();
+    float growth_multiplier = config ? config->growth_threshold_multiplier : 1.0f;
+
     // Calcul du seuil de croissance pour l'affichage (identique à process_city_growth)
     int seuil_croissance = 20 + (10 * city->population);
     if (city->has_granary) {
         seuil_croissance = (seuil_croissance * 2) / 3;
+    }
+    seuil_croissance = (int)(seuil_croissance * growth_multiplier + 0.5f);
+    if (seuil_croissance < 1) {
+        seuil_croissance = 1;
     }
 
     printf("\n╔════════════════════════════════════════════════════════╗\n");
@@ -455,6 +527,8 @@ void control_city_project(City *city) {
         case PROJECT_NONE: printf("Aucun\n"); break;
         case PROJECT_SETTLER: printf("Colon\n"); break;
         case PROJECT_WARRIOR: printf("Guerrier\n"); break;
+        case PROJECT_ARCHER: printf("Archer\n"); break;
+        case PROJECT_CAVALIER: printf("Cavalier\n"); break;
         case PROJECT_GRANARY: printf("Grenier\n"); break;
         case PROJECT_WORKSHOP: printf("Atelier\n"); break;
         case PROJECT_LIBRARY: printf("Bibliotheque\n"); break;
@@ -484,6 +558,12 @@ void control_city_project(City *city) {
         printf("2. Guerrier (40 Prod)    - Unite militaire (Force: 3, PM: 3)\n");
     } else {
         printf("2. \033[1;30m[BLOQUÉ] Guerrier     - Necessite une Caserne\033[0m\n");
+    }
+
+    if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_CHASSE]) {
+        printf("9. Archer (55 Prod)      - Unite avancee (Force: 4, PM: 2)\n");
+    } else {
+        printf("9. \033[1;30m[BLOQUÉ] Archer       - Necessite Caserne + Chasse\033[0m\n");
     }
     
     if (!city->has_granary)  printf("3. Grenier (30 Prod)      - Bonus : +3 Nourriture/tour\n");
@@ -520,6 +600,15 @@ void control_city_project(City *city) {
         case 6: city->current_project = PROJECT_MARKET; city->production_stored = 0; printf("\033[1;32mProjet defini : Marche\033[0m\n"); break;
         case 7: city->current_project = PROJECT_BARRACKS; city->production_stored = 0; printf("\033[1;32mProjet defini : Caserne\033[0m\n"); break;
         case 8: city->current_project = PROJECT_WALL; city->production_stored = 0; printf("\033[1;32mProjet defini : Muraille\033[0m\n"); break;
+        case 9:
+            if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_CHASSE]) {
+                city->current_project = PROJECT_ARCHER;
+                city->production_stored = 0;
+                printf("\033[1;32mProjet defini : Archer\033[0m\n");
+            } else {
+                printf("\033[1;31mImpossible : Archer requis Caserne + Technologie Chasse !\033[0m\n");
+            }
+            break;
         default: printf("\033[1;31mChoix inconnu.\033[0m\n"); break;
     }
 }

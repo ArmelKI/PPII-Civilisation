@@ -5,6 +5,7 @@
 #include "../../include/core/physics.h"
 #include "../../include/core/tech.h"
 #include "../../include/core/ressources.h"
+#include "../../include/core/config.h"
 
 void init_game(GameState *game, int width, int height, int seed) {
     memset(game, 0, sizeof(GameState));
@@ -75,7 +76,8 @@ void spawn_random_barbarian(GameState *game) {
     }
 
     // Probabilité de spawn à chaque tour.
-    if ((rand() % 100) >= 35) {
+    int spawn_chance = game_config_barbarian_spawn_chance();
+    if ((rand() % 100) >= spawn_chance) {
         return;
     }
 
@@ -95,16 +97,11 @@ void spawn_random_barbarian(GameState *game) {
         return;
     }
 
-    barb->type = UNIT_BARBARIAN;
-    barb->hp = 15;
-    barb->hp_max = 15;
-    barb->attack = 3;
-    barb->defense = 2;
-    barb->pm = 3;
-    barb->pm_max = 3;
+    barb->type = game_config_select_barbarian_type(rand() % 100);
     barb->x = x;
     barb->y = y;
     barb->owner = NULL;
+    game_config_apply_barbarian_stats(barb);
 
     game->barbarians[game->barbarian_count++] = barb;
     game->map.tiles[y][x].unit = barb;
