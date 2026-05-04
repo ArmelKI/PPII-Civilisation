@@ -363,3 +363,7 @@ int main(void)
     fprintf(stderr, "[FAIL] %d test(s) ont échoué.\n", g_failed);
     return 1;
 }
+
+int red() {
+    return 0;
+}
