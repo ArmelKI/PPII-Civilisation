@@ -1,9 +1,12 @@
+#define _XOPEN_SOURCE_EXTENDED
 #include <stdio.h>
 #include <stdlib.h> 
 #include <string.h>
 #include <stdbool.h>
 #include <time.h>
 #include <string.h>
+#include <ncurses.h>
+#include <locale.h>
 
 #include "../../include/core/game.h"
 #include "../../include/core/map.h"
@@ -35,69 +38,185 @@ static void print_help(void)
 }
 
 // --- MENU PRINCIPAL ---
-// Renvoie 1 si le joueur veut jouer, 0 s'il quitte
 static int run_main_menu(void) {
-    char choice;
-    
-    while (1) {
-        printf("\n\n");
-        printf("  ╔═════════════════════════════════════════════╗\n");
-        printf("  ║                                             ║\n");
-		printf("  ║ -=*=-  L E S   I N C I V I L I S É S  -=*=- ║\n");
-        printf("  ║                                             ║\n");
-        printf("  ╠═════════════════════════════════════════════╣\n");
-        printf("  ║                                             ║\n");
-		printf("  ║   [1] + Nouvelle Partie                     ║\n");
-        printf("  ║   [2] > Charger une partie                  ║\n");
-        printf("  ║   [3] i Règles et Commandes                 ║\n");
-        printf("  ║   [4] # Options (Bientôt)                   ║\n");
-        printf("  ║                                             ║\n");
-  		printf("  ║   [x] <- Quitter                            ║\n");
-        printf("  ║                                             ║\n");
-        printf("  ╚═════════════════════════════════════════════╝\n");
-		printf("  Veuillez sélectionner une option pour continuer: ");
+    int choice;
+    int highlight = 1; 
+    int n_choices = 4;
+    const char *choices[] = {
+        "  [1] NOUVELLE PARTIE  ",
+        "  [2] CHARGER PARTIE   ",
+        "  [3] REGLES & COMMANDES",
+        "  [x] QUITTER LE JEU   "
+    };
 
-        if (scanf(" %c", &choice) != 1) {
-            // Sécurité (si la lecture échoue)
-            return 0; 
+    while (1) {
+        clear(); 
+        int my, mx;
+        getmaxyx(stdscr, my, mx); 
+
+        attron(COLOR_PAIR(1)); 
+        box(stdscr, 0, 0);      
+        attroff(COLOR_PAIR(1));
+
+        int title_y = 2;
+        
+        // ASCII ART : TITRE COMPLET CENTRE ET EMPILE POUR RENTRER DANS L'ECRAN
+        attron(COLOR_PAIR(20) | A_BOLD); 
+        mvprintw(title_y,     (mx-25)/2, "  _     _____ _____  ");
+        mvprintw(title_y + 1, (mx-25)/2, " | |   | ____/ ___|  ");
+        mvprintw(title_y + 2, (mx-25)/2, " | |   |  _| \\___ \\  ");
+        mvprintw(title_y + 3, (mx-25)/2, " | |___| |___ ___) | ");
+        mvprintw(title_y + 4, (mx-25)/2, " |_____|_____|____/  ");
+        
+        mvprintw(title_y + 6, (mx-61)/2, " ___ _   _  ____ _____     _____ _     ___ ____  _____ ____  ");
+        mvprintw(title_y + 7, (mx-61)/2, "|_ _| \\ | |/ ___|_ _\\ \\   / /_ _| |   |_ _/ ___|| ____/ ___| ");
+        mvprintw(title_y + 8, (mx-61)/2, " | ||  \\| | |    | | \\ \\ / / | || |    | |\\___ \\|  _| \\___ \\ ");
+        mvprintw(title_y + 9, (mx-61)/2, " | || |\\  | |___ | |  \\ V /  | || |___ | | ___) | |___ ___) |");
+        mvprintw(title_y + 10,(mx-61)/2, "|___|_| \\_|\\____|___|  \\_/  |___|_____|___|____/|_____|____/ ");
+        attroff(COLOR_PAIR(20) | A_BOLD);
+
+        int menu_y = my / 2 + 2;
+        int option_center_x = mx / 2;
+
+        // --- DESSINS DECORATIFS ---
+
+        // Gauche : Epée de Chevalier
+        attron(COLOR_PAIR(5) | A_BOLD);
+        int art_left_x = option_center_x - 30;
+        mvprintw(menu_y - 2, art_left_x, "      />");
+        mvprintw(menu_y - 1, art_left_x, "     /<");
+        mvprintw(menu_y,     art_left_x, " [|||]OOOOOOOOO>");
+        mvprintw(menu_y + 1, art_left_x, " [|||]OOOOOOOOO>");
+        mvprintw(menu_y + 2, art_left_x, "     \\<");
+        mvprintw(menu_y + 3, art_left_x, "      \\>");
+        attroff(COLOR_PAIR(5) | A_BOLD);
+
+        // Droite : Bouclier Lourd
+        attron(COLOR_PAIR(20) | A_BOLD);
+        int art_right_x = option_center_x + 16;
+        mvprintw(menu_y - 3, art_right_x, "   ______");
+        mvprintw(menu_y - 2, art_right_x, "  / |  | \\");
+        mvprintw(menu_y - 1, art_right_x, " |  |  |  |");
+        mvprintw(menu_y,     art_right_x, " |--+--+--|");
+        mvprintw(menu_y + 1, art_right_x, " |  |  |  |");
+        mvprintw(menu_y + 2, art_right_x, "  \\ |  | /");
+        mvprintw(menu_y + 3, art_right_x, "   \\    /");
+        mvprintw(menu_y + 4, art_right_x, "    \\__/");
+        attroff(COLOR_PAIR(20) | A_BOLD);
+
+        // --- OPTIONS ---
+        for(int i = 0; i < n_choices; i++) {
+            int x_pos = (mx - strlen(choices[i])) / 2;
+            int y_pos = menu_y + (i * 2);
+
+            if(highlight == i + 1) {
+                attron(COLOR_PAIR(3) | A_REVERSE | A_BOLD); // Vert inversé pour sélection
+                mvprintw(y_pos, x_pos, "%s", choices[i]);
+                attroff(COLOR_PAIR(3) | A_REVERSE | A_BOLD);
+            } else {
+                attron(COLOR_PAIR(30)); // Blanc pour les autres choix
+                mvprintw(y_pos, x_pos, "%s", choices[i]);
+                attroff(COLOR_PAIR(30));
+            }
         }
 
+        attron(COLOR_PAIR(40)); 
+        mvprintw(my - 2, 2, " Utilisez Z/S ou Fleches pour naviguer, Entree ou Clic pour valider ");
+        attroff(COLOR_PAIR(40));
+
+        refresh();
+
+        choice = getch();
+
         switch (choice) {
-            case '1':
-                printf("\n  Chargement de la partie en cours...\n");
-                return 1;
-
-            case '2':
-                return 2;
-            case '4':
-                printf("\n Fonctionnalité en cours de développement ça charbonne \n");
+            case KEY_UP:
+            case 'z':
+            case 'Z':
+                highlight = (highlight == 1) ? n_choices : highlight - 1;
                 break;
-
-            case '3':
-                printf("\n  === RÈGLES DU JEU ===\n");
-                printf("  Le but est de faire prospérer votre ville et de survivre.\n");
-                printf("  Des barbares apparaîtront et tenteront de vous détruire.\n\n");
-				// RÈGLES PLUS PRÉCISE SANS FAIRE DE TUNNEL
-                printf("  === COMMANDES ===\n");
-                printf("  z/q/s/d : Déplacer votre unité (Haut/Gauche/Bas/Droite)\n");
-                printf("  n       : Finir votre tour (récupérer les PM)\n");
-                printf("  x       : Quitter la partie en cours\n");
-                printf("  Appuyez sur Entrée pour revenir au menu...\n");
-                
-				// On attend que le joueur tappe entrée
-                int c;
-                while ((c = getchar()) != '\n' && c != EOF); // Vide le buffer
-                getchar(); // Attend Entrée
+            case KEY_DOWN:
+            case 's':
+            case 'S':
+                highlight = (highlight == n_choices) ? 1 : highlight + 1;
                 break;
-
+            case 10: 
+                if (highlight == 1) return 1;
+                if (highlight == 2) return 2;
+                if (highlight == 3) { 
+                    clear();
+                    attron(COLOR_PAIR(1)); box(stdscr, 0, 0); attroff(COLOR_PAIR(1));
+                    attron(COLOR_PAIR(3) | A_BOLD);
+                    mvprintw(2, 4, "=== REGLES DU JEU ===");
+                    attroff(COLOR_PAIR(3) | A_BOLD);
+                    attron(COLOR_PAIR(30));
+                    mvprintw(4, 4, "Le but est de faire prosperer votre ville et de survivre.");
+                    mvprintw(5, 4, "Des barbares apparaitront et tenteront de vous detruire.");
+                    attroff(COLOR_PAIR(30));
+                    attron(COLOR_PAIR(4) | A_BOLD);
+                    mvprintw(7, 4, "=== COMMANDES ===");
+                    attroff(COLOR_PAIR(4) | A_BOLD);
+                    attron(COLOR_PAIR(30));
+                    mvprintw(9, 4, "Clic    : Selectionner une unite ou une ville sur la carte");
+                    mvprintw(10, 4, "z/q/s/d : Deplacer votre unite selectionnee (Haut/Gauche/Bas/Droite)");
+                    mvprintw(11, 4, "n       : Finir votre tour (recuperer les PM)");
+                    mvprintw(12, 4, "x       : Quitter la partie en cours");
+                    mvprintw(15, 4, "Appuyez sur une touche pour revenir...");
+                    attroff(COLOR_PAIR(30));
+                    refresh();
+                    getch();
+                }
+                if (highlight == 4) return 0;
+                break;
+            case KEY_MOUSE: {
+                MEVENT event;
+                if (getmouse(&event) == OK) {
+                    if (event.bstate & BUTTON1_CLICKED) {
+                        for(int i = 0; i < n_choices; i++) {
+                            int opt_x = (mx - (int)strlen(choices[i])) / 2;
+                            int opt_y = menu_y + (i * 2);
+                            
+                            // Si le clic correspond aux coordonnées de l'option i
+                            if (event.y == opt_y && event.x >= opt_x && event.x <= opt_x + (int)strlen(choices[i])) {
+                                highlight = i + 1;
+                                
+                                // On déclenche l'action associée au clic immédiatement
+                                if (highlight == 1) return 1;
+                                if (highlight == 2) return 2;
+                                if (highlight == 3) {
+                                    clear();
+                                    attron(COLOR_PAIR(1)); box(stdscr, 0, 0); attroff(COLOR_PAIR(1));
+                                    attron(COLOR_PAIR(3) | A_BOLD);
+                                    mvprintw(2, 4, "=== REGLES DU JEU ===");
+                                    attroff(COLOR_PAIR(3) | A_BOLD);
+                                    attron(COLOR_PAIR(30));
+                                    mvprintw(4, 4, "Le but est de faire prosperer votre ville et de survivre.");
+                                    mvprintw(5, 4, "Des barbares apparaitront et tenteront de vous detruire.");
+                                    attroff(COLOR_PAIR(30));
+                                    attron(COLOR_PAIR(4) | A_BOLD);
+                                    mvprintw(7, 4, "=== COMMANDES ===");
+                                    attroff(COLOR_PAIR(4) | A_BOLD);
+                                    attron(COLOR_PAIR(30));
+                                    mvprintw(9, 4, "Clic    : Selectionner une unite ou une ville sur la carte");
+                                    mvprintw(10, 4, "z/q/s/d : Deplacer votre unite selectionnee (Haut/Gauche/Bas/Droite)");
+                                    mvprintw(11, 4, "n       : Finir votre tour (recuperer les PM)");
+                                    mvprintw(12, 4, "x       : Quitter la partie en cours");
+                                    mvprintw(15, 4, "Appuyez sur une touche pour revenir...");
+                                    attroff(COLOR_PAIR(30));
+                                    refresh();
+                                    getch();
+                                    break; // On casse la boucle for pour redessiner le menu principal
+                                }
+                                if (highlight == 4) return 0;
+                            }
+                        }
+                    }
+                }
+                break;
+            }
+            case '1': return 1;
+            case '2': return 2;
             case 'x':
-            case 'X':
-                printf("\n  Arrêt du jeu. À bientôt !\n");
-                return 0;
-
-            default:
-                printf("\n  \033[1;31m Choix invalide. Veuillez sélectionner une option valide.\033[0m\n");
-                break;
+            case 'X': return 0;
         }
     }
 }
@@ -110,11 +229,7 @@ static void print_state_maxence_stub(const GameState *game)
             game->turn, game->player_unit_count, game->barbarian_count);
         return;
     }
-
-    printf("\n=== TOUR %d ===\n", game->turn);
-    printf("Ressources: or=%d science=%d\n", game->player.gold, game->player.science);
-    printf("Ville: hp=%d pop=%d (%d,%d)\n", game->cities[0]->hp, game->cities[0]->population, game->cities[0]->x, game->cities[0]->y);
-    printf("Unités joueur: %d | Barbares: %d\n", game->player_unit_count, game->barbarian_count);
+    (void)game; // Pour éviter l'erreur de paramètre non utilisé avec -Werror
 }
 
 static const char *unit_label(UnitType type)
@@ -133,6 +248,8 @@ static const char *unit_label(UnitType type)
 }
 
 int main(int argc, char **argv) {
+    setlocale(LC_ALL, "");
+
     const char *mode = "cli";
     Difficulty difficulty = DIFF_NORMAL;
     int width = 50;
@@ -214,14 +331,14 @@ int main(int argc, char **argv) {
         }
     }
 
-	// Génération de la seed si aucune n'est donnée par le joueur
-	if (!is_seed) {
-		seed = (int)time(NULL);
-	}
+    // Génération de la seed si aucune n'est donnée par le joueur
+    if (!is_seed) {
+        seed = (int)time(NULL);
+    }
 
-	(void)nb_barbarians; // pour éviter les erreurs de compilations avec les variables non utilisées
+    (void)nb_barbarians; // pour éviter les erreurs de compilations avec les variables non utilisées
 
-	// GESTION DU MODE D'AFFICHAGE
+    // GESTION DU MODE D'AFFICHAGE
 
     if (strcmp(mode, "sdl") == 0) {
         puts("[CIV] Mode SDL initialise (squelette).\nInstallez SDL2 et branchez l'UI plus tard.");
@@ -231,6 +348,44 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+// --- INITIALISATION NCURSES ---
+    initscr();              // Démarre ncurses et l'écran principal
+    raw();                  // Entrée instantanée (plus besoin de valider avec Entrée)
+    keypad(stdscr, TRUE);   // Active les touches spéciales (flèches, etc.)
+    noecho();               // Masque les touches tapées par le joueur
+    curs_set(0);            // Cache le curseur clignotant
+    start_color();          // Active la gestion des couleurs
+    scrollok(stdscr, TRUE); // Autorise le défilement (scroll) du texte
+    mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL); // Active la détection de la souris
+
+    // --- INITIALISATION DES COULEURS ---
+
+    // -- TERRAINS --
+    init_pair(1, 39, COLOR_BLACK);   // Eau : Bleu azur clair
+    init_pair(2, 118, COLOR_BLACK);  // Plaine : Vert clair pomme
+    init_pair(3, 28, COLOR_BLACK);   // Forêt : Vert sombre sapin
+    init_pair(4, 130, COLOR_BLACK);  // Montagne : Marron/Terre
+    init_pair(5, 214, COLOR_BLACK);  // Désert : Jaune sable / Orange
+    init_pair(6, 253, COLOR_BLACK);  // Toundra : Blanc cassé glacé
+
+    // -- UNITES JOUEUR --
+    init_pair(10, 51, COLOR_BLACK);  // Guerrier : Cyan éclatant
+    init_pair(11, 199, COLOR_BLACK); // Archer : Rose / Magenta
+    init_pair(12, 129, COLOR_BLACK); // Cavalier : Violet
+    init_pair(13, 226, COLOR_BLACK); // Colon : Jaune vif poussin
+    init_pair(14, 202, COLOR_BLACK); // Unité générique (U) : Orange vif
+
+    // -- ENNEMIS ET STRUCTURES --
+    init_pair(20, 196, COLOR_BLACK); // Barbare : Rouge sang
+    init_pair(21, 124, COLOR_BLACK); // Camp actif : Rouge bordeaux sombre
+    init_pair(22, 240, COLOR_BLACK); // Camp détruit : Gris moyen
+    
+    // -- VILLES --
+    init_pair(30, 15, COLOR_BLACK);  // Ville normale : Blanc pur
+    init_pair(31, 15, 238);          // Ville muraille : Blanc pur sur fond Gris
+
+    // -- BROUILLARD --
+    init_pair(40, 236, COLOR_BLACK); // Zone Explorée : Gris extrêmement sombre
 
     // Initialisation de la configuration de jeu (difficulty presets)
     GameConfig cfg;
@@ -249,401 +404,469 @@ int main(int argc, char **argv) {
         cfg.famine_enabled = famine_override;
     }
     game_config_set_active(&cfg);
-    printf("[CIV] Difficulty: %s | prod=%.2f | croissance=%.2f | barbares=%.2f | famine=%s\n",
-           difficulty_to_string(cfg.difficulty),
-           cfg.production_multiplier,
-           cfg.growth_threshold_multiplier,
-           cfg.barbarian_spawn_multiplier,
-           cfg.famine_enabled ? "on" : "off");
 
     // MENU PRINCIPAL
     int state = run_main_menu();
-    if (state == 0) return 0;
-	
+    if (state == 0) {
+        endwin();
+        return 0;
+    }
+    
 
-	// DEBUT DU JEU
+    // DEBUT DU JEU
 
     GameState game;
     memset(&game, 0, sizeof(GameState)); // Sécurité : on initialise tout à 0 pour éviter les valeurs indéterminées.
+    
+    clear();
     if (state == 1) {
         init_game(&game, width, height, seed);
-        printf("[CIV] Nouvelle partie; Generation avec la graine : %d\n", seed);
+        printw("[CIV] Nouvelle partie; Generation avec la graine : %d\n", seed);
     } else if(state == 2) {
         if (!load_game("savegame.sav", &game)) {
-            printf("Échec du chargement de la partie. Démarrage d'une nouvelle partie.\n");
+            printw("Échec du chargement de la partie. Démarrage d'une nouvelle partie.\n");
             init_game(&game, width, height, seed);
-            printf("[CIV] Nouvelle partie; Generation avec la graine : %d\n", seed);
-        } 
+            printw("[CIV] Nouvelle partie; Generation avec la graine : %d\n", seed);
+        }
 
     }
 
-    puts("[CIV] Boucle principale lancée (prototype).\n");
+    printw("[CIV] Boucle principale lancee (prototype).\n");
+    printw("\n>> Appuyez sur une touche pour commencer la partie...\n");
+    refresh();
+    getch();
 
     int city_id_counter=1;
+    int selected_unit_idx = -1;
+    int selected_city_idx = -1;
+    char status_msg[128] = "Bienvenue ! Cliquez sur vos unites ou villes.";
 
     // Boucle centrale demandée dans le ticket.
     while (!game.game_over) {
+        clear();
+        int max_y, max_x;
+        getmaxyx(stdscr, max_y, max_x);
+
         // On calcule ce que le joueur a le droit de voir(Brouillard de Guerre)
         update_fog_of_war(&game);
+        
+        move(0, 0);
         display_map_color(&game.map);
 
         // 1. Affichage d'état (hook externe ou console)
         print_state_maxence_stub(&game);
+
+        // --- DASHBOARD : ANCRÉ À DROITE DE L'ÉCRAN ---
+        int ui_x = max_x - 35; // Le panneau de droite fera toujours 35 colonnes
+        int log_y = max_y - 6; // Le panneau de logs prendra les 6 dernières lignes
+
+        // Séparateurs visuels
+        attron(COLOR_PAIR(30));
+        for(int i=0; i<max_y; i++) mvaddch(i, ui_x - 1, ACS_VLINE); 
+        mvhline(log_y - 1, 0, ACS_HLINE, max_x);
+        attroff(COLOR_PAIR(30));
+
+        attron(COLOR_PAIR(3) | A_BOLD);
+        mvprintw(0, ui_x, "=== L'EMPIRE ===");
+        attroff(COLOR_PAIR(3) | A_BOLD);
+        mvprintw(2, ui_x, "Tour    : %d / %d", game.turn, nb_turns);
+        mvprintw(3, ui_x, "Or      : %d", game.player.gold);
+        mvprintw(4, ui_x, "Science : %d", game.player.science);
+
+        mvprintw(6, ui_x, "-- EFFECTIFS --");
+        mvprintw(7, ui_x, "Unites actives : %d / 8", game.player_unit_count);
+        mvprintw(8, ui_x, "Villes         : %d", game.city_count);
+
+        mvprintw(11, ui_x, "-- SELECTION --");
         
-        printf("\n[Or : %d] Action ? 1: Deplacer unite | 2: Recruter | 3: Passer le tour | t: Technologies | f : fonder une ville | v : gérer les villes | s: Sauvegarder | x: Quitter\n", game.player.gold);
-        printf("Votre choix : ");
+        if (selected_unit_idx != -1 && game.player_units[selected_unit_idx] && game.player_units[selected_unit_idx]->hp > 0) {
+            Unit *u = game.player_units[selected_unit_idx];
+            attron(COLOR_PAIR(10) | A_BOLD);
+            mvprintw(13, ui_x, "Unite  : %s", unit_label(u->type));
+            mvprintw(14, ui_x, "Pos    : (%d, %d)", u->x, u->y);
+            mvprintw(15, ui_x, "PM     : %d / %d", u->pm, u->pm_max);
+            mvprintw(16, ui_x, "PV     : %d / %d", u->hp, u->hp_max);
+            mvprintw(18, ui_x, "[z/q/s/d] Deplacer");
+            if (u->type == UNIT_SETTLER) mvprintw(19, ui_x, "[f] Fonder Ville");
+            attroff(COLOR_PAIR(10) | A_BOLD);
+        } else if (selected_city_idx != -1 && game.cities[selected_city_idx] && game.cities[selected_city_idx]->hp > 0) {
+            City *c = game.cities[selected_city_idx];
+            attron(COLOR_PAIR(30) | A_BOLD);
+            mvprintw(13, ui_x, "Ville  : Capitale (%d, %d)", c->x, c->y);
+            mvprintw(14, ui_x, "Pop    : %d", c->population);
+            mvprintw(15, ui_x, "PV     : %d", c->hp);
+            mvprintw(17, ui_x, "[2] Recruter Unite");
+            mvprintw(18, ui_x, "[v] Gerer Ville");
+            attroff(COLOR_PAIR(30) | A_BOLD);
+        } else {
+            mvprintw(13, ui_x, "Aucune selection.");
+        }
+
+        // Ajout de la Seed en bas du carré de Dashboard
+        attron(COLOR_PAIR(40));
+        mvprintw(log_y - 2, ui_x + 2, "Seed : %d", seed);
+        attroff(COLOR_PAIR(40));
+
+        mvprintw(log_y, 0, "COMMANDES : [n] Finir Tour | [t] Technologies | [S] Sauvegarder (Maj+s) | [x] Quitter");
+        attron(COLOR_PAIR(3) | A_BOLD);
+        mvprintw(log_y + 2, 0, ">> %s", status_msg);
+        attroff(COLOR_PAIR(3) | A_BOLD);
+        refresh();
         
-        char choice;
-        if (scanf(" %c", &choice) != 1) continue;
+        int choice;
+        choice = getch();
+        strcpy(status_msg, ""); // On vide le message pour le prochain tour
 
         switch (choice) {
+            case KEY_MOUSE: {
+                MEVENT event;
+                if (getmouse(&event) == OK && (event.bstate & BUTTON1_CLICKED)) {
+                    if (event.x < ui_x - 1 && event.y < log_y - 1) {
+                        int found = 0;
+                        int map_x = event.x / 2; // Division par 2 pour cibler la bonne case (caractères doubles)
+                        int map_y = event.y;
+
+                        for (int i = 0; i < game.player_unit_count; i++) {
+                            if (game.player_units[i] && game.player_units[i]->hp > 0 && 
+                                game.player_units[i]->x == map_x && game.player_units[i]->y == map_y) {
+                                selected_unit_idx = i;
+                                selected_city_idx = -1;
+                                strcpy(status_msg, "Unite selectionnee.");
+                                found = 1; break;
+                            }
+                        }
+                        if (!found) {
+                            for (int i = 0; i < game.city_count; i++) {
+                                if (game.cities[i] && game.cities[i]->hp > 0 && 
+                                    game.cities[i]->x == map_x && game.cities[i]->y == map_y) {
+                                    selected_city_idx = i;
+                                    selected_unit_idx = -1;
+                                    strcpy(status_msg, "Ville selectionnee.");
+                                    found = 1; break;
+                                }
+                            }
+                        }
+                        if (!found) { selected_unit_idx = -1; selected_city_idx = -1; }
+                    }
+                }
+                continue;
+            }
             case 'x':
             case 'X':
-                printf("\nArret du jeu. A bientot !\n");
                 game.game_over = 1;
                 continue;
 
             case 'f':
-                printf("\nUnites disponibles :\n");
-                for (int i = 0; i < game.player_unit_count; i++) {
-                    Unit *u = game.player_units[i];
-                    if (u && u->hp > 0) {
-                        const char* nom_unite = unit_label(u->type);
-                        printf("[%d] %s en (%d,%d) - %d/%d PM\n", i, nom_unite, u->x, u->y, u->pm, u->pm_max);
+                if (selected_unit_idx != -1 && game.player_units[selected_unit_idx]) {
+                    Unit *mon_unite_f = game.player_units[selected_unit_idx];
+                    
+                    // Sécurité : on vérifie que l'unité existe et est en vie
+                    if (mon_unite_f == NULL || mon_unite_f->hp <= 0) {
+                        strcpy(status_msg, "Cette unite est morte ou n'existe pas.");
+                        continue;
                     }
-                }
-        
-                printf("Quelle unite selectionner ? (0 a %d, ou x pour annuler) : ", game.player_unit_count - 1);
-                char idx_choice;
-                if (scanf(" %c", &idx_choice) != 1 || idx_choice == 'x') {
-                    continue;
-                }
+                    if (mon_unite_f->pm <= 0) {
+                        strcpy(status_msg, "Cette unite n'a plus de PM. Choisissez-en une autre.");
+                        continue;
+                    }
 
-                int unit_idx = idx_choice - '0';
-                if (unit_idx < 0 || unit_idx >= game.player_unit_count) {
-                    printf("\n\033[1;31mIndex invalide.\033[0m\n");
-                    continue;
+                    if (found_city(mon_unite_f, &game.map, &city_id_counter, game.cities, &game.city_count)) {
+                        game.player_units[selected_unit_idx] = NULL; 
+                        selected_unit_idx = -1;
+                        strcpy(status_msg, "Ville fondee avec succes !");
+                    } else {
+                        strcpy(status_msg, "Impossible de fonder une ville ici.");
+                    }
+                } else {
+                    strcpy(status_msg, "Selectionnez un Colon avec la souris d'abord !");
                 }
-
-                Unit *mon_unite = game.player_units[unit_idx];
-
-                // Sécurité : on vérifie que l'unité existe et est en vie
-                if (mon_unite == NULL || mon_unite->hp <= 0) {
-                printf("\n\033[1;31mCette unite est morte ou n'existe pas.\033[0m\n");
-                continue;
-                }
-
-                if (mon_unite->pm <= 0) {
-                    printf("\n\033[1;33mCette unite n'a plus de PM. Choisissez-en une autre.\033[0m\n");
-                    continue;
-                }
-
-                if (found_city(mon_unite, &game.map, &city_id_counter, game.cities, &game.city_count)) {
-                    game.player_units[unit_idx] = NULL; 
-                }
-                
                 continue;
 
             case 'v':
             case 'V':
                 if (game.city_count == 0) {
-                    printf("\n\033[1;31mVous ne possedez aucune ville !\033[0m\n");
+                    strcpy(status_msg, "Vous ne possedez aucune ville !");
                     continue;
                 }
 
-                printf("\n=== VOS VILLES ===\n");
-                for (int i = 0; i < game.city_count; i++) {
-                    if (game.cities[i] && game.cities[i]->hp > 0) {
-                        printf("[%d] Ville en (%d, %d) - Pop: %d - Prod: %d\n", 
-                            i, game.cities[i]->x, game.cities[i]->y, 
-                            game.cities[i]->population, game.cities[i]->production_stored);
+                if (selected_city_idx != -1 && game.cities[selected_city_idx]) {
+                    // Sécurité : on vérifie que l'index est valide et que la ville existe
+                    if (game.cities[selected_city_idx]->hp <= 0) {
+                        strcpy(status_msg, "Index de ville invalide.");
+                        continue;
                     }
+                    // On envoie la ville sélectionnée à la fonction de gestion
+                    control_city_project(game.cities[selected_city_idx]);
+                } else {
+                    strcpy(status_msg, "Selectionnez une ville avec la souris d'abord !");
                 }
-                
-                printf("\nQuelle ville voulez-vous gerer ? (0 a %d, ou x pour annuler) : ", game.city_count - 1);
-                char city_choice;
-                if (scanf(" %c", &city_choice) != 1 || city_choice == 'x') {
-                    continue;
-                }
-
-                int city_idx = city_choice - '0';
-                
-                // Sécurité : on vérifie que l'index est valide et que la ville existe
-                if (city_idx < 0 || city_idx >= game.city_count || game.cities[city_idx] == NULL || game.cities[city_idx]->hp <= 0) {
-                    printf("\n\033[1;31mIndex de ville invalide.\033[0m\n");
-                    continue;
-                }
-
-                // On envoie la ville sélectionnée à la fonction de gestion
-                control_city_project(game.cities[city_idx]);
                 continue;
                 
             case 't':
             case 'T':
-                printf("\n === ARBRE TECHNOLOGIQUE ===\n");
-                printf("Cagnotte de science : %d\n", game.player.science);
+                clear();
+                printw("\n === ARBRE TECHNOLOGIQUE ===\n");
+                printw("Cagnotte de science : %d\n", game.player.science);
                 if (game.player.current_research != TECH_NONE) {
-                    printf("Recherche en cours : %s (%d / %d)\n", TECH_CATALOG[game.player.current_research].name, game.player.science, TECH_CATALOG[game.player.current_research].cost);
+                    printw("Recherche en cours : %s (%d / %d)\n", TECH_CATALOG[game.player.current_research].name, game.player.science, TECH_CATALOG[game.player.current_research].cost);
                 } else {
-                    printf("Aucune recherche en cours.\n");
+                    printw("Aucune recherche en cours.\n");
                 }
-                printf("\nTechnologies disponibles à la recherche :\n");
+                printw("\nTechnologies disponibles à la recherche :\n");
                 int tech_found = 0;
                 for (int i = 0; i < MAX_TECHNOLOGIES; i++) {
                     // On affiche seulement ce qu'on a le droit de rechercher
                     if (can_research(&game.player, i)) {
-                        printf("[%d] %s (Cout: %d Science)\n", i, TECH_CATALOG[i].name, TECH_CATALOG[i].cost);
+                        printw("[%d] %s (Cout: %d Science)\n", i, TECH_CATALOG[i].name, TECH_CATALOG[i].cost);
                         tech_found = 1; 
                     }
                 }
                 if (!tech_found) {
-                    printf("Aucune technologie disponible à la recherche pour le moment.\n");
+                    printw("Aucune technologie disponible à la recherche pour le moment.\n");
                 }
-                printf("[x] Annuler\n");
-                printf("Quelle technologie souhaitez-vous rechercher ? ");
-                char tech_choice;
-                if (scanf(" %c", &tech_choice) != 1 || tech_choice == 'x') {
+                printw("[x] Annuler\n");
+                printw("Quelle technologie souhaitez-vous rechercher ? ");
+                refresh();
+                int tech_choice;
+                tech_choice = getch();
+                if (tech_choice == 'x') {
                     continue;
                 }
                 int tech_idx = tech_choice - '0';
                 if (tech_idx >= 0 && tech_idx < MAX_TECHNOLOGIES) {
                     start_research(&game.player, tech_idx);
                 } else {
-                    printf("\n\033[1;31mChoix invalide.\033[0m\n");
+                    strcpy(status_msg, "Choix technologique invalide.");
                 }
                 continue;
 
-            case 's':
             case 'S':
-                printf("\nSauvegarde en cours...\n");
                 save_game("savegame.sav", &game);
+                strcpy(status_msg, "Partie sauvegardee avec succes !");
                 continue;
 
             case '3':
             case 'n':
                 // 5. Le joueur a fini de jouer, l'ordinateur (Barbares d'Armel) joue son tour
                 next_turn(&game);
+                selected_unit_idx = -1; // Deselection de l'unité à la fin du tour
                 if (game.turn >= nb_turns || game.cities[0]->hp <= 0) {
                     game.game_over = 1;
                 }
                 continue;
 
             case '2':
-                printf("\nQuelle unité souhaitez-vous recruter ?\n");
-                printf("[1] Guerrier (10 Or) - Force: 3, PM: 3\n");
-                printf("[2] Colon (20 Or) - Fonde une ville, PM: 2\n");
-                printf("[x] Annuler\n");
-                printf("Votre choix : ");
+                if (selected_city_idx != -1 && game.cities[selected_city_idx]) {
+                    move(log_y + 4, 0);
+                    printw("Quelle unité souhaitez-vous recruter ?\n");
+                    printw("[1] Guerrier (10 Or) - Force: 3, PM: 3\n");
+                    printw("[2] Colon (20 Or) - Fonde une ville, PM: 2\n");
+                    printw("[x] Annuler\n");
+                    printw("Votre choix : ");
+                    refresh();
 
-                char rec_choice;
-                if (scanf(" %c", &rec_choice) != 1 || rec_choice == 'x') {
-                    continue;
-                }
+                    int rec_choice;
+                    rec_choice = getch();
+                    if (rec_choice == 'x') {
+                        continue;
+                    }
 
-                int cost = 0;
-                int type = 0;
+                    int cost = 0;
+                    int type = 0;
 
-                if (rec_choice == '1') {
-                    cost = 10;
-                    type = UNIT_WARRIOR;
-                } else if (rec_choice == '2') {
-                    cost = 20;
-                    type = UNIT_SETTLER;
-                } else {
-                    printf("\n\033[1;31mChoix invalide.\033[0m\n");
-                    continue;
-                }
+                    if (rec_choice == '1') {
+                        cost = 10;
+                        type = UNIT_WARRIOR;
+                    } else if (rec_choice == '2') {
+                        cost = 20;
+                        type = UNIT_SETTLER;
+                    } else {
+                        strcpy(status_msg, "Choix de recrutement invalide.");
+                        continue;
+                    }
 
-                if (game.player.gold >= cost) {
-                    if (game.player_unit_count < 8) { 
-                        Tile *city_tile = &game.map.tiles[game.cities[0]->y][game.cities[0]->x];
-                        
-                        if (city_tile->unit == NULL) {
-                            Unit *new_unit = malloc(sizeof(Unit));
-                            if (new_unit) {
-                                new_unit->type = type;
-                                new_unit->x = game.cities[0]->x;
-                                new_unit->y = game.cities[0]->y;
-                                new_unit->owner = &game.player;
-                                
-                                if (type == UNIT_WARRIOR) {
-                                    new_unit->hp = 15; new_unit->hp_max = 15;
-                                    new_unit->attack = 3; new_unit->defense = 2;
-                                    new_unit->pm = 3; new_unit->pm_max = 3;
-                                } else { 
-                                    new_unit->hp = 10; new_unit->hp_max = 10;
-                                    new_unit->attack = 0; new_unit->defense = 1;
-                                    new_unit->pm = 2; new_unit->pm_max = 2;
+                    if (game.player.gold >= cost) {
+                        if (game.player_unit_count < 8) { 
+                            Tile *city_tile = &game.map.tiles[game.cities[selected_city_idx]->y][game.cities[selected_city_idx]->x];
+                            
+                            if (city_tile->unit == NULL) {
+                                Unit *new_unit = malloc(sizeof(Unit));
+                                if (new_unit) {
+                                    new_unit->type = type;
+                                    new_unit->x = game.cities[selected_city_idx]->x;
+                                    new_unit->y = game.cities[selected_city_idx]->y;
+                                    new_unit->owner = &game.player;
+                                    
+                                    if (type == UNIT_WARRIOR) {
+                                        new_unit->hp = 15; new_unit->hp_max = 15;
+                                        new_unit->attack = 3; new_unit->defense = 2;
+                                        new_unit->pm = 3; new_unit->pm_max = 3;
+                                    } else { 
+                                        new_unit->hp = 10; new_unit->hp_max = 10;
+                                        new_unit->attack = 0; new_unit->defense = 1;
+                                        new_unit->pm = 2; new_unit->pm_max = 2;
+                                    }
+                                    
+                                    game.player_units[game.player_unit_count++] = new_unit;
+                                    city_tile->unit = new_unit;
+                                    
+                                    game.player.gold -= cost;
+                                    strcpy(status_msg, "[+] Unite recrutee avec succes sur la ville !");
                                 }
-                                
-                                game.player_units[game.player_unit_count++] = new_unit;
-                                city_tile->unit = new_unit;
-                                
-                                game.player.gold -= cost;
-                                printf("\n\033[1;32m[+] Unite recrutee avec succes sur la ville !\033[0m\n");
+                            } else {
+                                strcpy(status_msg, "[!] La ville est deja occupee. Deplacez l'unite presente d'abord.");
                             }
                         } else {
-                            printf("\n\033[1;31m[!] La ville est deja occupee. Deplacez l'unite presente d'abord.\033[0m\n");
+                            strcpy(status_msg, "[!] Vous avez atteint la limite d'unites actives.");
                         }
                     } else {
-                        printf("\n\033[1;31m[!] Vous avez atteint la limite d'unites actives.\033[0m\n");
+                        sprintf(status_msg, "[!] Or insuffisant. Il vous faut %d Or.", cost);
                     }
                 } else {
-                    printf("\n\033[1;31m[!] Or insuffisant. Il vous faut %d Or.\033[0m\n", cost);
+                    strcpy(status_msg, "Veuillez selectionner une ville avec la souris d'abord !");
                 }
                 continue;
 
-            case '1':
-                break; // Sort du match pour lancer la logique de deplacement juste en dessous
+            case 'z': case 'q': case 's': case 'd':
+                if (selected_unit_idx == -1 || !game.player_units[selected_unit_idx]) {
+                    strcpy(status_msg, "Erreur : Selectionnez d'abord une unite avec la souris.");
+                    continue;
+                }
 
-            default:
-                printf("\n\033[1;31mAction invalide.\033[0m\n");
+                Unit *mon_unite = game.player_units[selected_unit_idx];
+
+                // Sécurité : on vérifie que l'unité existe et est en vie
+                if (mon_unite == NULL || mon_unite->hp <= 0) {
+                    strcpy(status_msg, "Cette unite est morte ou n'existe pas.");
+                    continue;
+                }
+
+                if (mon_unite->pm <= 0) {
+                    strcpy(status_msg, "Cette unite n'a plus de PM. Choisissez-en une autre.");
+                    continue;
+                }
+
+                // 3. Calcul des futures coordonnées selon la touche pressée
+                int target_x = mon_unite->x;
+                int target_y = mon_unite->y;
+
+                if (choice == 'z') target_y -= 1;   //haut
+                else if (choice == 's') target_y += 1;  //Bas
+                else if (choice == 'q') target_x -= 1;   // Gauche
+                else if (choice == 'd') target_x += 1;  // Droite
+
+                // 4. Logique de dépacement et application de ma physique (can_move, resolve_combat, etc.)
+
+                // Vérification des coordonnées de la carte pour éviter des erreurs d'accès mémoire
+                if (target_x >= 0 && target_x < game.map.width && target_y >= 0 && target_y < game.map.height) {
+
+                    // On cible la tuile d'arrivée 
+                    Tile *target_tile = &game.map.tiles[target_y][target_x];
+
+                    // Appel de la physique du jeu
+                    if (can_move(mon_unite, target_tile, &game.player)) {
+
+                        move(log_y + 4, 0); // On place le curseur en bas pour les messages de combat
+                        int has_attacked = 0; // Permet de savoir si on a donné un coup pour détruire le PM
+                        bool action_logged = false;
+
+                        // A1. Combat contre une unité ennemie (Barbare)
+                        if (target_tile->unit && target_tile->unit->owner != mon_unite->owner) {
+                            action_logged = true;
+                            printw("\n Combat engagé contre le barbare ! \n");
+                            printw("-> Avant : Toi (%d PV) vs Barbare (%d PV)\n", mon_unite->hp, target_tile->unit->hp);
+                            resolve_combat(mon_unite, target_tile->unit);
+                            printw("-> Apres : Toi (%d PV) vs Barbare (%d PV)\n", mon_unite->hp, target_tile->unit->hp);
+
+                            // VERDICT DU COMBAT
+
+                            if(target_tile->unit->hp <= 0) {
+                                printw("VICTOIRE ! Le barbare est mort !\n");
+                                target_tile->unit = NULL; //On vide la place de parking du Barbare
+                            }
+                        }
+
+                        // A2. Combat contre une ville ennemie (Barbare)
+                        else if (target_tile->city && target_tile->city->owner != mon_unite->owner) {
+                            has_attacked = 1;
+                            action_logged = true;
+                            printw("\n Attaque de la ville ennemie ! \n");
+                            printw("-> Avant : Toi (%d PV) vs Ville (%d PV)\n", mon_unite->hp, target_tile->city->hp);
+                            resolve_combat_city(mon_unite, target_tile->city);
+                            printw("-> Apres : Toi (%d PV) vs Ville (%d PV)\n", mon_unite->hp, target_tile->city->hp);
+
+                            if (target_tile->city->hp <= 0) {
+                                printw("VICTOIRE ! La ville a été rasée !\n");
+                                free(target_tile->city);
+                                target_tile->city = NULL; //On vide la place de parking de la ville
+                            }
+                        }
+
+                        // A3. Pillage d'un camp barbare
+                        else if (target_tile->camp != NULL && target_tile->camp->destroyed == 0) {
+                            action_logged = true;
+                            printw("\n Vous avez détruit un campement barbare ! \n");
+                            target_tile->camp->destroyed = 1; // On détruit le camp(pas de combat)
+                        }
+
+                        // VERDICT DU MOUVEMENT APRÈS LES COMBATS
+
+
+
+
+                        if (mon_unite->hp <= 0) {
+                            action_logged = true;
+                            printw(" DEFAITE ! Votre unité a été massacre ... \n");
+                            game.map.tiles[mon_unite->y][mon_unite->x].unit = NULL; // on efface notre joueur
+                            selected_unit_idx = -1;
+                        }
+                        
+                        // B. S'il n'y a pas d'ennemi, on se déplace normalement
+                        else if(target_tile->unit == NULL && target_tile->city == NULL) {
+                            // 1. On "vide" l'ancienne tuile de la carte
+                            game.map.tiles[mon_unite->y][mon_unite->x].unit = NULL;
+                            // 2. On met à jour les coordonnées de l'unité
+                            mon_unite->x = target_x;
+                            mon_unite->y = target_y;
+                            mon_unite->pm--;
+
+                            // 3. On place le pointeur de l'unité sur la nouvelle tuile de la carte 
+                            target_tile->unit = mon_unite;
+
+                            strcpy(status_msg, "Deplacement reussi !");
+                        }
+
+                        // C. L'obstacle est toujours lè(l'ennemi a surcécu, le mouvement est annulé)
+                        else if (has_attacked) {
+                            mon_unite->pm--; // Même si on a attaqué, le mouvement est annulé mais on perd quand même le PM
+                            action_logged = true;
+                            printw("\n La cible a survécu à votre attaque, Déplacement annulé mais PM consommé ! \n");
+                        }
+
+                        // Pause uniquement s'il y a eu un combat
+                        if (action_logged) {
+                            attron(COLOR_PAIR(3));
+                            printw("\n[Appuyez sur une touche pour continuer...]");
+                            attroff(COLOR_PAIR(3));
+                            refresh(); getch();
+                        }
+
+                    } else {
+                        strcpy(status_msg, "Déplacement impossible (pas assez de PM ou terrain bloqué) !");
+                    }
+                } else {
+                    strcpy(status_msg, " Tu essaies de sortir de la carte.");
+                }
                 continue;
-        }
-
-        printf("\nUnites disponibles :\n");
-        for (int i = 0; i < game.player_unit_count; i++) {
-            Unit *u = game.player_units[i];
-            if (u && u->hp > 0) {
-                const char* nom_unite = unit_label(u->type);
-                printf("[%d] %s en (%d,%d) - %d/%d PM\n", i, nom_unite, u->x, u->y, u->pm, u->pm_max);
-            }
-        }
-        
-        printf("Quelle unite selectionner ? (0 a %d, ou x pour annuler) : ", game.player_unit_count - 1);
-        char idx_choice;
-        if (scanf(" %c", &idx_choice) != 1 || idx_choice == 'x') {
-            continue;
-        }
-
-        int unit_idx = idx_choice - '0';
-        if (unit_idx < 0 || unit_idx >= game.player_unit_count) {
-            printf("\n\033[1;31mIndex invalide.\033[0m\n");
-            continue;
-        }
-
-        Unit *mon_unite = game.player_units[unit_idx];
-
-        // Sécurité : on vérifie que l'unité existe et est en vie
-        if (mon_unite == NULL || mon_unite->hp <= 0) {
-            printf("\n\033[1;31mCette unite est morte ou n'existe pas.\033[0m\n");
-            continue;
-        }
-
-        if (mon_unite->pm <= 0) {
-            printf("\n\033[1;33mCette unite n'a plus de PM. Choisissez-en une autre.\033[0m\n");
-            continue;
-        }
-
-        // 2. Pause et lecture de la commande clavier
-        printf("Direction (z:Haut / q:Gauche / s:Bas / d:Droite) : ");
-        char action;
-        if (scanf(" %c", &action) != 1) continue;
-
-        // 3. Calcul des futures coordonnées selon la touche pressée
-        int target_x = mon_unite->x;
-        int target_y = mon_unite->y;
-
-        if (action == 'z') target_y -= 1;   //haut
-        else if (action == 's') target_y += 1;  //Bas
-        else if (action == 'q') target_x -= 1;   // Gauche
-        else if (action == 'd') target_x += 1;  // Droite
-        else {
-            printf("Touche invalide. Utilisez z/q/s/d pour déplacer ou x pour quitter.\n");
-            continue;
-        }
-
-        // 4. Logique de dépacement et application de ma physique (can_move, resolve_combat, etc.)
-
-        // Vérification des coordonnées de la carte pour éviter des erreurs d'accès mémoire
-        if (target_x >= 0 && target_x < game.map.width && target_y >= 0 && target_y < game.map.height) {
-
-            // On cible la tuile d'arrivée 
-            Tile *target_tile = &game.map.tiles[target_y][target_x];
-
-            // Appel de la physique du jeu
-            if (can_move(mon_unite, target_tile, &game.player)) {
-
-                int has_attacked = 0; // Permet de savoir si on a donné un coup pour détruire le PM
-
-
-                // A1. Combat contre une unité ennemie (Barbare)
-                if (target_tile->unit && target_tile->unit->owner != mon_unite->owner) {
-                    printf("\n Combat engagé contre le barbare ! \n");
-                    printf("-> Avant : Toi (%d PV) vs Barbare (%d PV)\n", mon_unite->hp, target_tile->unit->hp);
-                    resolve_combat(mon_unite, target_tile->unit);
-                    printf("-> Apres : Toi (%d PV) vs Barbare (%d PV)\n", mon_unite->hp, target_tile->unit->hp);
-
-                    // VERDICT DU COMBAT
-
-                    if(target_tile->unit->hp <= 0) {
-                        printf("VICTOIRE ! Le barbare est mort !\n");
-                        target_tile->unit = NULL; //On vide la place de parking du Barbare
-                    }
-                }
-
-                // A2. Combat contre une ville ennemie (Barbare)
-                else if (target_tile->city && target_tile->city->owner != mon_unite->owner) {
-                    has_attacked = 1;
-                    printf("\n Attaque de la ville ennemie ! \n");
-                    printf("-> Avant : Toi (%d PV) vs Ville (%d PV)\n", mon_unite->hp, target_tile->city->hp);
-                    resolve_combat_city(mon_unite, target_tile->city);
-                    printf("-> Apres : Toi (%d PV) vs Ville (%d PV)\n", mon_unite->hp, target_tile->city->hp);
-
-                    if (target_tile->city->hp <= 0) {
-                        printf("VICTOIRE ! La ville a été rasée !\n");
-                        free(target_tile->city);
-                        target_tile->city = NULL; //On vide la place de parking de la ville
-                    }
-                }
-
-                // A3. Pillage d'un camp barbare
-                else if (target_tile->camp != NULL && target_tile->camp->destroyed == 0) {
-                    printf("\n Vous avez détruit un campement barbare ! \n");
-                    target_tile->camp->destroyed = 1; // On détruit le camp(pas de combat)
-                }
-
-                // VERDICT DU MOUVEMENT APRÈS LES COMBATS
-
-
-
-
-                if (mon_unite->hp <= 0) {
-                    printf(" DEFAITE ! Votre unité a été massacre ... \n");
-                    game.map.tiles[mon_unite->y][mon_unite->x].unit = NULL; // on efface notre joueur
-                    game.game_over = 1;
-                }
-                
-                // B. S'il n'y a pas d'ennemi, on se déplace normalement
-                else if(target_tile->unit == NULL && target_tile->city == NULL) {
-                    // 1. On "vide" l'ancienne tuile de la carte
-                    game.map.tiles[mon_unite->y][mon_unite->x].unit = NULL;
-                    // 2. On met à jour les coordonnées de l'unité
-                    mon_unite->x = target_x;
-                    mon_unite->y = target_y;
-                    mon_unite->pm--;
-
-                    // 3. On place le pointeur de l'unité sur la nouvelle tuile de la carte 
-                    target_tile->unit = mon_unite;
-
-                    puts("\nDéplacement réussi !\n");
-                }
-
-                // C. L'obstacle est toujours lè(l'ennemi a surcécu, le mouvement est annulé)
-                else if (has_attacked) {
-                    mon_unite->pm--; // Même si on a attaqué, le mouvement est annulé mais on perd quand même le PM
-                    puts("\n La cible a survécu à votre attaque, Déplacement annulé mais PM consommé ! ");
-                }
-            } else {
-                puts("\nDéplacement impossible (pas assez de PM ou terrain bloque) !");
-            }
-        } else {
-            puts("\n Tu essaies de sortir de la carte ");
         }
     }
     
 
-    puts("\nFin de partie (prototype).\n");
+    printw("\nFin de partie (prototype).\n");
+    refresh();
+    getch();
+
     cleanup_game(&game);
+    endwin();
     return 0;
 }

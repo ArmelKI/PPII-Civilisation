@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <ncurses.h>
 
 Map* create_map_noise(int width, int height, int seed) {
     // paramètres modifiables en fonction de nos préférences
@@ -134,7 +135,7 @@ Map* create_map_noise(int width, int height, int seed) {
 
 Map* create_map(int width, int height,int seed) {
 
-	srand(seed); // On utilise la seed générée ou donnée par l'utilisateur 
+    srand(seed); // On utilise la seed générée ou donnée par l'utilisateur 
                  //pour générer la prochaine suite de nombres
 
 
@@ -175,35 +176,6 @@ Map* create_map(int width, int height,int seed) {
     return new_map;
 }
 
-void display_map(Map* map) {
-    if (map == NULL) return;
-
-    // On affiche en priorité les units -> ville -> terrain
-    for (int h = 0; h < map->height; h++) {
-        for (int w = 0; w < map->width; w++) {
-            // 1. Priorité à l'unité
-            if (map->tiles[h][w].unit != NULL) {
-                printf("U "); // U pour Unité
-            }
-            else if (map->tiles[h][w].city != NULL) {
-                printf("C "); // C pour Cité
-            }
-            else {
-                switch (map->tiles[h][w].type) {
-                    case TERRAIN_PLAINE:   printf(". "); break;
-                    case TERRAIN_EAU:      printf("~ "); break;
-                    case TERRAIN_MONTAGNE: printf("^ "); break;
-                    case TERRAIN_FORET:    printf("f "); break;
-                    case TERRAIN_DESERT:   printf("_ "); break;
-                    case TERRAIN_TOUNDRA:  printf("* "); break;
-                    default:               printf("? "); break;
-                }
-            }
-        }
-        printf("\n");
-    }
-}
-
 void display_map_color(Map* map) {
     if (map == NULL) return;
 
@@ -213,7 +185,7 @@ void display_map_color(Map* map) {
 
              // 1. Zone INCONNUE (Brouillard de guerre) -> Noir total
             if (tile->visibility == FOG_HIDDEN) {
-                printf("  "); // Deux espaces pour masquer totalement la case
+                printw("  "); // Deux espaces pour masquer totalement la case
                 continue;
             }
             // 2. Zone Visible -> On affiche les unités, villes et camps si présents
@@ -222,22 +194,22 @@ void display_map_color(Map* map) {
                 if (map->tiles[h][w].unit != NULL) {
                     switch (map->tiles[h][w].unit->type) {
                         case UNIT_BARBARIAN:
-                            printf("\033[1;31mB \033[0m"); // B pour les Barbares ennemis
+                            attron(COLOR_PAIR(20)); printw("B "); attroff(COLOR_PAIR(20)); // B pour les Barbares ennemis
                             break;
                         case UNIT_WARRIOR:
-                            printf("\033[1;36mW \033[0m"); // W pour le Guerrier du Joueur
+                            attron(COLOR_PAIR(10)); printw("W "); attroff(COLOR_PAIR(10)); // W pour le Guerrier du Joueur
                             break;
                         case UNIT_ARCHER:
-                            printf("\033[1;35mA \033[0m"); // A pour l'Archer
+                            attron(COLOR_PAIR(11)); printw("A "); attroff(COLOR_PAIR(11)); // A pour l'Archer
                             break;
                         case UNIT_CAVALIER:
-                            printf("\033[1;32mV \033[0m"); // V pour le Cavalier en vert
+                            attron(COLOR_PAIR(12)); printw("V "); attroff(COLOR_PAIR(12)); // V pour le Cavalier en vert
                             break;
                         case UNIT_SETTLER:
-                            printf("\033[1;33mS \033[0m"); // S Jaune brillant pour le Colon
+                            attron(COLOR_PAIR(13)); printw("S "); attroff(COLOR_PAIR(13)); // S Jaune brillant pour le Colon
                             break;
                         default:
-                            printf("\033[1;35mU \033[0m"); // U Violet (Unité générique) (au cas où)
+                            attron(COLOR_PAIR(14)); printw("U "); attroff(COLOR_PAIR(14)); // U Violet (Unité générique) (au cas où)
                             break;
                         // A MODIFIER SUREMENT APRES SI ON RAJOUTE LES ARCHERS, ETC
                     }
@@ -245,17 +217,17 @@ void display_map_color(Map* map) {
                 }
                 else if (map->tiles[h][w].city != NULL) {
                     if (map->tiles[h][w].city->has_wall) {
-                        printf("\033[1;37;40mC \033[0m"); // Blanc Brillant sur fond noir si muraille
+                        attron(COLOR_PAIR(31)); printw("C "); attroff(COLOR_PAIR(31)); // Blanc Brillant sur fond noir si muraille
                     } else {
-                        printf("\033[0;37mC \033[0m");    // Blanc simple
+                        attron(COLOR_PAIR(30)); printw("C "); attroff(COLOR_PAIR(30));    // Blanc simple
                     }
                     continue; // Si il y a une ville on affiche que ça et on passe à la case suivante
 
                 } else if (map->tiles[h][w].camp != NULL) {
                     if (map->tiles[h][w].camp->destroyed == 0) {
-                        printf("\033[1;31m▲ \033[0m"); // ▲ Rouge vif pour un camp actif
+                        attron(COLOR_PAIR(21)); printw("▲ "); attroff(COLOR_PAIR(21)); // ▲ Rouge vif pour un camp actif
                     } else {
-                        printf("\033[1;30m△ \033[0m"); // △ Gris foncé pour un camp détruit
+                        attron(COLOR_PAIR(22)); printw("△ "); attroff(COLOR_PAIR(22)); // △ Gris foncé pour un camp détruit
                     }
                     continue; // Si il y a un camp on affiche que ça et on passe à la case suivante
                 }
@@ -273,33 +245,34 @@ void display_map_color(Map* map) {
                     case TERRAIN_TOUNDRA:  t_char = '*'; break;
                     default:               t_char = '?'; break;
                 }
-                printf("\033[0;30m%c \033[0m", t_char); // Gris foncé
+                attron(COLOR_PAIR(40)); printw("%c ", t_char); attroff(COLOR_PAIR(40)); // Gris foncé
             }
             
             else {
                 // Zone visible et vide : On affiche le terrain avec ses vraies couleurs
                 switch (map->tiles[h][w].type) {
                     case TERRAIN_EAU:      
-                        printf("\033[0;34m~ \033[0m"); break; // Bleu
+                        attron(COLOR_PAIR(1)); printw("~ "); attroff(COLOR_PAIR(1)); break; // Bleu
                     case TERRAIN_PLAINE:   
-                        printf("\033[0;32m. \033[0m"); break; // Vert
+                        attron(COLOR_PAIR(2)); printw(". "); attroff(COLOR_PAIR(2)); break; // Vert
                     case TERRAIN_MONTAGNE: 
-                        printf("\033[0;33m^ \033[0m"); break; // Jaune/Marron
+                        attron(COLOR_PAIR(4)); printw("^ "); attroff(COLOR_PAIR(4)); break; // Jaune/Marron
                     case TERRAIN_FORET:    
-                        printf("\033[2;32mf \033[0m"); break; // Vert foncé
+                        attron(COLOR_PAIR(3)); printw("f "); attroff(COLOR_PAIR(3)); break; // Vert foncé
                     case TERRAIN_DESERT:   
-                        printf("\033[0;33;1m_ \033[0m"); break; // Jaune brillant
+                        attron(COLOR_PAIR(5)); printw("_ "); attroff(COLOR_PAIR(5)); break; // Jaune brillant
                     case TERRAIN_TOUNDRA:
-                        printf("* "); break; // Blanc
+                        attron(COLOR_PAIR(6)); printw("* "); attroff(COLOR_PAIR(6)); break; // Blanc
                     default:               
-                        printf("? "); break;
+                        printw("? "); break;
                 }
             }
         }
-        printf("\n");
+        printw("\n");
     }
 }
-// Fonction utilitaore pour révéler une zone(Distance de Tchebychev)
+
+// Fonction utilitaire pour révéler une zone (Distance de Tchebychev)
 void reveal_area(GameState *game, int center_x, int center_y, int radius) {
     for (int dy = -radius; dy <= radius; dy++) {
         for (int dx = -radius; dx <= radius; dx++) {
@@ -314,7 +287,18 @@ void reveal_area(GameState *game, int center_x, int center_y, int radius) {
 }
 
 // Fonction utilitaire à appeler à chaque tour/action pour mettre à jour la carte
-void update_fog_of_war(GameState *game) {
+void update_fog_of_war(GameState *game, int is_fow_enabled) {
+    
+    // Si l'option Brouillard est désactivée, on force toute la carte en VISIBLE
+    if (!is_fow_enabled) {
+        for (int y = 0; y < game->map.height; y++) {
+            for (int x = 0; x < game->map.width; x++) {
+                game->map.tiles[y][x].visibility = FOG_VISIBLE;
+            }
+        }
+        return;
+    }
+
     // 1. Assombrir ce qui n'est plus dans le champ de vision
     // Tout ce qui est visible devient simplement EXPLORED
     for (int y=0; y<game->map.height; y++) {
@@ -368,7 +352,9 @@ void set_unit_at(Map* map, int x, int y, Unit* unit) {
 
     // Hors des limites de la map -> erreur
     if (x < 0 || x >= map->width || y < 0 || y >= map->height) {
-        fprintf(stderr, "\033[1;31m[Erreur]\033[0m Position (%d, %d) hors limites.\n", x, y);
+        attron(COLOR_PAIR(5) | A_BOLD);
+        printw("[Erreur] Position (%d, %d) hors limites.\n", x, y);
+        attroff(COLOR_PAIR(5) | A_BOLD);
         return;
     }
 

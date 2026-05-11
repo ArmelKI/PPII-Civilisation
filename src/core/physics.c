@@ -31,7 +31,7 @@ int can_move(Unit *unit, Tile *destination, Player *player) {
     // Si la cible est de l'eau, on vérifie l'arbre technologique du joueur
     if (destination->type == TERRAIN_EAU) {
         // Vérification de la technologie bateau
-        if (player != NULL && !player->unlocked_techs[TECH_BATEAU]) {
+        if (player != NULL && player->unlocked_techs[TECH_BATEAU]) {
             cost = 2; // Le cout passe à 2PM au lieu de 999
         }
     }

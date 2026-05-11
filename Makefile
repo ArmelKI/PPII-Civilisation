@@ -15,8 +15,8 @@ BIN_DIR := bin
 # - les fichiers .d sont generes pour suivre les dependances
 CFLAGS := -std=c11 -Wall -Wextra -Wpedantic -Werror -MMD -MP
 CPPFLAGS := -I$(INCLUDE_DIR)
-LDFLAGS :=
-LDLIBS :=
+LDFLAGS =
+LDLIBS := -lncursesw
 
 # Flags SDL utilises seulement pour la cible sdl
 SDL_CFLAGS := $(shell pkg-config --cflags sdl2 2>/dev/null)
