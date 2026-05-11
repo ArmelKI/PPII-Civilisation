@@ -37,15 +37,79 @@ static void print_help(void)
     puts("  --barbarians N | -b N Nombre de campements barbares initiaux (par défaut: 3)");
 }
 
+// Gestion des options du menu principal
+static void run_options_menu(int max_y, int max_x, int *diff_level, bool *fow) {
+    (void)max_x;
+    int opt_highlight = 1;
+    while (true) {
+        clear();
+        attron(COLOR_PAIR(1)); box(stdscr, 0, 0); 
+        attroff(COLOR_PAIR(1));
+        attron(COLOR_PAIR(3) | A_BOLD); 
+        mvprintw(2, 4, "=== OPTIONS DE JEU ==="); 
+        attroff(COLOR_PAIR(3) | A_BOLD);
+        
+        const char* diff_str = (*diff_level == 0) ? "Facile" : (*diff_level == 1) ? "Normal" : "Difficile";
+        const char* fow_str = (*fow) ? "Active" : "Desactive";
+        
+        char opt1[64], opt2[64], opt3[64];
+        sprintf(opt1, "  [1] Difficulte         : < %s >  ", diff_str);
+        sprintf(opt2, "  [2] Brouillard de Guerre : < %s >  ", fow_str);
+        sprintf(opt3, "  [3] Retour au menu principal  ");
+        
+        const char *options[] = { opt1, opt2, opt3 };
+        
+        for(int i=0; i<3; i++) {
+            if(opt_highlight == i+1) {
+                attron(COLOR_PAIR(3) | A_REVERSE | A_BOLD);
+                mvprintw(6 + i*2, 4, "%s", options[i]);
+                attroff(COLOR_PAIR(3) | A_REVERSE | A_BOLD);
+            } else {
+                attron(COLOR_PAIR(30));
+                mvprintw(6 + i*2, 4, "%s", options[i]);
+                attroff(COLOR_PAIR(30));
+            }
+        }
+        
+        attron(COLOR_PAIR(40));
+        mvprintw(max_y - 2, 2, " Utilisez Z/S pour naviguer, Entree ou Clic pour modifier les options ");
+        attroff(COLOR_PAIR(40));
+        refresh();
+        
+        int c = getch();
+        if (c == KEY_UP || c == 'z' || c == 'Z') {
+            opt_highlight = (opt_highlight == 1) ? 3 : opt_highlight - 1;
+        } else if (c == KEY_DOWN || c == 's' || c == 'S') {
+            opt_highlight = (opt_highlight == 3) ? 1 : opt_highlight + 1;
+        } else if (c == 10) {
+            if (opt_highlight == 1) *diff_level = (*diff_level + 1) % 3;
+            else if (opt_highlight == 2) *fow = !(*fow);
+            else if (opt_highlight == 3) return;
+        } else if (c == KEY_MOUSE) {
+            MEVENT event;
+            if (getmouse(&event) == OK && (event.bstate & BUTTON1_CLICKED)) {
+                for(int i=0; i<3; i++) {
+                    if (event.y == 6 + i*2 && event.x >= 4 && event.x <= 4 + (int)strlen(options[i])) {
+                        if (i == 0) *diff_level = (*diff_level + 1) % 3;
+                        else if (i == 1) *fow = !(*fow);
+                        else if (i == 2) return;
+                    }
+                }
+            }
+        }
+    }
+}
+
 // --- MENU PRINCIPAL ---
-static int run_main_menu(void) {
+static int run_main_menu(int *diff_level, bool *fow) {
     int choice;
     int highlight = 1; 
-    int n_choices = 4;
+    int n_choices = 5;
     const char *choices[] = {
         "  [1] NOUVELLE PARTIE  ",
         "  [2] CHARGER PARTIE   ",
         "  [3] REGLES & COMMANDES",
+        "  [4] OPTIONS          ",
         "  [x] QUITTER LE JEU   "
     };
 
@@ -146,26 +210,38 @@ static int run_main_menu(void) {
                     clear();
                     attron(COLOR_PAIR(1)); box(stdscr, 0, 0); attroff(COLOR_PAIR(1));
                     attron(COLOR_PAIR(3) | A_BOLD);
-                    mvprintw(2, 4, "=== REGLES DU JEU ===");
+                    mvprintw(2, 4, "=== REGLES DE L'EMPIRE ===");
                     attroff(COLOR_PAIR(3) | A_BOLD);
                     attron(COLOR_PAIR(30));
-                    mvprintw(4, 4, "Le but est de faire prosperer votre ville et de survivre.");
-                    mvprintw(5, 4, "Des barbares apparaitront et tenteront de vous detruire.");
+                    mvprintw(4, 4, "- BUT : Developper votre civilisation et survivre aux Barbares.");
+                    mvprintw(5, 4, "- NOURRITURE : Fait croitre la population. Attention a la famine !");
+                    mvprintw(6, 4, "- PRODUCTION : Sert a construire des batiments et recruter des unites.");
+                    mvprintw(7, 4, "- SCIENCE : Debloque de nouvelles technologies cruciales.");
+                    mvprintw(8, 4, "- COMBAT : La force depend de l'unite. Les forets/montagnes ralentissent.");
                     attroff(COLOR_PAIR(30));
+                    
                     attron(COLOR_PAIR(4) | A_BOLD);
-                    mvprintw(7, 4, "=== COMMANDES ===");
+                    mvprintw(10, 4, "=== COMMANDES PRINCIPALES ===");
                     attroff(COLOR_PAIR(4) | A_BOLD);
                     attron(COLOR_PAIR(30));
-                    mvprintw(9, 4, "Clic    : Selectionner une unite ou une ville sur la carte");
-                    mvprintw(10, 4, "z/q/s/d : Deplacer votre unite selectionnee (Haut/Gauche/Bas/Droite)");
-                    mvprintw(11, 4, "n       : Finir votre tour (recuperer les PM)");
-                    mvprintw(12, 4, "x       : Quitter la partie en cours");
-                    mvprintw(15, 4, "Appuyez sur une touche pour revenir...");
+                    mvprintw(12, 4, "[Clic]    : Selectionner une unite ou une ville sur la carte");
+                    mvprintw(13, 4, "[z/q/s/d] : Deplacer votre unite selectionnee");
+                    mvprintw(14, 4, "[f]       : Fonder une ville (necessite un Colon)");
+                    mvprintw(15, 4, "[v] / [2] : Gerer la ville selectionnee / Recruter");
+                    mvprintw(16, 4, "[t]       : Ouvrir l'arbre des Technologies");
+                    mvprintw(17, 4, "[n]       : Finir votre tour (recuperer les PM)");
+                    mvprintw(18, 4, "[Maj+S]   : Sauvegarder la partie en cours");
+                    mvprintw(19, 4, "[x]       : Quitter le jeu");
+                    mvprintw(22, 4, "Appuyez sur une touche pour revenir...");
                     attroff(COLOR_PAIR(30));
                     refresh();
                     getch();
                 }
-                if (highlight == 4) return 0;
+                if (highlight == 4) {
+                    run_options_menu(my, mx, diff_level, fow);
+                    break;
+                }
+                if (highlight == 5) return 0;
                 break;
             case KEY_MOUSE: {
                 MEVENT event;
@@ -186,27 +262,39 @@ static int run_main_menu(void) {
                                     clear();
                                     attron(COLOR_PAIR(1)); box(stdscr, 0, 0); attroff(COLOR_PAIR(1));
                                     attron(COLOR_PAIR(3) | A_BOLD);
-                                    mvprintw(2, 4, "=== REGLES DU JEU ===");
+                                    mvprintw(2, 4, "=== REGLES DE L'EMPIRE ===");
                                     attroff(COLOR_PAIR(3) | A_BOLD);
                                     attron(COLOR_PAIR(30));
-                                    mvprintw(4, 4, "Le but est de faire prosperer votre ville et de survivre.");
-                                    mvprintw(5, 4, "Des barbares apparaitront et tenteront de vous detruire.");
+                                    mvprintw(4, 4, "- BUT : Developper votre civilisation et survivre aux Barbares.");
+                                    mvprintw(5, 4, "- NOURRITURE : Fait croitre la population. Attention a la famine !");
+                                    mvprintw(6, 4, "- PRODUCTION : Sert a construire des batiments et recruter des unites.");
+                                    mvprintw(7, 4, "- SCIENCE : Debloque de nouvelles technologies cruciales.");
+                                    mvprintw(8, 4, "- COMBAT : La force depend de l'unite. Les forets/montagnes ralentissent.");
                                     attroff(COLOR_PAIR(30));
+                                    
                                     attron(COLOR_PAIR(4) | A_BOLD);
-                                    mvprintw(7, 4, "=== COMMANDES ===");
+                                    mvprintw(10, 4, "=== COMMANDES PRINCIPALES ===");
                                     attroff(COLOR_PAIR(4) | A_BOLD);
                                     attron(COLOR_PAIR(30));
-                                    mvprintw(9, 4, "Clic    : Selectionner une unite ou une ville sur la carte");
-                                    mvprintw(10, 4, "z/q/s/d : Deplacer votre unite selectionnee (Haut/Gauche/Bas/Droite)");
-                                    mvprintw(11, 4, "n       : Finir votre tour (recuperer les PM)");
-                                    mvprintw(12, 4, "x       : Quitter la partie en cours");
-                                    mvprintw(15, 4, "Appuyez sur une touche pour revenir...");
+                                    mvprintw(12, 4, "[Clic]    : Selectionner une unite ou une ville sur la carte");
+                                    mvprintw(13, 4, "[z/q/s/d] : Deplacer votre unite selectionnee");
+                                    mvprintw(14, 4, "[f]       : Fonder une ville (necessite un Colon)");
+                                    mvprintw(15, 4, "[v] / [2] : Gerer la ville selectionnee / Recruter");
+                                    mvprintw(16, 4, "[t]       : Ouvrir l'arbre des Technologies");
+                                    mvprintw(17, 4, "[n]       : Finir votre tour (recuperer les PM)");
+                                    mvprintw(18, 4, "[Maj+S]   : Sauvegarder la partie en cours");
+                                    mvprintw(19, 4, "[x]       : Quitter le jeu");
+                                    mvprintw(22, 4, "Appuyez sur une touche pour revenir...");
                                     attroff(COLOR_PAIR(30));
                                     refresh();
                                     getch();
                                     break; // On casse la boucle for pour redessiner le menu principal
                                 }
-                                if (highlight == 4) return 0;
+                                if (highlight == 4) {
+                                    run_options_menu(my, mx, diff_level, fow);
+                                    break;
+                                }
+                                if (highlight == 5) return 0;
                             }
                         }
                     }
@@ -266,6 +354,9 @@ int main(int argc, char **argv) {
     float growth_multiplier_override = 1.0f;
     float barbarian_spawn_multiplier_override = 1.0f;
     bool famine_override = true;
+
+    int diff_level_ui = 1;
+    bool enable_fow_ui = true;
 
     // Parsing initial
 
@@ -387,6 +478,17 @@ int main(int argc, char **argv) {
     // -- BROUILLARD --
     init_pair(40, 236, COLOR_BLACK); // Zone Explorée : Gris extrêmement sombre
 
+    // MENU PRINCIPAL
+    int state = run_main_menu(&diff_level_ui, &enable_fow_ui);
+    if (state == 0) {
+        endwin();
+        return 0;
+    }
+
+    if (diff_level_ui == 0) difficulty_from_string("facile", &difficulty);
+    else if (diff_level_ui == 1) difficulty_from_string("normal", &difficulty);
+    else difficulty_from_string("difficile", &difficulty);
+    
     // Initialisation de la configuration de jeu (difficulty presets)
     GameConfig cfg;
     game_config_init_default(&cfg);
@@ -405,13 +507,6 @@ int main(int argc, char **argv) {
     }
     game_config_set_active(&cfg);
 
-    // MENU PRINCIPAL
-    int state = run_main_menu();
-    if (state == 0) {
-        endwin();
-        return 0;
-    }
-    
 
     // DEBUT DU JEU
 
@@ -431,7 +526,7 @@ int main(int argc, char **argv) {
 
     }
 
-    printw("[CIV] Boucle principale lancee (prototype).\n");
+    printw("[CIV] Boucle principale lancée (prototype).\n");
     printw("\n>> Appuyez sur une touche pour commencer la partie...\n");
     refresh();
     getch();
@@ -448,7 +543,7 @@ int main(int argc, char **argv) {
         getmaxyx(stdscr, max_y, max_x);
 
         // On calcule ce que le joueur a le droit de voir(Brouillard de Guerre)
-        update_fog_of_war(&game);
+        update_fog_of_war(&game, enable_fow_ui);
         
         move(0, 0);
         display_map_color(&game.map);
