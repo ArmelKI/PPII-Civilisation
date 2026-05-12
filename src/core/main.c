@@ -39,7 +39,7 @@ static void print_help(void)
 
 // Gestion des options du menu principal
 static void run_options_menu(int max_y, int max_x, int *diff_level, bool *fow) {
-    (void)max_x;
+    
     int opt_highlight = 1;
     while (true) {
         clear();
