@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "core/types.h"
-#include "core/game.h"
-#include "core/config.h"
+#include <ncurses.h>
+#include "../../include/core/types.h"
+#include "../../include/core/game.h"
+#include "../../include/core/config.h"
 
 // mise en place du rendement en fonction du type de case
 TileYield get_terrain_yield(TerrainType type) {
@@ -252,19 +253,19 @@ void process_player_gold(Player *player, Map *map) {
     player -> gold -= total_maintenance;
 
     if(player -> gold < 0){
-        printf("ALERTE BANQUEROUTE ! Découvert de %d Or.\n", player->gold);
+        printw("ALERTE BANQUEROUTE ! Decouvert de %d Or.\n", player->gold);
 
         if (unit_count > 0) {
             int random_index = rand() % unit_count;
             Unit *martyr_unit = player_units[random_index];
 
-            printf("Une unité de type %d a été licenciée pour des raisons économiques en [%d,%d]...\n",martyr_unit -> type, martyr_unit -> x, martyr_unit-> y );
+            printw("Une unite de type %d a ete licenciee pour des raisons economiques en [%d,%d]...\n",martyr_unit -> type, martyr_unit -> x, martyr_unit-> y );
 
             map->tiles[martyr_unit->y][martyr_unit->x].unit = NULL;
 
         } else {
 
-            printf("Plus aucune unité à dissoudre, on constate une GRÈVE OUVRIÈRE, nos capacités ouvrières son deux fois moins importantes...\n");
+            printw("Plus aucune unite a dissoudre, on constate une GREVE OUVRIERE, nos capacites ouvrieres son deux fois moins importantes...\n");
 
             for (int y=0; y < map -> height; y++){
                 for (int x=0; x < map -> width; x++){
@@ -282,12 +283,12 @@ void process_player_gold(Player *player, Map *map) {
 int found_city(Unit *settler, Map *map, int *city_id_counter, City **player_cities, int *city_count){
     if(!settler||!map|| !city_id_counter) return 0;
     if(settler->type != UNIT_SETTLER) {
-        printf("Seul un Colon peut fonder une ville !\n");
+        printw("Seul un Colon peut fonder une ville !\n");
         return 0;
     }
 
     if (*city_count >= MAX_CITIES) {
-        printf("\033[1;31mVous avez atteint la limite d'empire (%d villes max) !\033[0m\n", MAX_CITIES);
+        printw("Vous avez atteint la limite d'empire (%d villes max) !\n", MAX_CITIES);
         return 0;
     }
 
@@ -296,11 +297,11 @@ int found_city(Unit *settler, Map *map, int *city_id_counter, City **player_citi
     Tile *target_tile = &(map->tiles[sy][sx]);
 
     if(target_tile->type == TERRAIN_EAU) {
-        printf("Impossible de fonder une ville sur l'eau.\n");
+        printw("Impossible de fonder une ville sur l'eau.\n");
         return 0;
     }
     if(target_tile->city != NULL) {
-        printf("Une ville existe déjà.\n");
+        printw("Une ville existe deja.\n");
         return 0;
     }
 
@@ -311,7 +312,7 @@ int found_city(Unit *settler, Map *map, int *city_id_counter, City **player_citi
             
             if(cx >= 0 && cx < map->width && cy >= 0 && cy < map->height) {
                 if (map->tiles[cy][cx].city != NULL) {
-                    printf("Il exite déjà une ville à moins de 4 cases.\n");
+                    printw("Il existe deja une ville a moins de 4 cases.\n");
                     return 0; 
                 }
             }
@@ -323,7 +324,7 @@ int found_city(Unit *settler, Map *map, int *city_id_counter, City **player_citi
 
     City *new_city = malloc(sizeof(City));
     if (!new_city) {
-        printf("Erreur mémoire lors de la création de la ville.\n");
+        printw("Erreur memoire lors de la creation de la ville.\n");
         return 0;
     }
 
@@ -353,7 +354,7 @@ int found_city(Unit *settler, Map *map, int *city_id_counter, City **player_citi
     target_tile->unit = NULL;
     free(settler);
 
-    printf("Une nouvelle ville vient d'être fondée en [%d, %d] !\n", sx, sy);
+    printw("Une nouvelle ville vient d'etre fondee en [%d, %d] !\n", sx, sy);
     return 1;
 }
 
@@ -406,15 +407,15 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
 
         switch (city->current_project) {
             
-            case PROJECT_GRANARY:  city->has_granary = 1;  printf("Grenier construit !\n"); break;
-            case PROJECT_WORKSHOP: city->has_workshop = 1; printf("Atelier construit !\n"); break;
-            case PROJECT_LIBRARY:  city->has_library = 1;  printf("Bibliothèque construite !\n"); break;
-            case PROJECT_MARKET:   city->has_market = 1;   printf("Marché construit !\n"); break;
-            case PROJECT_BARRACKS: city->has_barrack = 1; printf("Caserne construite !\n"); break;
+            case PROJECT_GRANARY:  city->has_granary = 1;  printw("Grenier construit !\n"); break;
+            case PROJECT_WORKSHOP: city->has_workshop = 1; printw("Atelier construit !\n"); break;
+            case PROJECT_LIBRARY:  city->has_library = 1;  printw("Bibliotheque construite !\n"); break;
+            case PROJECT_MARKET:   city->has_market = 1;   printw("Marche construit !\n"); break;
+            case PROJECT_BARRACKS: city->has_barrack = 1; printw("Caserne construite !\n"); break;
             case PROJECT_WALL: {
                 city->has_wall = 1;
                 city->hp *= 2; 
-                printf("Muraille construite !\n");
+                printw("Muraille construite !\n");
                 break;
             }
 
@@ -425,7 +426,7 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
             case PROJECT_SETTLER: {
                 // Sécurité : On vérifie qu'on n'a pas atteint la limite d'unités actives (8 max)
                 if (*player_unit_count >= 8) {
-                    printf("\033[1;31mLimite d'unites actives atteinte (8 max), production en attente.\033[0m\n");
+                    printw("Limite d'unites actives atteinte (8 max), production en attente.\n");
                     // On rembourse la production pour retenter au tour suivant
                     city->production_stored += cost;
                     return; // On sort sans réinitialiser le projet
@@ -478,7 +479,7 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
                     player_units[*player_unit_count] = new_unit;
                     (*player_unit_count)++;
 
-                    printf("Une nouvelle unite a été formee !\n");
+                    printw("Une nouvelle unite a ete formee !\n");
                 }
                 break;
             }
@@ -496,119 +497,164 @@ void control_city_project(City *city) {
     const GameConfig *config = game_config_get_active();
     float growth_multiplier = config ? config->growth_threshold_multiplier : 1.0f;
 
-    // Calcul du seuil de croissance pour l'affichage (identique à process_city_growth)
+    // Calcul du seuil de croissance pour l'affichage
     int seuil_croissance = 20 + (10 * city->population);
     if (city->has_granary) {
         seuil_croissance = (seuil_croissance * 2) / 3;
     }
     seuil_croissance = (int)(seuil_croissance * growth_multiplier + 0.5f);
-    if (seuil_croissance < 1) {
-        seuil_croissance = 1;
-    }
+    if (seuil_croissance < 1) seuil_croissance = 1;
 
-    printf("\n╔════════════════════════════════════════════════════════╗\n");
-    printf("║ GESTION DE LA VILLE - Position [%d, %d]\n", city->x, city->y);
-    printf("╠════════════════════════════════════════════════════════╣\n");
-    printf("║ Population : %d\t PV : %d\n", city->population, city->hp);
+    // Nettoyage de l'écran pour afficher le menu proprement
+    clear();
     
-    // NOUVEAU : Affichage dynamique de l'état de la nourriture (Famine ou Croissance)
+    // Position de départ pour décoller un peu le menu des bords
+    int start_y = 2;
+    int start_x = 4;
+    int line = start_y;
+
+    // --- EN-TÊTE ---
+    move(line++, start_x);
+    attron(A_BOLD | A_UNDERLINE);
+    printw("GESTION DE LA VILLE - Position [%d, %d]", city->x, city->y);
+    attroff(A_BOLD | A_UNDERLINE);
+    line++; // Saut de ligne
+
+    // --- STATISTIQUES ---
+    move(line++, start_x);
+    printw("Population : %d    |    PV : %d", city->population, city->hp);
+    
+    move(line++, start_x);
     if (city->food_stored < 0) {
-        printf("║ \033[1;31m[!] ALERTE FAMINE : Deficit de %d Nourriture !\033[0m\n", city->food_stored);
-        printf("║ \033[1;31mLa population va baisser si le probleme n'est pas regle.\033[0m\n");
+        attron(COLOR_PAIR(20) | A_BOLD); // Pair 20 = Rouge
+        printw("[!] ALERTE FAMINE : Deficit de %d Nourriture ! La population baisse.", city->food_stored);
+        attroff(COLOR_PAIR(20) | A_BOLD);
     } else {
-        printf("║ Nourriture : %d / %d avant croissance\n", city->food_stored, seuil_croissance);
+        printw("Nourriture : %d / %d avant croissance", city->food_stored, seuil_croissance);
     }
     
-    printf("║ Production stockee : %d\n", city->production_stored);
-    
-    // Affichage dynamique du projet en cours
-    printf("║ Projet actuel : ");
-    switch(city->current_project) {
-        case PROJECT_NONE: printf("Aucun\n"); break;
-        case PROJECT_SETTLER: printf("Colon\n"); break;
-        case PROJECT_WARRIOR: printf("Guerrier\n"); break;
-        case PROJECT_ARCHER: printf("Archer\n"); break;
-        case PROJECT_CAVALIER: printf("Cavalier\n"); break;
-        case PROJECT_GRANARY: printf("Grenier\n"); break;
-        case PROJECT_WORKSHOP: printf("Atelier\n"); break;
-        case PROJECT_LIBRARY: printf("Bibliotheque\n"); break;
-        case PROJECT_MARKET: printf("Marche\n"); break;
-        case PROJECT_BARRACKS: printf("Caserne\n"); break;
-        case PROJECT_WALL: printf("Muraille\n"); break;
-        default: printf("Inconnu\n"); break;
-    }
+    move(line++, start_x);
+    printw("Production stockee : %d", city->production_stored);
+    line++; 
 
-    printf("╠════════════════════════════════════════════════════════╣\n");
-    printf("║ Batiments construits : ");
+    // --- INFRASTRUCTURES ---
+    move(line++, start_x);
+    attron(A_BOLD); printw("-- INFRASTRUCTURES --"); attroff(A_BOLD);
+    
+    move(line++, start_x);
+    printw("Batiments construits : ");
     int has_buildings = 0;
-    if (city->has_granary) { printf("Grenier "); has_buildings = 1; }
-    if (city->has_workshop) { printf("Atelier "); has_buildings = 1; }
-    if (city->has_library) { printf("Bibliotheque "); has_buildings = 1; }
-    if (city->has_market) { printf("Marche "); has_buildings = 1; }
-    if (city->has_barrack) { printf("Caserne "); has_buildings = 1; }
-    if (city->has_wall) { printf("Muraille "); has_buildings = 1; }
-    if (!has_buildings) printf("Aucun");
-    printf("\n╚════════════════════════════════════════════════════════╝\n\n");
+    if (city->has_granary)  { printw("Grenier  "); has_buildings = 1; }
+    if (city->has_workshop) { printw("Atelier  "); has_buildings = 1; }
+    if (city->has_library)  { printw("Bibliotheque  "); has_buildings = 1; }
+    if (city->has_market)   { printw("Marche  "); has_buildings = 1; }
+    if (city->has_barrack)  { printw("Caserne  "); has_buildings = 1; }
+    if (city->has_wall)     { printw("Muraille  "); has_buildings = 1; }
+    if (!has_buildings) printw("Aucun");
+    line++;
 
-    printf("Que voulez-vous produire ?\n");
-    printf("0. Rien (Garder le projet actuel ou Annuler)\n");
-    printf("1. Colon (50 Prod)       - Fonde une nouvelle ville\n");
+    // --- PROJET ACTUEL ---
+    move(line++, start_x);
+    attron(A_BOLD); printw("-- PROJET ACTUEL --"); attroff(A_BOLD);
     
+    move(line++, start_x);
+    switch(city->current_project) {
+        case PROJECT_NONE: printw("Aucun projet en cours."); break;
+        case PROJECT_SETTLER: printw("Production : Colon"); break;
+        case PROJECT_WARRIOR: printw("Production : Guerrier"); break;
+        case PROJECT_ARCHER: printw("Production : Archer"); break;
+        case PROJECT_CAVALIER: printw("Production : Cavalier"); break;
+        case PROJECT_GRANARY: printw("Construction : Grenier"); break;
+        case PROJECT_WORKSHOP: printw("Construction : Atelier"); break;
+        case PROJECT_LIBRARY: printw("Construction : Bibliotheque"); break;
+        case PROJECT_MARKET: printw("Construction : Marche"); break;
+        case PROJECT_BARRACKS: printw("Construction : Caserne"); break;
+        case PROJECT_WALL: printw("Construction : Muraille"); break;
+        default: printw("Inconnu."); break;
+    }
+    line++;
+
+    // --- CHOIX DE PRODUCTION ---
+    move(line++, start_x);
+    attron(A_BOLD); printw("-- NOUVEAU PROJET --"); attroff(A_BOLD);
+    
+    move(line++, start_x); printw("Que voulez-vous produire ?");
+    move(line++, start_x); printw("[0] Rien (Garder le projet actuel ou Annuler)");
+    move(line++, start_x); printw("[1] Colon (50 Prod)       - Fonde une nouvelle ville");
+    
+    move(line++, start_x);
     if (city->has_barrack) {
-        printf("2. Guerrier (40 Prod)    - Unite militaire (Force: 3, PM: 3)\n");
+        printw("[2] Guerrier (40 Prod)    - Unite militaire (Force: 3, PM: 3)");
     } else {
-        printf("2. \033[1;30m[BLOQUÉ] Guerrier     - Necessite une Caserne\033[0m\n");
+        attron(A_DIM); printw("[2] [BLOQUE] Guerrier     - Necessite une Caserne"); attroff(A_DIM);
     }
 
+    if (!city->has_granary)  { move(line++, start_x); printw("[3] Grenier (30 Prod)     - Bonus : +3 Nourriture/tour"); }
+    if (!city->has_workshop) { move(line++, start_x); printw("[4] Atelier (40 Prod)     - Bonus : +3 Production/tour"); }
+    if (!city->has_library)  { move(line++, start_x); printw("[5] Bibliotheque (50 Prod)- Bonus : +4 Science/tour"); }
+    if (!city->has_market)   { move(line++, start_x); printw("[6] Marche (40 Prod)      - Bonus : +3 Or/tour"); }
+    if (!city->has_barrack)  { move(line++, start_x); printw("[7] Caserne (60 Prod)     - Bonus : Permet de recruter des Guerriers"); }
+    if (!city->has_wall)     { move(line++, start_x); printw("[8] Muraille (80 Prod)    - Bonus : Double les PV max de la ville"); }
+
+    move(line++, start_x);
     if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_CHASSE]) {
-        printf("9. Archer (55 Prod)      - Unite avancee (Force: 4, PM: 2)\n");
+        printw("[9] Archer (55 Prod)      - Unite avancee (Force: 4, PM: 2)");
     } else {
-        printf("9. \033[1;30m[BLOQUÉ] Archer       - Necessite Caserne + Chasse\033[0m\n");
-    }
-    
-    if (!city->has_granary)  printf("3. Grenier (30 Prod)      - Bonus : +3 Nourriture/tour\n");
-    if (!city->has_workshop) printf("4. Atelier (40 Prod)      - Bonus : +3 Production/tour\n");
-    if (!city->has_library)  printf("5. Bibliotheque (50 Prod) - Bonus : +4 Science/tour\n");
-    if (!city->has_market)   printf("6. Marche (40 Prod)       - Bonus : +3 Or/tour\n");
-    if (!city->has_barrack)  printf("7. Caserne (60 Prod)      - Bonus : Permet de recruter des Guerriers\n");
-    if (!city->has_wall)     printf("8. Muraille (80 Prod)     - Bonus : Double les PV max de la ville\n");
-
-    printf("\nVotre choix : ");
-    
-    int choix;
-    if (scanf("%d", &choix) != 1) {
-        printf("\033[1;31mEntree invalide.\033[0m\n");
-        return;
+        attron(A_DIM); printw("[9] [BLOQUE] Archer       - Necessite Caserne + Chasse"); attroff(A_DIM);
     }
 
-    // On applique le choix (réinitialisation de la prod si on change de projet)
-    switch (choix) {
-        case 0: break;
-        case 1: city->current_project = PROJECT_SETTLER; city->production_stored = 0; printf("\033[1;32mProjet defini : Colon\033[0m\n"); break;
-        case 2: 
-            if (city->has_barrack) {
-                city->current_project = PROJECT_WARRIOR; 
-                city->production_stored = 0;
-                printf("\033[1;32mProjet defini : Guerrier\033[0m\n");
-            } else {
-                printf("\033[1;31mImpossible : Vous n'avez pas de caserne !\033[0m\n");
-            }
-            break;
-        case 3: city->current_project = PROJECT_GRANARY; city->production_stored = 0; printf("\033[1;32mProjet defini : Grenier\033[0m\n"); break;
-        case 4: city->current_project = PROJECT_WORKSHOP; city->production_stored = 0; printf("\033[1;32mProjet defini : Atelier\033[0m\n"); break;
-        case 5: city->current_project = PROJECT_LIBRARY; city->production_stored = 0; printf("\033[1;32mProjet defini : Bibliotheque\033[0m\n"); break;
-        case 6: city->current_project = PROJECT_MARKET; city->production_stored = 0; printf("\033[1;32mProjet defini : Marche\033[0m\n"); break;
-        case 7: city->current_project = PROJECT_BARRACKS; city->production_stored = 0; printf("\033[1;32mProjet defini : Caserne\033[0m\n"); break;
-        case 8: city->current_project = PROJECT_WALL; city->production_stored = 0; printf("\033[1;32mProjet defini : Muraille\033[0m\n"); break;
-        case 9:
-            if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_CHASSE]) {
-                city->current_project = PROJECT_ARCHER;
-                city->production_stored = 0;
-                printf("\033[1;32mProjet defini : Archer\033[0m\n");
-            } else {
-                printf("\033[1;31mImpossible : Archer requis Caserne + Technologie Chasse !\033[0m\n");
-            }
-            break;
-        default: printf("\033[1;31mChoix inconnu.\033[0m\n"); break;
+    line++;
+    move(line++, start_x);
+    printw("Votre choix : ");
+    refresh();
+    
+    // Récupération du choix
+    int ch = getch();
+    int choix = ch - '0';
+
+    move(line++, start_x);
+
+    if (choix < 0 || choix > 9) {
+        printw("Entree invalide ou annulee.");
+    } else {
+        switch (choix) {
+            case 0: 
+                printw("Action annulee. Le projet actuel est maintenu.");
+                break;
+            case 1: 
+                city->current_project = PROJECT_SETTLER; city->production_stored = 0; 
+                printw("Projet defini : Colon"); 
+                break;
+            case 2: 
+                if (city->has_barrack) {
+                    city->current_project = PROJECT_WARRIOR; city->production_stored = 0;
+                    printw("Projet defini : Guerrier");
+                } else {
+                    printw("Impossible : Vous n'avez pas de caserne !");
+                }
+                break;
+            case 3: city->current_project = PROJECT_GRANARY; city->production_stored = 0; printw("Projet defini : Grenier"); break;
+            case 4: city->current_project = PROJECT_WORKSHOP; city->production_stored = 0; printw("Projet defini : Atelier"); break;
+            case 5: city->current_project = PROJECT_LIBRARY; city->production_stored = 0; printw("Projet defini : Bibliotheque"); break;
+            case 6: city->current_project = PROJECT_MARKET; city->production_stored = 0; printw("Projet defini : Marche"); break;
+            case 7: city->current_project = PROJECT_BARRACKS; city->production_stored = 0; printw("Projet defini : Caserne"); break;
+            case 8: city->current_project = PROJECT_WALL; city->production_stored = 0; printw("Projet defini : Muraille"); break;
+            case 9:
+                if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_CHASSE]) {
+                    city->current_project = PROJECT_ARCHER; city->production_stored = 0;
+                    printw("Projet defini : Archer");
+                } else {
+                    printw("Impossible : Archer requis Caserne + Technologie Chasse !");
+                }
+                break;
+        }
     }
+
+    line++;
+    move(line++, start_x);
+    attron(COLOR_PAIR(3) | A_BOLD); // Couleur jaune pour mettre en évidence la sortie
+    printw("[Appuyez sur une touche pour retourner au jeu...]");
+    attroff(COLOR_PAIR(3) | A_BOLD);
+    refresh();
+    getch();
 }
