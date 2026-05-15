@@ -28,6 +28,8 @@ typedef struct GameState {
     int barbarian_count;
 
     int turn;
+    int max_turns;
+    int consecutive_turns_10_cities;
     int game_over;
     int seed;
 } GameState;
@@ -39,6 +41,8 @@ void init_game(GameState *game, int width, int height, int seed);
 
 // Logique de tour
 void next_turn(GameState *game);
+void check_victory_and_defeat(GameState *game);
+int calculate_final_score(GameState *game);
 
 // Gestion des unités
 void spawn_random_barbarian(GameState *game);
