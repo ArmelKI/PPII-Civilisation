@@ -602,7 +602,7 @@ int main(int argc, char **argv) {
         mvprintw(log_y - 2, ui_x + 2, "Seed : %d", seed);
         attroff(COLOR_PAIR(40));
 
-        mvprintw(log_y, 0, "COMMANDES : [n] Finir Tour | [t] Technologies | [S] Sauvegarder (Maj+s) | [x] Quitter");
+        mvprintw(log_y, 0, "COMMANDES : [n] Finir Tour | [u] Choisir une unité | [c] Gerer Ville | [t] Technologies | [S] Sauvegarder (Maj+s) | [x] Quitter");
         attron(COLOR_PAIR(3) | A_BOLD);
         mvprintw(log_y + 2, 0, ">> %s", status_msg);
         attroff(COLOR_PAIR(3) | A_BOLD);
@@ -613,6 +613,66 @@ int main(int argc, char **argv) {
         strcpy(status_msg, ""); // On vide le message pour le prochain tour
 
         switch (choice) {
+
+            case 'u':
+            case 'U': {
+
+                // Parcourt des unités pour trouver la suivante 
+                int start_idx = (selected_unit_idx == -1) ? 0 : selected_unit_idx + 1;
+                int found = -1;
+
+                for (int i = 0; i < game.player_unit_count; i++) {
+                    // On utilise le modulo pour boucler à partir du début si on atteint la fin de la liste
+                    int idx = (start_idx + i) % game.player_unit_count;
+                    if (game.player_units[idx] && game.player_units[idx]->hp > 0) {
+                        selected_unit_idx = idx;
+                        selected_city_idx = -1; // Désélectionne la ville
+                        strcpy(status_msg, "Unite selectionnee(Clavier) !");
+                        found = 1;
+                        break;  
+                    }
+                }
+                if (!found) {
+                    strcpy(status_msg, "Aucune unite active disponible !");
+                }
+                break;
+            }
+            case 'c':
+            case 'C': {
+
+                
+                // Parcourt des villes pour trouver la suivante
+                int start_idx = (selected_city_idx == -1) ? 0 : selected_city_idx + 1;
+                int found = 0;
+
+                for (int i = 0; i < game.city_count; i++) {
+                    int idx = (start_idx + i) % game.city_count;
+                    if (game.cities[idx] && game.cities[idx]->hp > 0) {
+                        selected_city_idx = idx;
+                        selected_unit_idx = -1; // Désélectionne l'unité
+                        strcpy(status_msg, "Ville selectionnee(Clavier) !");
+                        found = 1;
+                        break;  
+                    }
+                }
+                if (!found) {
+                    strcpy(status_msg, "Aucune ville disponible !");
+                }
+                break;
+            }
+
+            case 'b': // 'b' pour Back / Annuler
+            case 'B':
+            case 27:  // Code ASCII de la touche Echap (Escape)
+                if (selected_unit_idx != -1 || selected_city_idx != -1) {
+                    selected_unit_idx = -1;
+                    selected_city_idx = -1;
+                    strcpy(status_msg, "Selection annulee.");
+                } else {
+                    strcpy(status_msg, "Rien n'est selectionne.");
+                }
+                break;
+
             case KEY_MOUSE: {
                 MEVENT event;
                 if (getmouse(&event) == OK && (event.bstate & BUTTON1_CLICKED)) {
