@@ -227,7 +227,7 @@ static int run_main_menu(int *diff_level, bool *fow) {
                     mvprintw(12, 4, "[Clic]    : Selectionner une unite ou une ville sur la carte");
                     mvprintw(13, 4, "[z/q/s/d] : Deplacer votre unite selectionnee");
                     mvprintw(14, 4, "[f]       : Fonder une ville (necessite un Colon)");
-                    mvprintw(15, 4, "[v] / [2] : Gerer la ville selectionnee / Recruter");
+                    mvprintw(15, 4, "[c] / [v] : Gerer la ville selectionnee (Construction/Recrutement)");
                     mvprintw(16, 4, "[t]       : Ouvrir l'arbre des Technologies");
                     mvprintw(17, 4, "[n]       : Finir votre tour (recuperer les PM)");
                     mvprintw(18, 4, "[Maj+S]   : Sauvegarder la partie en cours");
@@ -279,7 +279,7 @@ static int run_main_menu(int *diff_level, bool *fow) {
                                     mvprintw(12, 4, "[Clic]    : Selectionner une unite ou une ville sur la carte");
                                     mvprintw(13, 4, "[z/q/s/d] : Deplacer votre unite selectionnee");
                                     mvprintw(14, 4, "[f]       : Fonder une ville (necessite un Colon)");
-                                    mvprintw(15, 4, "[v] / [2] : Gerer la ville selectionnee / Recruter");
+                                    mvprintw(15, 4, "[c] / [v] : Gerer la ville selectionnee (Construction/Recrutement)");
                                     mvprintw(16, 4, "[t]       : Ouvrir l'arbre des Technologies");
                                     mvprintw(17, 4, "[n]       : Finir votre tour (recuperer les PM)");
                                     mvprintw(18, 4, "[Maj+S]   : Sauvegarder la partie en cours");
@@ -590,8 +590,7 @@ int main(int argc, char **argv) {
             mvprintw(13, ui_x, "Ville  : Capitale (%d, %d)", c->x, c->y);
             mvprintw(14, ui_x, "Pop    : %d", c->population);
             mvprintw(15, ui_x, "PV     : %d", c->hp);
-            mvprintw(17, ui_x, "[2] Recruter Unite");
-            mvprintw(18, ui_x, "[v] Gerer Ville");
+            mvprintw(17, ui_x, "[v] Gerer Ville");
             attroff(COLOR_PAIR(30) | A_BOLD);
         } else {
             mvprintw(13, ui_x, "Aucune selection.");
@@ -784,15 +783,29 @@ int main(int argc, char **argv) {
                 refresh();
                 int tech_choice;
                 tech_choice = getch();
+                
                 if (tech_choice == 'x') {
-                    continue;
-                }
-                int tech_idx = tech_choice - '0';
-                if (tech_idx >= 0 && tech_idx < MAX_TECHNOLOGIES) {
-                    start_research(&game.player, tech_idx);
+                    printw("\nAction annulee.\n");
                 } else {
-                    strcpy(status_msg, "Choix technologique invalide.");
+                    int tech_idx = tech_choice - '0';
+                    if (tech_idx >= 0 && tech_idx < MAX_TECHNOLOGIES) {
+                        if (can_research(&game.player, tech_idx)) {
+                            start_research(&game.player, tech_idx);
+                            printw("\nRecherche lancee !\n");
+                        } else {
+                            printw("\nImpossible : Technologie bloquee ou deja acquise.\n");
+                        }
+                    } else {
+                        printw("\nChoix technologique invalide.\n");
+                    }
                 }
+                
+                printw("\n");
+                attron(COLOR_PAIR(3) | A_BOLD);
+                printw("[Appuyez sur une touche pour retourner au jeu...]");
+                attroff(COLOR_PAIR(3) | A_BOLD);
+                refresh();
+                getch();
                 continue;
 
             case 'S':
@@ -807,78 +820,6 @@ int main(int argc, char **argv) {
                 selected_unit_idx = -1; // Deselection de l'unité à la fin du tour
                 
                 check_victory_and_defeat(&game);
-                continue;
-
-            case '2':
-                if (selected_city_idx != -1 && game.cities[selected_city_idx]) {
-                    move(log_y + 4, 0);
-                    printw("Quelle unité souhaitez-vous recruter ?\n");
-                    printw("[1] Guerrier (10 Or) - Force: 3, PM: 3\n");
-                    printw("[2] Colon (20 Or) - Fonde une ville, PM: 2\n");
-                    printw("[x] Annuler\n");
-                    printw("Votre choix : ");
-                    refresh();
-
-                    int rec_choice;
-                    rec_choice = getch();
-                    if (rec_choice == 'x') {
-                        continue;
-                    }
-
-                    int cost = 0;
-                    int type = 0;
-
-                    if (rec_choice == '1') {
-                        cost = 10;
-                        type = UNIT_WARRIOR;
-                    } else if (rec_choice == '2') {
-                        cost = 20;
-                        type = UNIT_SETTLER;
-                    } else {
-                        strcpy(status_msg, "Choix de recrutement invalide.");
-                        continue;
-                    }
-
-                    if (game.player.gold >= cost) {
-                        if (game.player_unit_count < 8) { 
-                            Tile *city_tile = &game.map.tiles[game.cities[selected_city_idx]->y][game.cities[selected_city_idx]->x];
-                            
-                            if (city_tile->unit == NULL) {
-                                Unit *new_unit = malloc(sizeof(Unit));
-                                if (new_unit) {
-                                    new_unit->type = type;
-                                    new_unit->x = game.cities[selected_city_idx]->x;
-                                    new_unit->y = game.cities[selected_city_idx]->y;
-                                    new_unit->owner = &game.player;
-                                    
-                                    if (type == UNIT_WARRIOR) {
-                                        new_unit->hp = 15; new_unit->hp_max = 15;
-                                        new_unit->attack = 3; new_unit->defense = 2;
-                                        new_unit->pm = 3; new_unit->pm_max = 3;
-                                    } else { 
-                                        new_unit->hp = 10; new_unit->hp_max = 10;
-                                        new_unit->attack = 0; new_unit->defense = 1;
-                                        new_unit->pm = 2; new_unit->pm_max = 2;
-                                    }
-                                    
-                                    game.player_units[game.player_unit_count++] = new_unit;
-                                    city_tile->unit = new_unit;
-                                    
-                                    game.player.gold -= cost;
-                                    strcpy(status_msg, "[+] Unite recrutee avec succes sur la ville !");
-                                }
-                            } else {
-                                strcpy(status_msg, "[!] La ville est deja occupee. Deplacez l'unite presente d'abord.");
-                            }
-                        } else {
-                            strcpy(status_msg, "[!] Vous avez atteint la limite d'unites actives.");
-                        }
-                    } else {
-                        sprintf(status_msg, "[!] Or insuffisant. Il vous faut %d Or.", cost);
-                    }
-                } else {
-                    strcpy(status_msg, "Veuillez selectionner une ville avec la souris d'abord !");
-                }
                 continue;
 
             case 'z': case 'q': case 's': case 'd':

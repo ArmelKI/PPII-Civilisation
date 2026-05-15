@@ -32,7 +32,9 @@ TileYield get_terrain_yield(TerrainType type) {
     } else if ( type == TERRAIN_DESERT) {
 
         y.gold = 1;
-    
+    } else if ( type == TERRAIN_TOUNDRA) { // NOUVEAU : Ajout de la Toundra (CDC)
+        y.food = 1;
+        y.production = 1;
     }
 
     return y;
@@ -194,10 +196,20 @@ void process_city_growth(City *city,Map *map){
         city -> population -= 1; //demander aux autres si on remet a zero ou pas (ajuster si jeu trop difficile)
         city->food_stored = 0;
 
-        if (city -> population <= 0){ //ville perdue
+        attron(COLOR_PAIR(20) | A_BOLD);
+        if (city -> population <= 0){ 
+            printw("\nFAMINE : La ville en [%d, %d] a perdu son dernier habitant et disparait...\n", city->x, city->y);
             map->tiles[city->y][city->x].city = NULL; // peu être modififier pour faire un free
+            printw("[Appuyez sur une touche pour continuer...]\n");
+            attroff(COLOR_PAIR(20) | A_BOLD);
+            refresh(); getch();
             return;
         } else {
+            printw("\nFAMINE : La ville en [%d, %d] a perdu 1 habitant (Pop restante : %d)\n", city->x, city->y, city->population);
+            printw("[Appuyez sur une touche pour continuer...]\n");
+            attroff(COLOR_PAIR(20) | A_BOLD);
+            refresh(); getch();
+            
             int new_hp = 10 * city -> population;
             if (city -> has_wall){
                 new_hp *= 2;
@@ -253,6 +265,7 @@ void process_player_gold(Player *player, Map *map) {
     player -> gold -= total_maintenance;
 
     if(player -> gold < 0){
+        attron(COLOR_PAIR(20) | A_BOLD);
         printw("ALERTE BANQUEROUTE ! Decouvert de %d Or.\n", player->gold);
 
         if (unit_count > 0) {
@@ -275,6 +288,9 @@ void process_player_gold(Player *player, Map *map) {
                 }
             }
         }
+        printw("[Appuyez sur une touche pour continuer...]\n");
+        attroff(COLOR_PAIR(20) | A_BOLD);
+        refresh(); getch();
     }
 }
 
@@ -320,7 +336,7 @@ int found_city(Unit *settler, Map *map, int *city_id_counter, City **player_citi
     }
 
 
-    //aucunde condition éliminatoire : fondation de la ville
+    //aucune condition éliminatoire : fondation de la ville
 
     City *new_city = malloc(sizeof(City));
     if (!new_city) {
@@ -354,7 +370,6 @@ int found_city(Unit *settler, Map *map, int *city_id_counter, City **player_citi
     target_tile->unit = NULL;
     free(settler);
 
-    printw("Une nouvelle ville vient d'etre fondee en [%d, %d] !\n", sx, sy);
     return 1;
 }
 
@@ -404,6 +419,9 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
     if (city->production_stored >= cost) {
 
         city->production_stored -= cost; 
+        
+        attron(COLOR_PAIR(10) | A_BOLD);
+        printw("\n");
 
         switch (city->current_project) {
             
@@ -426,7 +444,12 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
             case PROJECT_SETTLER: {
                 // Sécurité : On vérifie qu'on n'a pas atteint la limite d'unités actives (8 max)
                 if (*player_unit_count >= 8) {
+                    attroff(COLOR_PAIR(10) | A_BOLD);
+                    attron(COLOR_PAIR(20) | A_BOLD);
                     printw("Limite d'unites actives atteinte (8 max), production en attente.\n");
+                    printw("[Appuyez sur une touche pour continuer...]\n");
+                    attroff(COLOR_PAIR(20) | A_BOLD);
+                    refresh(); getch();
                     // On rembourse la production pour retenter au tour suivant
                     city->production_stored += cost;
                     return; // On sort sans réinitialiser le projet
@@ -485,6 +508,10 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
             }
             default: break;
         }
+
+        printw("[Appuyez sur une touche pour continuer...]\n");
+        attroff(COLOR_PAIR(10) | A_BOLD);
+        refresh(); getch();
 
         city->current_project = PROJECT_NONE;
     }
