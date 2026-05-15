@@ -708,7 +708,7 @@ int main(int argc, char **argv) {
             }
             case 'x':
             case 'X':
-                game.game_over = 1;
+                game.game_over = 3; // Code de fin pour abandon
                 continue;
 
             case 'f':
@@ -805,9 +805,8 @@ int main(int argc, char **argv) {
                 // 5. Le joueur a fini de jouer, l'ordinateur (Barbares d'Armel) joue son tour
                 next_turn(&game);
                 selected_unit_idx = -1; // Deselection de l'unité à la fin du tour
-                if (game.turn >= nb_turns || game.cities[0]->hp <= 0) {
-                    game.game_over = 1;
-                }
+                
+                check_victory_and_defeat(&game);
                 continue;
 
             case '2':
@@ -1016,12 +1015,44 @@ int main(int argc, char **argv) {
         }
     }
     
-
     printw("\nFin de partie (prototype).\n");
+
     refresh();
     getch();
 
     cleanup_game(&game);
     endwin();
+    // 2. Gestion de la fin de partie 
+
+    if (game.game_over == 1 || game.game_over == 2) {
+        int final_score = calculate_final_score(&game);
+
+        printf("\n=====================================================\n");
+        if (game.game_over == 1) {
+            printf("\033[1;33m                VICTOIRE !                       \033[0m\n");
+        } else {
+            printf("\033[1;31m                DEFAITE !                       \033[0m\n");
+        }
+        printf("======================================================\n");
+        printf("Score final     : %d points\n", final_score);
+        printf("Survie          : %d / %d tours\n", game.turn, nb_turns);
+        printf("--------------------------------------------------\n");
+
+        char player_name[50];
+        printf("Entrez votre nom pour enregistrer votre score : ");
+        if (scanf("%49s", player_name) == 1) {
+            // Enregistrer le score
+            save_final_score(player_name, final_score, game.turn, game.game_over);
+            printf("Score enregistré avec succés dans scores.txt !\n");
+
+        }
+    } else {
+        printf("Partie terminée prématurément. Aucun score enregistré.\n");
+    }
+
+    cleanup_game(&game);
+
+
+
     return 0;
 }

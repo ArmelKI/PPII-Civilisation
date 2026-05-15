@@ -11,7 +11,9 @@ void init_game(GameState *game, int width, int height, int seed) {
     memset(game, 0, sizeof(GameState));
     game->seed = seed;
     game->turn = 1;
+    game -> max_turns = MAX_TURNS;
     game->game_over = 0;
+    game ->consecutive_turns_10_cities = 0;
 
     // Initialisation Joueur
     game->player.gold = 10;
@@ -197,4 +199,73 @@ void cleanup_game(GameState *game) {
     if (game->tile_buffer) {
         free(game->tile_buffer);
     }
+}
+
+void check_victory_and_defeat(GameState *game) {
+    int active_cities = 0;
+    int total_techs = 0;
+
+    for (int i = 0; i< MAX_TECHNOLOGIES; i++) {
+        if (game->player.unlocked_techs[i]) {
+            total_techs++;
+        }
+    }
+
+    for (int i = 0; i < game->city_count; i++) {
+        if (game->cities[i] && game->cities[i]->hp > 0) {
+            active_cities++;
+        }
+    }
+
+    // CONDITIONS DE DEFAITE
+    if (active_cities == 0) {
+        game->game_over = 2;  // 1 = victoire, 2 = défaite donc Défaite plus de villes
+        return;
+    }
+
+    if (game->turn > MAX_TURNS) {
+        game->game_over = 2;    // Défaite temps écoulé
+        return;
+    }
+
+    // CONDITIONS DE VICTOIRE
+    if (total_techs >= MAX_TECHNOLOGIES) {
+        game->game_over = 1;        // Victoire scientifique
+        return;
+    }
+    if (active_cities >= 10) {
+        game -> consecutive_turns_10_cities ++;
+        if (game -> consecutive_turns_10_cities >= 5) {
+            game->game_over = 1;        // Victoire territoriale
+            return;
+        }
+    } else {
+        game -> consecutive_turns_10_cities = 0;
+    }
+}
+
+// Calcule le score mathématique selon la formule du README
+
+int calculate_final_score(GameState *game) {
+    int total_techs = 0;
+    int total_pop = 0;
+    int active_cities = 0;
+
+    for (int i = 0; i< MAX_TECHNOLOGIES; i++) {
+        if (game->player.unlocked_techs[i]) {
+            total_techs++;
+        }
+    }
+    for (int i = 0; i < game->city_count; i++) {
+        if (game->cities[i]) {
+            active_cities++;
+            total_pop += game->cities[i]->population;
+        }
+    }
+
+    int tour_bonus = (MAX_TURNS - game->turn) * 10;
+    if (tour_bonus < 0) tour_bonus = 0;
+
+    return (total_techs * 100) + (active_cities * 50) + (total_pop * 20) + tour_bonus;
+
 }

@@ -3,6 +3,7 @@
 #include "core/save.h"
 #include "core/game.h"
 #include <string.h>
+#include <time.h>
 
 int save_game(const char*filename, GameState * state) {
     if (state == NULL) return 0;
@@ -160,3 +161,35 @@ int load_game(const char*filename, GameState *state) {
     return 1;
 }
 
+void save_final_score(const char* player_name, int score, int turn, int status) {
+    FILE *f = fopen("score_history.txt", "a");  // "a" pour append (ajouter à la fin du fichier)
+    if (f == NULL) {
+        printf("Erreur : Impossible d'ouvrir le fichier de score. \n");
+        return;
+    }
+
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+
+    const char *outcome = (status == 1) ? "VICTOIRE" : "DEFAITE";
+
+    fprintf(f, "[%02d/%02d/%04d] | Joueur: %-10s | Score: %-5d | Tours: %-3d | Issue: %s\n",
+            tm.tm_mday, tm.tm_mon + 1, tm.tm_year + 1900,
+            player_name, score, turn, outcome);
+    fclose(f);
+}
+
+void display_history_cli() {
+    FILE *f = fopen("score_history.txt", "r");
+    if (f == NULL) {
+        printf("Aucun historique de score trouvé. \n");
+        return;
+    }
+
+    printf("\n=== TABLEAU DES SCORES ===\n");
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        printf("%s", line);
+    }
+    fclose(f);
+}
