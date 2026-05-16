@@ -4,7 +4,7 @@
 #include "core/game.h"
 #include <string.h>
 #include <time.h>
-
+#include <ncurses.h>
 int save_game(const char*filename, GameState * state) {
     if (state == NULL) return 0;
 
@@ -192,4 +192,41 @@ void display_history_cli() {
         printf("%s", line);
     }
     fclose(f);
+}
+
+void display_history_ncurses() {
+    clear(); // On nettoie l'écran ncurses
+    int max_y, max_x;
+    getmaxyx(stdscr, max_y, max_x);
+
+    // On dessine une belle boîte autour
+    attron(COLOR_PAIR(1));
+    box(stdscr, 0, 0);
+    attroff(COLOR_PAIR(1));
+
+    // Titre
+    attron(COLOR_PAIR(3) | A_BOLD);
+    mvprintw(2, (max_x - 30) / 2, "=== HISTORIQUE DES SCORES ===");
+    attroff(COLOR_PAIR(3) | A_BOLD);
+
+    FILE* f = fopen("scores.txt", "r");
+    if (f == NULL) {
+        mvprintw(5, 5, "Aucune partie n'a encore été enregistrée.");
+    } else {
+        char line[256];
+        int y = 5;
+        // On lit le fichier et on l'affiche ligne par ligne (avec limite de l'écran)
+        while (fgets(line, sizeof(line), f) && y < max_y - 3) {
+            mvprintw(y, 5, "%s", line);
+            y++;
+        }
+        fclose(f);
+    }
+
+    attron(COLOR_PAIR(4) | A_BOLD);
+    mvprintw(max_y - 2, (max_x - 40) / 2, "Appuyez sur une touche pour revenir...");
+    attroff(COLOR_PAIR(4) | A_BOLD);
+    
+    refresh();
+    getch(); // On attend que le joueur appuie sur une touche
 }

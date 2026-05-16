@@ -104,12 +104,13 @@ static void run_options_menu(int max_y, int max_x, int *diff_level, bool *fow) {
 static int run_main_menu(int *diff_level, bool *fow) {
     int choice;
     int highlight = 1; 
-    int n_choices = 5;
+    int n_choices = 6;
     const char *choices[] = {
         "  [1] NOUVELLE PARTIE  ",
         "  [2] CHARGER PARTIE   ",
         "  [3] REGLES & COMMANDES",
         "  [4] OPTIONS          ",
+        "  [5] Historique des scores  ",
         "  [x] QUITTER LE JEU   "
     };
 
@@ -241,7 +242,12 @@ static int run_main_menu(int *diff_level, bool *fow) {
                     run_options_menu(my, mx, diff_level, fow);
                     break;
                 }
-                if (highlight == 5) return 0;
+                if (highlight == 5) {
+                    display_history_ncurses();
+                    break;
+                }
+
+                if (highlight == 6) return 0;
                 break;
             case KEY_MOUSE: {
                 MEVENT event;
@@ -294,7 +300,13 @@ static int run_main_menu(int *diff_level, bool *fow) {
                                     run_options_menu(my, mx, diff_level, fow);
                                     break;
                                 }
-                                if (highlight == 5) return 0;
+                                if (highlight == 5) {
+                                    display_history_ncurses();
+                                    break;
+                                }
+                                if (highlight == 6) {
+                                    return 0;
+                                }
                             }
                         }
                     }
