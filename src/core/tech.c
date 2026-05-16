@@ -12,7 +12,8 @@ const TechnologyDef TECH_CATALOG[MAX_TECHNOLOGIES] = {
     {TECH_EQUITATION,   "Équitation",         100,  TECH_NONE,         TECH_NONE},
     {TECH_IRRIGATION,   "Irrigation",         90,   TECH_AGRICULTURE,  TECH_NONE},
     {TECH_MAÇONNERIE,   "Maçonnerie",         100,  TECH_ARTISANAT,    TECH_NONE},
-    {TECH_COMMERCE,     "Commerce",            90,  TECH_ARTISANAT,    TECH_NONE}, // Nouvelle technologie bateau
+    {TECH_COMMERCE,     "Commerce",            90,  TECH_ARTISANAT,    TECH_NONE},
+    {TECH_BATEAU,       "Bateau",              110, TECH_COMMERCE,     TECH_NONE},
 };
 
 //Vérifie si une technologie peut être recherchée par le joueur (en fonction de ce qu'il a déjà débloqué)

@@ -289,7 +289,7 @@ static int run_main_menu(int *diff_level, bool *fow) {
                                     mvprintw(16, 4, "[t]       : Ouvrir l'arbre des Technologies");
                                     mvprintw(17, 4, "[n]       : Finir votre tour (recuperer les PM)");
                                     mvprintw(18, 4, "[Maj+S]   : Sauvegarder la partie en cours");
-                                    mvprintw(19, 4, "[x]       : Quitter le jeu");
+                                    mvprintw(20, 4, "[x]       : Quitter le jeu");
                                     mvprintw(22, 4, "Appuyez sur une touche pour revenir...");
                                     attroff(COLOR_PAIR(30));
                                     refresh();
@@ -613,7 +613,7 @@ int main(int argc, char **argv) {
         mvprintw(log_y - 2, ui_x + 2, "Seed : %d", seed);
         attroff(COLOR_PAIR(40));
 
-        mvprintw(log_y, 0, "COMMANDES : [n] Finir Tour | [u] Choisir une unité | [c] Gerer Ville | [t] Technologies | [S] Sauvegarder (Maj+s) | [x] Quitter");
+        mvprintw(log_y, 0, "COMMANDES : [n] Finir Tour | [u] Choisir une unité | [c] Gerer Ville | [t] Technologies | [S] Sauvegarder (Maj+s) | [0] Voir les objectifs | [x] Quitter");
         attron(COLOR_PAIR(3) | A_BOLD);
         mvprintw(log_y + 2, 0, ">> %s", status_msg);
         attroff(COLOR_PAIR(3) | A_BOLD);
@@ -683,6 +683,56 @@ int main(int argc, char **argv) {
                     strcpy(status_msg, "Rien n'est selectionne.");
                 }
                 break;
+
+            case 'o':
+            case 'O': {
+                clear(); // On nettoie l'écran
+                int max_x;
+                getmaxyx(stdscr, max_y, max_x);
+            
+                // Bordure de la fenêtre
+                box(stdscr, 0, 0);
+            
+                // Titre principal
+                attron(A_BOLD);
+                mvprintw(2, (max_x - 30) / 2, "=== OBJECTIFS DE LA PARTIE ===");
+                attroff(A_BOLD);
+                
+                int y = 5;
+                
+                // Section Victoire
+                mvprintw(y++, 4, "--- CONDITIONS DE VICTOIRE ---");
+                y++;
+                mvprintw(y++, 6, "1. Victoire Scientifique :");
+                mvprintw(y++, 9, "Debloquage de l'integralite des %d technologies disponibles.", MAX_TECHNOLOGIES);
+                y++;
+                mvprintw(y++, 6, "2. Victoire Territoriale :");
+                mvprintw(y++, 9, "Possession d'au moins 10 villes simultanement pendant 5 tours consecutifs.");
+                mvprintw(y++, 9, "(Statut actuel : %d / 5 tours avec 10 villes)", game.consecutive_turns_10_cities);
+                
+                y += 2;
+                
+                // Section Défaite
+                mvprintw(y++, 4, "--- CONDITIONS DE DEFAITE ---");
+                y++;
+                mvprintw(y++, 6, "1. Destruction totale :");
+                mvprintw(y++, 9, "destruction de toutes vos villes.");
+                y++;
+                mvprintw(y++, 6, "2. Fin du temps imparti :");
+                mvprintw(y++, 9, "incapacité d'atteindre les objectifs dans les %d tours.", game.max_turns);
+                
+                y += 3;
+                
+                // Message de sortie centré
+                attron(A_DIM);
+                mvprintw(y, (max_x - 42) / 2, "[ Appuyez sur une touche pour revenir ]");
+                attroff(A_DIM);
+                
+                refresh();
+                getch(); // Attend que le joueur appuie sur une touche
+                
+                break; // Retourne au jeu (la boucle principale va redessiner la carte)
+            }
 
             case KEY_MOUSE: {
                 MEVENT event;
@@ -866,7 +916,7 @@ int main(int argc, char **argv) {
                     int tech_idx = tech_choice - '0';
                     if (can_research(&game.player, tech_idx)) {
                         start_research(&game.player, tech_idx);
-                        strcpy(status_msg, "Nouvelle recherche lancee !");
+                        sprintf(status_msg, "\033[1;33mNouvelle recherche lancee : %s\033[0m", TECH_CATALOG[tech_idx].name);
                     } else {
                         strcpy(status_msg, "Recherche impossible (prérequis manquants).");
                     }
@@ -888,13 +938,25 @@ int main(int argc, char **argv) {
                 continue;
 
             case '3':
-            case 'n':
+            case 'n': {
+
+                TechType tech_en_cours = game.player.current_research;
+                
                 // 5. Le joueur a fini de jouer, l'ordinateur (Barbares d'Armel) joue son tour
                 next_turn(&game);
                 selected_unit_idx = -1; // Deselection de l'unité à la fin du tour
+
+                selected_unit_idx = -1; // On désélectionne l'unité à la fin du tour
+
+                if (tech_en_cours != TECH_NONE && game.player.current_research == TECH_NONE) {
+                    sprintf(status_msg, "EUREKA ! Technologie [%s] decouverte !", TECH_CATALOG[tech_en_cours].name);
+                } else {
+                    sprintf(status_msg, "Tour %d termine. A vous de jouer !", game.turn - 1);
+                }
                 
                 check_victory_and_defeat(&game);
                 continue;
+            }
 
             case 'z': case 'q': case 's': case 'd':
                 if (selected_unit_idx == -1 || !game.player_units[selected_unit_idx]) {
