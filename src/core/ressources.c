@@ -627,56 +627,71 @@ void control_city_project(City *city) {
     if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_CHASSE]) {
         printw("[9] Archer (55 Prod)      - Unite avancee (Force: 4, PM: 2)");
     } else {
-        attron(A_DIM); printw("[9] [BLOQUE] Archer       - Necessite Caserne + Chasse"); attroff(A_DIM);
+        attron(A_DIM); printw("[9] [BLOQUE] Archer       - Necessite Une Caserne + La technologie Chasse"); attroff(A_DIM);
     }
 
     line++;
     move(line++, start_x);
+
+    if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_EQUITATION]) {
+        printw("[c] Cavalier (60 Prod)    - Unite avancee (Force: 4, PM: 5)");
+    } else {
+        attron(A_DIM); printw("[c] [BLOQUE] Cavalier     - Necessite une Caserne + La technologie Equitation"); attroff(A_DIM);
+    }
+
+    line++;
+    move(line++, start_x);
+    
     printw("Votre choix : ");
     refresh();
     
     // Récupération du choix
     int ch = getch();
-    int choix = ch - '0';
-
+    
     move(line++, start_x);
-
-    if (choix < 0 || choix > 9) {
-        printw("Entree invalide ou annulee.");
-    } else {
-        switch (choix) {
-            case 0: 
-                printw("Action annulee. Le projet actuel est maintenu.");
-                break;
-            case 1: 
-                city->current_project = PROJECT_SETTLER; city->production_stored = 0; 
-                printw("Projet defini : Colon"); 
-                break;
-            case 2: 
-                if (city->has_barrack) {
-                    city->current_project = PROJECT_WARRIOR; city->production_stored = 0;
-                    printw("Projet defini : Guerrier");
-                } else {
-                    printw("Impossible : Vous n'avez pas de caserne !");
-                }
-                break;
-            case 3: city->current_project = PROJECT_GRANARY; city->production_stored = 0; printw("Projet defini : Grenier"); break;
-            case 4: city->current_project = PROJECT_WORKSHOP; city->production_stored = 0; printw("Projet defini : Atelier"); break;
-            case 5: city->current_project = PROJECT_LIBRARY; city->production_stored = 0; printw("Projet defini : Bibliotheque"); break;
-            case 6: city->current_project = PROJECT_MARKET; city->production_stored = 0; printw("Projet defini : Marche"); break;
-            case 7: city->current_project = PROJECT_BARRACKS; city->production_stored = 0; printw("Projet defini : Caserne"); break;
-            case 8: city->current_project = PROJECT_WALL; city->production_stored = 0; printw("Projet defini : Muraille"); break;
-            case 9:
-                if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_CHASSE]) {
-                    city->current_project = PROJECT_ARCHER; city->production_stored = 0;
-                    printw("Projet defini : Archer");
-                } else {
-                    printw("Impossible : Archer requis Caserne + Technologie Chasse !");
-                }
-                break;
-        }
+    switch(ch) {
+        case '0': 
+            printw("Action annulee, Le projet actuel est maintenu.");
+            break;
+        case '1':
+            city->current_project = PROJECT_SETTLER; city->production_stored = 0; // Perte de la production accumulée
+            printw("Projet defini: Colon");
+            break;
+        case '2':
+            if (city->has_barrack) {
+                city->current_project = PROJECT_WARRIOR; city->production_stored = 0;
+                printw("Projet defini: Guerrier");
+            } else {
+                printw("Projet Guerrier bloque : Caserne requise.");
+            }
+            break;
+        case '3': city -> current_project = PROJECT_GRANARY; city->production_stored = 0; printw("Projet defini: Grenier"); break;
+        case '4': city -> current_project = PROJECT_WORKSHOP; city->production_stored = 0; printw("Projet defini: Atelier"); break;
+        case '5': city -> current_project = PROJECT_LIBRARY; city->production_stored = 0; printw("Projet defini: Bibliotheque"); break;
+        case '6': city -> current_project = PROJECT_MARKET; city->production_stored = 0; printw("Projet defini: Marche"); break;
+        case '7': city -> current_project = PROJECT_BARRACKS; city->production_stored = 0; printw("Projet defini: Caserne"); break;
+        case '8': city -> current_project = PROJECT_WALL; city->production_stored = 0; printw("Projet defini: Muraille"); break;
+        case '9':
+            if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_CHASSE]) {
+                city->current_project = PROJECT_ARCHER; city->production_stored = 0;
+                printw("Projet defini: Archer");
+            } else {
+                printw("Projet Archer bloque : Caserne + Chasse requises.");
+            }
+            break;
+        case 'c':
+        case 'C':
+            if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_EQUITATION]) {
+                city->current_project = PROJECT_CAVALIER; city->production_stored = 0;
+                printw("Projet defini: Cavalier");
+            } else {
+                printw("Projet Cavalier bloque : Caserne + Equitation requises.");
+            }
+            break;
+        default:
+            printw("Choix invalide, aucun changement n'a ete effectue.");
+            break;
     }
-
     line++;
     move(line++, start_x);
     attron(COLOR_PAIR(3) | A_BOLD); // Couleur jaune pour mettre en évidence la sortie

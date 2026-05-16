@@ -16,8 +16,8 @@ void init_game(GameState *game, int width, int height, int seed) {
     game ->consecutive_turns_10_cities = 0;
 
     // Initialisation Joueur
-    game->player.gold = 10;
-    game->player.science = 0;
+    game->player.gold = 100;
+    game->player.science = 100;
 
     // Initialisation de l'arbre technologique 
     game->player.current_research = TECH_NONE;
@@ -39,6 +39,14 @@ void init_game(GameState *game, int width, int height, int seed) {
         game->cities[0]->hp = 20;
         game->cities[0]->population = 2;
         game->cities[0]->owner = &game->player;
+        game->cities[0]->id = 0;
+        game->cities[0]->current_project = PROJECT_NONE;
+        game->cities[0]->has_wall = 1;
+        game->cities[0]->has_granary = 1;
+        game->cities[0]->has_workshop = 1;
+        game->cities[0]->has_library = 1;
+        game->cities[0]->has_market = 1;
+        game->cities[0]->has_barrack = 1;
         game->map.tiles[game->cities[0]->y][game->cities[0]->x].city = game->cities[0];
 }
     // Initialisation Guerrier de départ
