@@ -1,6 +1,7 @@
 #include "../../include/core/map.h"
 #include "../../include/core/types.h"
 #include "../../include/core/game.h"
+#include "../../include/core/ressources.h"
 
 #define STB_PERLIN_IMPLEMENTATION
 #include "../../include/core/stb_perlin.h"
@@ -219,7 +220,7 @@ void display_map_color(Map* map) {
                     if (map->tiles[h][w].city->has_wall) {
                         attron(COLOR_PAIR(31)); printw("C "); attroff(COLOR_PAIR(31)); // Blanc Brillant sur fond noir si muraille
                     } else {
-                        attron(COLOR_PAIR(30)); printw("C "); attroff(COLOR_PAIR(30));    // Blanc simple
+                        attron(COLOR_PAIR(32)); printw("C "); attroff(COLOR_PAIR(32)); // Blanc simple avec fond gris clair
                     }
                     continue; // Si il y a une ville on affiche que ça et on passe à la case suivante
 
@@ -250,19 +251,23 @@ void display_map_color(Map* map) {
             
             else {
                 // Zone visible et vide : On affiche le terrain avec ses vraies couleurs
+                City* city_case = get_tile_owner(w,h,map);
+                bool is_exploited = (city_case !=  NULL);
+                int exploited = is_exploited ? 50 : 0; // Si la tuile est exploitée on change le fond de couleur de la case
+                if (is_exploited && city_case->has_wall) exploited = 60;
                 switch (map->tiles[h][w].type) {
                     case TERRAIN_EAU:      
-                        attron(COLOR_PAIR(1)); printw("~ "); attroff(COLOR_PAIR(1)); break; // Bleu
+                        attron(COLOR_PAIR(1 + exploited)); printw("~ "); attroff(COLOR_PAIR(1 + exploited)); break; // Bleu
                     case TERRAIN_PLAINE:   
-                        attron(COLOR_PAIR(2)); printw(". "); attroff(COLOR_PAIR(2)); break; // Vert
+                        attron(COLOR_PAIR(2 + exploited)); printw(". "); attroff(COLOR_PAIR(2 + exploited)); break; // Vert
                     case TERRAIN_MONTAGNE: 
-                        attron(COLOR_PAIR(4)); printw("^ "); attroff(COLOR_PAIR(4)); break; // Jaune/Marron
+                        attron(COLOR_PAIR(4 + exploited)); printw("^ "); attroff(COLOR_PAIR(4 + exploited)); break; // Jaune/Marron
                     case TERRAIN_FORET:    
-                        attron(COLOR_PAIR(3)); printw("f "); attroff(COLOR_PAIR(3)); break; // Vert foncé
+                        attron(COLOR_PAIR(3 + exploited)); printw("f "); attroff(COLOR_PAIR(3 + exploited)); break; // Vert foncé
                     case TERRAIN_DESERT:   
-                        attron(COLOR_PAIR(5)); printw("_ "); attroff(COLOR_PAIR(5)); break; // Jaune brillant
+                        attron(COLOR_PAIR(5 + exploited)); printw("_ "); attroff(COLOR_PAIR(5 + exploited)); break; // Jaune brillant
                     case TERRAIN_TOUNDRA:
-                        attron(COLOR_PAIR(6)); printw("* "); attroff(COLOR_PAIR(6)); break; // Blanc
+                        attron(COLOR_PAIR(6 + exploited)); printw("* "); attroff(COLOR_PAIR(6 + exploited)); break; // Blanc
                     default:               
                         printw("? "); break;
                 }

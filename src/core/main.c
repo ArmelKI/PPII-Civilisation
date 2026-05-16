@@ -247,7 +247,18 @@ static int run_main_menu(int *diff_level, bool *fow) {
                     break;
                 }
 
-                if (highlight == 6) return 0;
+                if (highlight == 6) {
+                    attron(COLOR_PAIR(20) | A_REVERSE | A_BOLD);
+                    mvprintw(my / 2, (mx - 60) / 2, " ATTENTION: Etes-vous sur de vouloir quitter ? (o/n/Entree) ");
+                    mvprintw((my / 2) + 1, (mx - 60) / 2, "         (Toute partie non sauvegardee sera perdue)         ");
+                    attroff(COLOR_PAIR(20) | A_REVERSE | A_BOLD);
+                    refresh();
+                    int confirm = getch();
+                    if (confirm == 'o' || confirm == 'O' || confirm == 'y' || confirm == 'Y'|| confirm == 10 || confirm == 13) {
+                        return 0;
+                    }
+                    break;
+                }
                 break;
             case KEY_MOUSE: {
                 MEVENT event;
@@ -316,7 +327,18 @@ static int run_main_menu(int *diff_level, bool *fow) {
             case '1': return 1;
             case '2': return 2;
             case 'x':
-            case 'X': return 0;
+            case 'X': {
+                attron(COLOR_PAIR(20) | A_REVERSE | A_BOLD);
+                mvprintw(my / 2, (mx - 60) / 2, " ATTENTION: Etes-vous sur de vouloir quitter ? (o/n/Entree) ");
+                mvprintw((my / 2) + 1, (mx - 60) / 2, "         (Toute partie non sauvegardee sera perdue)         ");
+                attroff(COLOR_PAIR(20) | A_REVERSE | A_BOLD);
+                refresh();
+                int confirm = getch();
+                if (confirm == 'o' || confirm == 'O' || confirm == 'y' || confirm == 'Y' || confirm == 10 || confirm == 13) {
+                    return 0;
+                }
+                break;
+            }
         }
     }
 }
@@ -463,6 +485,9 @@ int main(int argc, char **argv) {
 
     // --- INITIALISATION DES COULEURS ---
 
+    // -- HUD --
+    init_pair(30, 15, COLOR_BLACK);
+
     // -- TERRAINS --
     init_pair(1, 39, COLOR_BLACK);   // Eau : Bleu azur clair
     init_pair(2, 118, COLOR_BLACK);  // Plaine : Vert clair pomme
@@ -484,11 +509,27 @@ int main(int argc, char **argv) {
     init_pair(22, 240, COLOR_BLACK); // Camp détruit : Gris moyen
     
     // -- VILLES --
-    init_pair(30, 15, COLOR_BLACK);  // Ville normale : Blanc pur
-    init_pair(31, 15, 238);          // Ville muraille : Blanc pur sur fond Gris
+    init_pair(32, 15, 238);  // Ville normale : Blanc pur sur fond Gris clair
+    init_pair(31, 15, 53);  // Ville muraille : Blanc pur sur fond Bleu nuit
 
     // -- BROUILLARD --
     init_pair(40, 236, COLOR_BLACK); // Zone Explorée : Gris extrêmement sombre
+
+    // -- TERRAINS EXPLOITES (Fond gris pour marquer le territoire) --
+    init_pair(51, 39, 238);   // Eau exploitée
+    init_pair(52, 118, 238);  // Plaine exploitée
+    init_pair(53, 28, 238);   // Forêt exploitée
+    init_pair(54, 130, 238);  // Montagne exploitée
+    init_pair(55, 214, 238);  // Désert exploité
+    init_pair(56, 253, 238);  // Toundra exploitée
+
+    // -- TERRAINS EXPLOITES AVEC MURAILLE --
+    init_pair(61, 39, 53);   // Eau exploitée
+    init_pair(62, 118, 53);  // Plaine exploitée
+    init_pair(63, 28, 53);   // Forêt exploitée
+    init_pair(64, 130, 53);  // Montagne exploitée
+    init_pair(65, 214, 53);  // Désert exploité
+    init_pair(66, 253, 53);  // Toundra exploitée
 
     // MENU PRINCIPAL
     int state = run_main_menu(&diff_level_ui, &enable_fow_ui);
@@ -768,9 +809,24 @@ int main(int argc, char **argv) {
                 continue;
             }
             case 'x':
-            case 'X':
-                game.game_over = 3; // Code de fin pour abandon
+            case 'X': {
+                int pop_y = max_y / 2;
+                int pop_x = (max_x - 60) / 2;
+                
+                attron(COLOR_PAIR(20) | A_REVERSE | A_BOLD); 
+                mvprintw(pop_y, pop_x, " ATTENTION: Etes-vous sur de vouloir retourner au menu principal ? (o/n/Entree) ");
+                mvprintw(pop_y + 1, pop_x, "   (Vous pourrez reprendre votre partie en cliquant sur 'continuer')   ");
+                attroff(COLOR_PAIR(20) | A_REVERSE | A_BOLD);
+                refresh();
+                
+                int confirm = getch();
+                if (confirm == 'o' || confirm == 'O' || confirm == 'y' || confirm == 'Y' || confirm == 10 || confirm == 13) {
+                    game.game_over = 3; // On valide l'abandon
+                } else {
+                    strcpy(status_msg, "Abandon annule. Le jeu continue.");
+                }
                 continue;
+            }
 
             case 'f':
             case 'F': {
