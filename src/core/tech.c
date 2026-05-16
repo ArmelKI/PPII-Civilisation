@@ -45,18 +45,15 @@ int can_research(Player *p, TechType tech) {
 // Fonction à appeler quand le joueur choisit une nouvelle recherche
 void start_research(Player *p, TechType tech) {
     if (!can_research(p, tech)) {
-        printf("Vous ne pouvez pas rechercher cette technologie pour le moment(Voir prérequis).\n");
         return;
     }
 
     // Règle du Readme : changer en cours de route vide la cagnotte de moitié
     if (p->current_research != TECH_NONE && p->current_research != tech) {
-        printf("\n Attention : Changement de projet ! Cagnotte divisée par 2 ! \n");
         p->science /= 2;  // Division entière par 2
     }
 
     p->current_research = tech;
-    printf("Recherche lancée : %s\n", TECH_CATALOG[tech].name);
 }
 
 
@@ -74,6 +71,5 @@ void update_research(Player *p) {
         //Règle du Readme: la cagnotte est remise à zéro(surplus perdu)
         p->science = 0;
         p->current_research = TECH_NONE;
-        printf("\n\033[1;36m[SCIENCE] Eureka ! Vous avez decouvert : %s !\033[0m\n", TECH_CATALOG[tech].name);
     }
 }

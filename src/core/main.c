@@ -630,7 +630,7 @@ int main(int argc, char **argv) {
 
                 // Parcourt des unités pour trouver la suivante 
                 int start_idx = (selected_unit_idx == -1) ? 0 : selected_unit_idx + 1;
-                int found = -1;
+                int found = 0;
 
                 for (int i = 0; i < game.player_unit_count; i++) {
                     // On utilise le modulo pour boucler à partir du début si on atteint la fin de la liste
@@ -723,30 +723,54 @@ int main(int argc, char **argv) {
                 continue;
 
             case 'f':
+            case 'F': {
                 if (selected_unit_idx != -1 && game.player_units[selected_unit_idx]) {
-                    Unit *mon_unite_f = game.player_units[selected_unit_idx];
-                    
-                    // Sécurité : on vérifie que l'unité existe et est en vie
-                    if (mon_unite_f == NULL || mon_unite_f->hp <= 0) {
-                        strcpy(status_msg, "Cette unite est morte ou n'existe pas.");
-                        continue;
-                    }
-                    if (mon_unite_f->pm <= 0) {
-                        strcpy(status_msg, "Cette unite n'a plus de PM. Choisissez-en une autre.");
-                        continue;
-                    }
+                Unit *mon_unite_f = game.player_units[selected_unit_idx];
 
-                    if (found_city(mon_unite_f, &game.map, &city_id_counter, game.cities, &game.city_count)) {
-                        game.player_units[selected_unit_idx] = NULL; 
-                        selected_unit_idx = -1;
-                        strcpy(status_msg, "Ville fondee avec succes !");
-                    } else {
-                        strcpy(status_msg, "Impossible de fonder une ville ici.");
-                    }
-                } else {
-                    strcpy(status_msg, "Selectionnez un Colon avec la souris d'abord !");
+                // 1. Sécurité : l'unité existe et est en vie
+                if (mon_unite_f == NULL || mon_unite_f->hp <= 0) {
+                    strcpy(status_msg, "Cette unite est morte ou n'existe pas.");
+                    break; // On utilise break au lieu de continue
                 }
-                continue;
+                
+                // 2. Est-ce bien un Colon ?
+                if (mon_unite_f->type != UNIT_SETTLER) {
+                    strcpy(status_msg, "Erreur : Seul un Colon peut fonder une ville.");
+                    break;
+                }
+
+                // 3. Le Colon doit avoir des PM pour agir
+                if (mon_unite_f->pm <= 0) {
+                    strcpy(status_msg, "Ce Colon n'a plus de PM. Attendez le tour suivant.");
+                    break;
+                }
+
+                // 4. Tentative de fondation via la fonction de Wassim
+                if (found_city(mon_unite_f, &game.map, &city_id_counter, game.cities, &game.city_count)) {
+                    
+                    // --- SUCCÈS ---
+                    strcpy(status_msg, "Ville fondee avec succes !");
+                    
+                    // A) On retire le Colon de la carte (TRÈS IMPORTANT)
+                    game.map.tiles[mon_unite_f->y][mon_unite_f->x].unit = NULL;
+                    
+                    // B) On "tue" le Colon dans le tableau du joueur
+                    mon_unite_f->hp = 0; 
+                    game.player_units[selected_unit_idx] = NULL; 
+                    
+                    // C) On désélectionne l'unité morte
+                    selected_unit_idx = -1;
+                    
+                } else {
+                    // --- ÉCHEC ---
+                    // Comme on ne voit pas les printw de Wassim, on met un message générique clair
+                    strcpy(status_msg, "Impossible : Eau, Limite atteinte ou Ville a moins de 4 cases !");
+                }
+            } else {
+                strcpy(status_msg, "Selectionnez un Colon d'abord !");
+            }
+            break; // On sort du switch pour redessiner l'écran
+            }
 
             case 'v':
             case 'V':
@@ -769,56 +793,94 @@ int main(int argc, char **argv) {
                 continue;
                 
             case 't':
-            case 'T':
-                clear();
-                printw("\n === ARBRE TECHNOLOGIQUE ===\n");
-                printw("Cagnotte de science : %d\n", game.player.science);
+            case 'T': {
+                clear(); 
+                int max_x;
+                getmaxyx(stdscr, max_y, max_x);
+                
+                // Dessin d'une bordure
+                attron(COLOR_PAIR(1));
+                box(stdscr, 0, 0);
+                attroff(COLOR_PAIR(1));
+
+                // Titre
+                attron(A_BOLD | COLOR_PAIR(3));
+                mvprintw(2, (max_x - 25) / 2, "=== ARBRE TECHNOLOGIQUE ===");
+                attroff(A_BOLD | COLOR_PAIR(3));
+
+                mvprintw(4, 5, "Cagnotte de Science : %d", game.player.science);
+
+                // Affichage de la recherche actuelle
                 if (game.player.current_research != TECH_NONE) {
-                    printw("Recherche en cours : %s (%d / %d)\n", TECH_CATALOG[game.player.current_research].name, game.player.science, TECH_CATALOG[game.player.current_research].cost);
+                    mvprintw(5, 5, "Recherche en cours : [%s] (%d / %d Science)", 
+                             TECH_CATALOG[game.player.current_research].name,
+                             game.player.science,
+                             TECH_CATALOG[game.player.current_research].cost);
                 } else {
-                    printw("Aucune recherche en cours.\n");
+                    mvprintw(5, 5, "Aucune recherche en cours.");
                 }
-                printw("\nTechnologies disponibles à la recherche :\n");
-                int tech_found = 0;
+
+                mvprintw(7, 5, "Technologies disponibles à la recherche :");
+                
+                int row = 9;
+                int options_dispo = 0;
+                
+                // Parcours du catalogue
                 for (int i = 0; i < MAX_TECHNOLOGIES; i++) {
-                    // On affiche seulement ce qu'on a le droit de rechercher
-                    if (can_research(&game.player, i)) {
-                        printw("[%d] %s (Cout: %d Science)\n", i, TECH_CATALOG[i].name, TECH_CATALOG[i].cost);
-                        tech_found = 1; 
-                    }
-                }
-                if (!tech_found) {
-                    printw("Aucune technologie disponible à la recherche pour le moment.\n");
-                }
-                printw("[x] Annuler\n");
-                printw("Quelle technologie souhaitez-vous rechercher ? ");
-                refresh();
-                int tech_choice;
-                tech_choice = getch();
-                
-                if (tech_choice == 'x') {
-                    printw("\nAction annulee.\n");
-                } else {
-                    int tech_idx = tech_choice - '0';
-                    if (tech_idx >= 0 && tech_idx < MAX_TECHNOLOGIES) {
-                        if (can_research(&game.player, tech_idx)) {
-                            start_research(&game.player, tech_idx);
-                            printw("\nRecherche lancee !\n");
-                        } else {
-                            printw("\nImpossible : Technologie bloquee ou deja acquise.\n");
+                    if (game.player.unlocked_techs[i]) {
+                        // Déjà débloqué (affichage grisé ou simple)
+                        mvprintw(row++, 5, "[X] %s (Acquis)", TECH_CATALOG[i].name);
+                    } else if (can_research(&game.player, i)) {
+                        // Disponible à la recherche : on ajoute la description !
+                        const char* desc = "";
+                        switch(i) {
+                            case TECH_CHASSE: desc = "+1 Nourriture sur les tuiles Forêt"; break;
+                            case TECH_AGRICULTURE: desc = "+10%% Nourriture dans toutes les villes"; break;
+                            case TECH_ARTISANAT: desc = "Débloque Guerrier et Archer, +10%% Production"; break;
+                            case TECH_ECRITURE: desc = "Débloque Bibliothèque, +10%% Science"; break;
+                            case TECH_EQUITATION: desc = "Débloque Cavalier, +1 PM (unités terrestres)"; break;
+                            case TECH_IRRIGATION: desc = "+20%% Nourriture supplémentaire"; break;
+                            case TECH_MAÇONNERIE: desc = "Débloque Muraille (Double PV de la ville)"; break;
+                            case TECH_COMMERCE: desc = "Débloque Marché, +10%% Or"; break;
+                            case TECH_BATEAU: desc = "Permet de traverser l'Eau (Coût: 2 PM)"; break;
                         }
-                    } else {
-                        printw("\nChoix technologique invalide.\n");
+                        // On affiche le numéro pour que le joueur puisse choisir
+                        attron(A_BOLD);
+                        mvprintw(row++, 5, "[%d] %s (Coût: %d) -> %s", i, TECH_CATALOG[i].name, TECH_CATALOG[i].cost, desc);
+                        attroff(A_BOLD);
+                        options_dispo++;
                     }
                 }
-                
-                printw("\n");
-                attron(COLOR_PAIR(3) | A_BOLD);
-                printw("[Appuyez sur une touche pour retourner au jeu...]");
-                attroff(COLOR_PAIR(3) | A_BOLD);
+
+                if (options_dispo == 0) {
+                    mvprintw(row++, 5, "Aucune nouvelle technologie disponible (vérifiez les prérequis).");
+                }
+
+                mvprintw(row + 2, 5, "Entrez le numéro de la technologie à chercher, ou 'x' pour annuler : ");
                 refresh();
-                getch();
-                continue;
+
+                // Gestion du choix du joueur
+                int tech_choice = getch();
+                
+                if (tech_choice >= '0' && tech_choice <= '8') {
+                    int tech_idx = tech_choice - '0';
+                    if (can_research(&game.player, tech_idx)) {
+                        start_research(&game.player, tech_idx);
+                        strcpy(status_msg, "Nouvelle recherche lancee !");
+                    } else {
+                        strcpy(status_msg, "Recherche impossible (prérequis manquants).");
+                    }
+                } else if (tech_choice == 'x' || tech_choice == 'X') {
+                    strcpy(status_msg, "Menu technologique ferme.");
+                } else {
+                    strcpy(status_msg, "Touche invalide.");
+                }
+                
+                // On met un break pour sortir du case et laisser la boucle while redessiner la carte
+                break;   
+            }
+          
+          
 
             case 'S':
                 save_game("savegame.sav", &game);
@@ -879,6 +941,8 @@ int main(int argc, char **argv) {
 
                         // A1. Combat contre une unité ennemie (Barbare)
                         if (target_tile->unit && target_tile->unit->owner != mon_unite->owner) {
+                            mon_unite->pm--; // On consomme le PM pour attaquer
+                            has_attacked = 1;
                             action_logged = true;
                             printw("\n Combat engagé contre le barbare ! \n");
                             printw("-> Avant : Toi (%d PV) vs Barbare (%d PV)\n", mon_unite->hp, target_tile->unit->hp);
@@ -895,6 +959,7 @@ int main(int argc, char **argv) {
 
                         // A2. Combat contre une ville ennemie (Barbare)
                         else if (target_tile->city && target_tile->city->owner != mon_unite->owner) {
+                            mon_unite->pm--;
                             has_attacked = 1;
                             action_logged = true;
                             printw("\n Attaque de la ville ennemie ! \n");
