@@ -27,6 +27,10 @@ typedef struct GameState {
     Unit *barbarians[MAX_BARBARIANS];
     int barbarian_count;
 
+    BarbarianCamp *barbarian_camps;
+    int barbarian_camp_count;
+    int barbarian_camps_destroyed;
+
     int turn;
     int max_turns;
     int consecutive_turns_10_cities;
@@ -37,7 +41,7 @@ typedef struct GameState {
 // --- FONCTIONS DE GESTION DU JEU ---
 
 // Initialisation globale
-void init_game(GameState *game, int width, int height, int seed);
+void init_game(GameState *game, int width, int height, int seed, int barbarian_camp_count);
 
 // Logique de tour
 void next_turn(GameState *game);
