@@ -15,6 +15,11 @@ typedef struct {
     int dist;
 } TargetCandidate;
 
+/*
+ * Distance de Chebyshev (nombre de pas minimaux sur une grille 8-voisinage).
+ * Le projet spécifie que les campements doivent être à distance Chebyshev >= 5
+ * de la ville de départ : on utilise donc cette métrique partout où nécessaire.
+ */
 static int chebyshev_distance(int x1, int y1, int x2, int y2)
 {
     int dx = abs(x2 - x1);
@@ -241,7 +246,13 @@ static int patrol_random_step(Unit *barb, Map *map)
     return 1;
 }
 
-// Place les campements barbares au démarrage
+/*
+ * Initialise `num_camps` campements barbares sur la carte.
+ * - Respecte la contrainte de distance Chebyshev >= 5 vis-à-vis de la ville de départ.
+ * - Tente un placement aléatoire (jusqu'à 500 essais par camp), puis un balayage complet
+ *   si nécessaire pour garantir placement si la carte le permet.
+ * - Renvoie un tableau alloué dynamiquement (à libérer via `barbares_cleanup`).
+ */
 BarbarianCamp *barbares_init_camps(Map *map, int num_camps, int player_city_x, int player_city_y)
 {
     // On commence par vérifier les entrées pour éviter les crashes.
@@ -322,7 +333,13 @@ BarbarianCamp *barbares_init_camps(Map *map, int num_camps, int player_city_x, i
     return camps;
 }
 
-// Génère une unité barbare chaque tour (plafond N*3)
+/*
+ * Tente de générer une unité barbare depuis le camp donné :
+ * - Ne crée qu'une unité par appel et uniquement si la case du camp est libre.
+ * - Retourne 1 si une unité a été créée et 0 sinon.
+ * - Le plafond global sur les barbares vivants (N*3) est contrôlé par l'appelant
+ *   via le paramètre `max_units` (ne pas l'ignorer ici).
+ */
 int barbares_spawn_unit(BarbarianCamp *camp, Map *map, Unit **units_array, int *num_units, int max_units)
 {
     // On refuse tout de suite si les paramètres ne sont pas cohérents.
@@ -552,7 +569,11 @@ int barbares_attack_if_adjacent(Unit *barb, Map *map, City *player_cities[], int
     return 0;
 }
 
-// Détruit un campement et donne bonus or
+/*
+ * Détruit un campement actif et met à jour le compteur global `total_destroyed`.
+ * Le joueur reçoit un bonus d'or cumulatif : après l'incrémentation du compteur,
+ * on ajoute `5 * total_destroyed` à `player->gold` si `player` est fourni.
+ */
 void barbares_destroy_camp(BarbarianCamp *camp, int *total_destroyed, Player *player)
 {
     if (!camp || camp->destroyed) {

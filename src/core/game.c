@@ -25,6 +25,11 @@ static int count_living_barbarians(const GameState *game)
     return count;
 }
 
+/*
+ * Compacte le tableau `game->barbarians` en retirant les unités mortes.
+ * - Libère la mémoire des barbares morts et nettoie les pointeurs sur la carte.
+ * - Maintient `game->barbarian_count` cohérent après compactage.
+ */
 static void compact_barbarians(GameState *game)
 {
     int write_index = 0;
@@ -152,6 +157,13 @@ void restore_pm(Unit **units, int count) {
     }
 }
 
+/*
+ * Gère la phase de génération de barbares.
+ * - Parcourt chaque camp actif et tente de faire apparaître une unité sur la case
+ *   du camp si elle est libre (appelant `barbares_spawn_unit`).
+ * - Enforce le plafond global : nombre maximal de barbares vivants = min(N*3, MAX_BARBARIANS).
+ * - Le paramètre N correspond à `game->barbarian_camp_count`.
+ */
 void spawn_random_barbarian(GameState *game) {
     if (!game || !game->barbarian_camps || game->barbarian_camp_count <= 0) {
         return;

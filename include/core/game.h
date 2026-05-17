@@ -27,6 +27,13 @@ typedef struct GameState {
     Unit *barbarians[MAX_BARBARIANS];
     int barbarian_count;
 
+    // Barbares: tableau de campements initialisés à la création de la partie.
+    // Invariants et usage:
+    // - `barbarian_camp_count` indique le nombre de campements logiques (N) créés au démarrage.
+    // - `barbarian_camps_destroyed` compte les campements rasés ; utilisé pour calculer
+    //   le bonus d'or cumulatif accordé au joueur (5 × camps_détruits).
+    // - Chaque case de la carte qui contient un camp pointe vers l'entrée correspondante
+    //   via `map.tiles[y][x].camp` (on n'enregistre jamais d'adresses volatiles dans les fichiers).
     BarbarianCamp *barbarian_camps;
     int barbarian_camp_count;
     int barbarian_camps_destroyed;

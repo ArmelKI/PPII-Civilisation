@@ -43,6 +43,13 @@ int save_game(const char*filename, GameState * state) {
     for (int y=0; y< state->map.height; y++) {
         for (int x=0; x< state->map.width; x++) {
             Tile temp_tile = state->map.tiles[y][x];
+            /*
+             * On n'écrit jamais de pointeurs dans le fichier de sauvegarde.
+             * Pour éviter d'enregistrer des adresses mémoire volatiles, on
+             * neutralise le champ `camp` avant sérialisation ; les campements
+             * sont sauvegardés séparément (voir plus bas) et reconstruits
+             * lors du chargement en recalculant les pointeurs vers le tableau.
+             */
             temp_tile.camp = NULL;
             fwrite(&temp_tile, sizeof(Tile), 1, file);
             fwrite(&state->map.tiles[y][x].visibility, sizeof(FogState), 1, file); // Sauvegarde de l'état de visibilité de chaque tuile
@@ -144,6 +151,11 @@ int load_game(const char*filename, GameState *state) {
     }
 
     // 8bis. Lecture et reconstruction des campements barbares
+    /*
+     * Format: on lit le nombre de campements puis la table de campements
+     * telle qu'elle a été écrite. Après lecture on reconnecte chaque camp
+     * à la tuile correspondante via `map.tiles[y][x].camp`.
+     */
     fread(&state->barbarian_camp_count, sizeof(int), 1, file);
     fread(&state->barbarian_camps_destroyed, sizeof(int), 1, file);
     if (state->barbarian_camp_count > 0) {

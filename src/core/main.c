@@ -922,9 +922,9 @@ int main(int argc, char **argv) {
                 // Affichage de la recherche actuelle
                 if (game.player.current_research != TECH_NONE) {
                     mvprintw(5, 5, "Recherche en cours : [%s] (%d / %d Science)", 
-                             TECH_CATALOG[game.player.current_research].name,
-                             game.player.science,
-                             TECH_CATALOG[game.player.current_research].cost);
+                            TECH_CATALOG[game.player.current_research].name,
+                            game.player.science,
+                            TECH_CATALOG[game.player.current_research].cost);
                 } else {
                     mvprintw(5, 5, "Aucune recherche en cours.");
                 }
@@ -1119,6 +1119,11 @@ int main(int argc, char **argv) {
                             // 3. On place le pointeur de l'unité sur la nouvelle tuile de la carte 
                             target_tile->unit = mon_unite;
 
+                            // Si un guerrier entre sur un camp barbare actif, il le rasera.
+                            // Règles importantes :
+                            // - Seuls les `UNIT_WARRIOR` peuvent pénétrer et razzier un camp actif
+                            //   (contrainte appliquée aussi dans `can_move`).
+                            // - Le bonus en or est cumulatif et vaut `5 * camps_détruits`.
                             if (target_tile->camp != NULL && target_tile->camp->destroyed == 0 && mon_unite->type == UNIT_WARRIOR) {
                                 barbares_destroy_camp(target_tile->camp, &game.barbarian_camps_destroyed, &game.player);
                                 printw("\n [CAMP] Campement barbare detruit. Bonus or = +%d (campements detruits = %d)\n",
