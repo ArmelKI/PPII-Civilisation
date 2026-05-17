@@ -1222,9 +1222,5 @@ int main(int argc, char **argv) {
         printf("Partie terminée prématurément. Aucun score enregistré.\n");
     }
 
-    cleanup_game(&game);
-
-
-
     return 0;
 }
