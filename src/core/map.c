@@ -237,6 +237,7 @@ void display_map_color(Map* map) {
             if (tile->visibility == FOG_EXPLORED) {
                 // Si juste "Explorée", on affiche uniquement le caractère du terrain en gris foncé
                 char t_char = '?';
+                int color_pair = 40; // Couleur par défaut pour les terrains explorés
                 switch (tile->type) {
                     case TERRAIN_EAU:      t_char = '~'; break;
                     case TERRAIN_PLAINE:   t_char = '.'; break;
@@ -246,7 +247,10 @@ void display_map_color(Map* map) {
                     case TERRAIN_TOUNDRA:  t_char = '*'; break;
                     default:               t_char = '?'; break;
                 }
-                attron(COLOR_PAIR(40)); printw("%c ", t_char); attroff(COLOR_PAIR(40)); // Gris foncé
+                attron(COLOR_PAIR(color_pair) | A_DIM); 
+
+                printw("%c ", t_char); 
+                attroff(COLOR_PAIR(color_pair) | A_DIM);
             }
             
             else {

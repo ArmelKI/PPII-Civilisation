@@ -764,7 +764,12 @@ int main(int argc, char **argv) {
                 y++;
                 mvprintw(y++, 6, "2. Fin du temps imparti :");
                 mvprintw(y++, 9, "incapacité d'atteindre les objectifs dans les %d tours.", game.max_turns);
-                
+
+                y++;
+                mvprintw(y++, 6, "3. Faillite de production :");
+                mvprintw(y++, 9, "production nulle pendant 5 tours consecutifs.");
+                mvprintw(y++, 9, "(Statut actuel : %d / 5 tours sans production)", game.consecutive_zero_production_turns);
+
                 y += 3;
                 
                 // Message de sortie centré
