@@ -104,7 +104,7 @@ req:
 
 # Nettoyage des fichiers de compilation et des binaires
 clean:
-	rm -rf $(BUILD_DIR) $(BIN_DIR)
+	rm -rf $(BUILD_DIR) $(BIN_DIR) current_game.tmp
 
 # Nettoyage complet : compilation + donnees generees
 reset: clean

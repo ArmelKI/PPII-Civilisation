@@ -550,6 +550,9 @@ int main(int argc, char **argv) {
         if (state == 1) {
             if (game_in_progress) cleanup_game(&game);
             memset(&game, 0, sizeof(GameState)); // Sécurité : on initialise tout à 0 pour éviter les valeurs indéterminées.
+            if (!is_seed) {
+                seed = (int)time(NULL);
+            }
             init_game(&game, width, height, seed, nb_barbarians);
             clear();
             printw("[CIV] Nouvelle partie; Generation avec la graine : %d\n", seed);
@@ -563,6 +566,9 @@ int main(int argc, char **argv) {
             clear();
             if (!load_game("savegame.sav", &game)) {
                 printw("Échec du chargement de la partie. Démarrage d'une nouvelle partie.\n");
+                if (!is_seed) {
+                    seed = (int)time(NULL);
+                }
                 init_game(&game, width, height, seed, nb_barbarians);
                 printw("[CIV] Nouvelle partie; Generation avec la graine : %d\n", seed);
                 printw("[BARBARES] %d campements places, plafond vivant = %d\n",
