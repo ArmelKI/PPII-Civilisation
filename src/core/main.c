@@ -1126,12 +1126,13 @@ int main(int argc, char **argv) {
                             // - Le bonus en or est cumulatif et vaut `5 * camps_détruits`.
                             if (target_tile->camp != NULL && target_tile->camp->destroyed == 0 && mon_unite->type == UNIT_WARRIOR) {
                                 barbares_destroy_camp(target_tile->camp, &game.barbarian_camps_destroyed, &game.player);
-                                printw("\n [CAMP] Campement barbare detruit. Bonus or = +%d (campements detruits = %d)\n",
+                                sprintf(status_msg, "Camp detruit ! +%d Or (Total: %d)", 
                                        5 * game.barbarian_camps_destroyed,
                                        game.barbarian_camps_destroyed);
-                            }
+                            } else{
 
                             strcpy(status_msg, "Deplacement reussi !");
+                            }
                         }
 
                         // C. L'obstacle est toujours lè(l'ennemi a surcécu, le mouvement est annulé)
