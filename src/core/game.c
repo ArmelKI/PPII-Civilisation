@@ -14,6 +14,7 @@ void init_game(GameState *game, int width, int height, int seed) {
     game -> max_turns = MAX_TURNS;
     game->game_over = 0;
     game ->consecutive_turns_10_cities = 0;
+    game -> consecutive_zero_production_turns = 0;
 
     // Initialisation Joueur
     game->player.gold = 100;
@@ -212,6 +213,7 @@ void cleanup_game(GameState *game) {
 void check_victory_and_defeat(GameState *game) {
     int active_cities = 0;
     int total_techs = 0;
+    int total_production_current_turn = 0;
 
     for (int i = 0; i< MAX_TECHNOLOGIES; i++) {
         if (game->player.unlocked_techs[i]) {
@@ -222,6 +224,7 @@ void check_victory_and_defeat(GameState *game) {
     for (int i = 0; i < game->city_count; i++) {
         if (game->cities[i] && game->cities[i]->hp > 0) {
             active_cities++;
+            total_production_current_turn += game->cities[i]->production_stored;
         }
     }
 
@@ -234,6 +237,18 @@ void check_victory_and_defeat(GameState *game) {
     if (game->turn > MAX_TURNS) {
         game->game_over = 2;    // Défaite temps écoulé
         return;
+    }
+
+    // Faillite de production 
+    if (total_production_current_turn <= 0) {
+        game->consecutive_zero_production_turns++;
+        if (game->consecutive_zero_production_turns >= 5) {
+            game->game_over = 2; // Défaite par faillite
+            return;
+        }
+    } else {
+        // Dès qu'on génère à nouveau de la production, on remet à zéro !
+        game->consecutive_zero_production_turns = 0;
     }
 
     // CONDITIONS DE VICTOIRE

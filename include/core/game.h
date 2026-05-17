@@ -30,6 +30,7 @@ typedef struct GameState {
     int turn;
     int max_turns;
     int consecutive_turns_10_cities;
+    int consecutive_zero_production_turns;
     int game_over;
     int seed;
 } GameState;
