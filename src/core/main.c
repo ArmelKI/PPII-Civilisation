@@ -609,8 +609,17 @@ int main(int argc, char **argv) {
         // On calcule ce que le joueur a le droit de voir(Brouillard de Guerre)
         update_fog_of_war(&game, enable_fow_ui);
         
+        int sel_x = -1, sel_y = -1;
+        if (selected_unit_idx != -1 && game.player_units[selected_unit_idx] && game.player_units[selected_unit_idx]->hp > 0) {
+            sel_x = game.player_units[selected_unit_idx]->x;
+            sel_y = game.player_units[selected_unit_idx]->y;
+        } else if (selected_city_idx != -1 && game.cities[selected_city_idx] && game.cities[selected_city_idx]->hp > 0) {
+            sel_x = game.cities[selected_city_idx]->x;
+            sel_y = game.cities[selected_city_idx]->y;
+        }
+
         move(0, 0);
-        display_map_color(&game.map, &game.player);
+        display_map_color(&game.map, &game.player, sel_x, sel_y);
 
         // 1. Affichage d'état (hook externe ou console)
         print_state_maxence_stub(&game);
