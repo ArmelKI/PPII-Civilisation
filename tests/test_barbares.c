@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "core/game.h"
 #include "core/barbares.h"
 #include "core/map.h"
 #include "core/types.h"
@@ -92,7 +93,11 @@ static void test_init_camps(void)
                 EXPECT(camps[i].x >= 0 && camps[i].x < map.width, "x campement invalide");
                 EXPECT(camps[i].y >= 0 && camps[i].y < map.height, "y campement invalide");
                 EXPECT(map.tiles[camps[i].y][camps[i].x].type != TERRAIN_EAU, "campement placé sur eau");
-            EXPECT(!(abs(camps[i].x - city.x) < 5 && abs(camps[i].y - city.y) < 5),
+            int chebyshev = abs(camps[i].x - city.x);
+            if (abs(camps[i].y - city.y) > chebyshev) {
+                chebyshev = abs(camps[i].y - city.y);
+            }
+            EXPECT(chebyshev >= 5,
                     "campement trop proche de la ville de départ");
         }
         barbares_cleanup(camps, 3);
@@ -255,6 +260,41 @@ static void test_attack_and_destroy(void)
     free_test_map(&map);
 }
 
+static void test_game_spawn_from_camps(void)
+{
+    Map map;
+    init_map(&map, 8, 8);
+
+    GameState game;
+    memset(&game, 0, sizeof(GameState));
+    game.map = map;
+    game.barbarian_camp_count = 2;
+    game.barbarian_camps = calloc(2, sizeof(BarbarianCamp));
+    EXPECT(game.barbarian_camps != NULL, "allocation camps game");
+    if (!game.barbarian_camps) {
+        free_test_map(&map);
+        return;
+    }
+
+    game.barbarian_camps[0] = (BarbarianCamp){.x = 2, .y = 2, .destroyed = 0, .id = 0};
+    game.barbarian_camps[1] = (BarbarianCamp){.x = 5, .y = 5, .destroyed = 0, .id = 1};
+    game.map.tiles[2][2].camp = &game.barbarian_camps[0];
+    game.map.tiles[5][5].camp = &game.barbarian_camps[1];
+
+    srand(1);
+    spawn_random_barbarian(&game);
+
+    EXPECT(game.barbarian_count == 2, "chaque camp actif doit générer une unité au premier tour");
+    EXPECT(game.map.tiles[2][2].unit != NULL, "premier camp doit produire sur sa tuile");
+    EXPECT(game.map.tiles[5][5].unit != NULL, "second camp doit produire sur sa tuile");
+
+    for (int i = 0; i < game.barbarian_count; ++i) {
+        free(game.barbarians[i]);
+    }
+    barbares_cleanup(game.barbarian_camps, game.barbarian_camp_count);
+    free_test_map(&map);
+}
+
 static void test_integration_with_map_engine(void)
 {
     // Test d'intégration:
@@ -349,6 +389,7 @@ int main(void)
     test_move_barbarian();
     test_move_barbarian_pathfinding_around_wall();
     test_attack_and_destroy();
+    test_game_spawn_from_camps();
     test_integration_with_map_engine();
     extern int run_test_difficulty_effects(void);
     if (run_test_difficulty_effects() != 0) {
