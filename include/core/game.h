@@ -17,6 +17,12 @@ typedef struct GameState {
     
     Tile *tile_buffer;
 
+    // Message de combat/événement le plus récent à afficher dans l'UI.
+    // On le garde en mémoire dans l'état de jeu pour éviter de mélanger la logique
+    // de résolution des combats avec le code ncurses.
+    char combat_log[256];
+    int combat_log_ready;
+
     Player player;
     City *cities[MAX_CITIES];
     int city_count;
@@ -60,6 +66,7 @@ void init_game(GameState *game, int width, int height, int seed, int barbarian_c
 void next_turn(GameState *game);
 void check_victory_and_defeat(GameState *game);
 int calculate_final_score(GameState *game);
+void game_set_combat_log(GameState *game, const char *fmt, ...);
 
 // Gestion des unités
 void spawn_random_barbarian(GameState *game);

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <limits.h>
+#include <string.h>
 
 #include "core/config.h"
 #include "core/barbares.h"
@@ -246,6 +247,27 @@ static int patrol_random_step(Unit *barb, Map *map)
     return 1;
 }
 
+static const char *barbarian_target_name(const Unit *unit)
+{
+    if (!unit) {
+        return "unite";
+    }
+
+    switch (unit->type) {
+        case UNIT_SETTLER:
+            return "colon";
+        case UNIT_WARRIOR:
+            return "guerrier";
+        case UNIT_ARCHER:
+            return "archer";
+        case UNIT_CAVALIER:
+            return "cavalier";
+        case UNIT_BARBARIAN:
+        default:
+            return "unite";
+    }
+}
+
 /*
  * Initialise `num_camps` campements barbares sur la carte.
  * - Respecte la contrainte de distance Chebyshev >= 5 vis-à-vis de la ville de départ.
@@ -476,7 +498,8 @@ void barbares_move(Unit *barb, Map *map, City *player_cities[], int num_cities,
 
 // Combat automatique si adjacent
 int barbares_attack_if_adjacent(Unit *barb, Map *map, City *player_cities[], int num_cities,
-                                 Unit *player_units[], int num_player_units)
+                                 Unit *player_units[], int num_player_units,
+                                 char *out_log, size_t out_log_len)
 {
     if (!barb || !map) {
         return 0;
@@ -494,6 +517,9 @@ int barbares_attack_if_adjacent(Unit *barb, Map *map, City *player_cities[], int
         if (dx > 1 || dy > 1 || (dx == 0 && dy == 0)) {
             continue;
         }
+
+        int target_hp_before = target->hp;
+        int barb_hp_before = barb->hp;
 
         int dmg_to_target = barb->attack - target->defense;
         if (dmg_to_target < 1) {
@@ -523,6 +549,13 @@ int barbares_attack_if_adjacent(Unit *barb, Map *map, City *player_cities[], int
             }
         }
 
+        if (out_log && out_log_len > 0) {
+            snprintf(out_log, out_log_len,
+                     "[BARBARES] Combat contre %s: PV cible %d -> %d, PV barbare %d -> %d",
+                     barbarian_target_name(target), target_hp_before, target->hp,
+                     barb_hp_before, barb->hp);
+        }
+
         return 1;
     }
 
@@ -537,6 +570,9 @@ int barbares_attack_if_adjacent(Unit *barb, Map *map, City *player_cities[], int
         if (dx > 1 || dy > 1 || (dx == 0 && dy == 0)) {
             continue;
         }
+
+        int city_hp_before = city->hp;
+        int barb_hp_before = barb->hp;
 
         int city_power = city->has_wall ? 30 : 20;
         int dmg_to_city = barb->attack - city_power;
@@ -561,6 +597,12 @@ int barbares_attack_if_adjacent(Unit *barb, Map *map, City *player_cities[], int
             if (barb->x >= 0 && barb->y >= 0) {
                 map->tiles[barb->y][barb->x].unit = NULL;
             }
+        }
+
+        if (out_log && out_log_len > 0) {
+            snprintf(out_log, out_log_len,
+                     "[BARBARES] Combat contre ville: PV ville %d -> %d, PV barbare %d -> %d",
+                     city_hp_before, city->hp, barb_hp_before, barb->hp);
         }
 
         return 1;

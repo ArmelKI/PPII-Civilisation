@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <locale.h>
 
 static GameConfig g_active_config = {
     .difficulty = DIFF_NORMAL,
@@ -13,19 +14,51 @@ static GameConfig g_active_config = {
 
 static int parse_full_float(const char *value, float *out)
 {
-    char *end = NULL;
-    float parsed_value;
+    double parsed_value = 0.0;
+    double fraction_scale = 0.1;
+    int sign = 1;
+    int seen_digit = 0;
+    int seen_decimal = 0;
+    size_t index = 0;
 
     if (!value || !out) {
         return 0;
     }
 
-    parsed_value = strtof(value, &end);
-    if (end == value || *end != '\0') {
+    if (value[index] == '+' || value[index] == '-') {
+        if (value[index] == '-') {
+            sign = -1;
+        }
+        index++;
+    }
+
+    for (; value[index] != '\0'; ++index) {
+        char c = value[index];
+
+        if (c >= '0' && c <= '9') {
+            seen_digit = 1;
+            if (!seen_decimal) {
+                parsed_value = (parsed_value * 10.0) + (double)(c - '0');
+            } else {
+                parsed_value += (double)(c - '0') * fraction_scale;
+                fraction_scale *= 0.1;
+            }
+            continue;
+        }
+
+        if ((c == '.' || c == ',') && !seen_decimal) {
+            seen_decimal = 1;
+            continue;
+        }
+
         return 0;
     }
 
-    *out = parsed_value;
+    if (!seen_digit) {
+        return 0;
+    }
+
+    *out = (float)(sign * parsed_value);
     return 1;
 }
 
