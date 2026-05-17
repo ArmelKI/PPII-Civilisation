@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "core/game.h"
+#include "core/config.h"
 #include "core/barbares.h"
 #include "core/map.h"
 #include "core/types.h"
@@ -281,16 +282,37 @@ static void test_game_spawn_from_camps(void)
     game.map.tiles[2][2].camp = &game.barbarian_camps[0];
     game.map.tiles[5][5].camp = &game.barbarian_camps[1];
 
+    GameConfig cfg;
+    game_config_init_default(&cfg);
+    cfg.barbarian_spawn_multiplier = 10.0f;
+    game_config_set_active(&cfg);
+
     srand(1);
     spawn_random_barbarian(&game);
 
-    EXPECT(game.barbarian_count == 2, "chaque camp actif doit générer une unité au premier tour");
+    EXPECT(game.barbarian_count == 2, "chaque camp actif doit pouvoir générer une unité avec une chance haute");
     EXPECT(game.map.tiles[2][2].unit != NULL, "premier camp doit produire sur sa tuile");
     EXPECT(game.map.tiles[5][5].unit != NULL, "second camp doit produire sur sa tuile");
 
     for (int i = 0; i < game.barbarian_count; ++i) {
         free(game.barbarians[i]);
+        game.barbarians[i] = NULL;
     }
+    game.barbarian_count = 0;
+    game.map.tiles[2][2].unit = NULL;
+    game.map.tiles[5][5].unit = NULL;
+
+    cfg.barbarian_spawn_multiplier = 0.0f;
+    game_config_set_active(&cfg);
+
+    srand(1);
+    spawn_random_barbarian(&game);
+
+    EXPECT(game.barbarian_count == 0, "une chance basse doit pouvoir bloquer le spawn par camp");
+
+    game_config_init_default(&cfg);
+    game_config_set_active(&cfg);
+
     barbares_cleanup(game.barbarian_camps, game.barbarian_camp_count);
     free_test_map(&map);
 }
