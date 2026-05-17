@@ -65,6 +65,7 @@ Map* create_map_noise(int width, int height, int seed) {
             /* par défaut pas de merveille ni de ressource spéciale. */
             tuiles[h][w].wonder = WONDER_NONE;
             tuiles[h][w].special_ressources = SPRES_NONE;
+            tuiles[h][w].visibility = FOG_HIDDEN;
         }
     }
 
