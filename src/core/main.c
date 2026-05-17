@@ -16,6 +16,7 @@
 #include "../../include/core/tech.h"
 #include "../../include/core/ressources.h"
 #include "../../include/core/config.h"
+#include "../../include/core/barbares.h"
 
 #define MAX_TURNS 200
 
@@ -461,8 +462,6 @@ int main(int argc, char **argv) {
         seed = (int)time(NULL);
     }
 
-    (void)nb_barbarians; // pour éviter les erreurs de compilations avec les variables non utilisées
-
     // GESTION DU MODE D'AFFICHAGE
 
     if (strcmp(mode, "sdl") == 0) {
@@ -568,13 +567,17 @@ int main(int argc, char **argv) {
     
     clear();
     if (state == 1) {
-        init_game(&game, width, height, seed);
+        init_game(&game, width, height, seed, nb_barbarians);
         printw("[CIV] Nouvelle partie; Generation avec la graine : %d\n", seed);
+        printw("[BARBARES] %d campements places, plafond vivant = %d\n",
+               game.barbarian_camp_count, game.barbarian_camp_count * 3);
     } else if(state == 2) {
         if (!load_game("savegame.sav", &game)) {
             printw("Échec du chargement de la partie. Démarrage d'une nouvelle partie.\n");
-            init_game(&game, width, height, seed);
+            init_game(&game, width, height, seed, nb_barbarians);
             printw("[CIV] Nouvelle partie; Generation avec la graine : %d\n", seed);
+            printw("[BARBARES] %d campements places, plafond vivant = %d\n",
+                   game.barbarian_camp_count, game.barbarian_camp_count * 3);
         }
 
     }
@@ -1092,13 +1095,6 @@ int main(int argc, char **argv) {
                             }
                         }
 
-                        // A3. Pillage d'un camp barbare
-                        else if (target_tile->camp != NULL && target_tile->camp->destroyed == 0) {
-                            action_logged = true;
-                            printw("\n Vous avez détruit un campement barbare ! \n");
-                            target_tile->camp->destroyed = 1; // On détruit le camp(pas de combat)
-                        }
-
                         // VERDICT DU MOUVEMENT APRÈS LES COMBATS
 
 
@@ -1122,6 +1118,13 @@ int main(int argc, char **argv) {
 
                             // 3. On place le pointeur de l'unité sur la nouvelle tuile de la carte 
                             target_tile->unit = mon_unite;
+
+                            if (target_tile->camp != NULL && target_tile->camp->destroyed == 0 && mon_unite->type == UNIT_WARRIOR) {
+                                barbares_destroy_camp(target_tile->camp, &game.barbarian_camps_destroyed, &game.player);
+                                printw("\n [CAMP] Campement barbare detruit. Bonus or = +%d (campements detruits = %d)\n",
+                                       5 * game.barbarian_camps_destroyed,
+                                       game.barbarian_camps_destroyed);
+                            }
 
                             strcpy(status_msg, "Deplacement reussi !");
                         }
