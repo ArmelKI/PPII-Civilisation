@@ -55,6 +55,10 @@ int can_move(Unit *unit, Tile *destination, Player *player) {
         // Si c'est un ennemi, c'est valide (ça déclenche un combat)
     }
 
+    if (destination->camp != NULL && destination->camp->destroyed == 0 && unit->type != UNIT_WARRIOR) {
+        return 0; // Seul un guerrier peut entrer sur un campement encore actif
+    }
+
     return 1; // Déplacement valide
 }
 
