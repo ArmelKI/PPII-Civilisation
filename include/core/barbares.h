@@ -14,7 +14,8 @@ BarbarianCamp *barbares_init_camps(Map *map, int num_camps, int player_city_x, i
 int barbares_spawn_unit(BarbarianCamp *camp, Map *map, Unit **units_array, int *num_units, int max_units);
 
 // Déplace un barbare vers la cible la plus proche.
-// Ici on garde une logique simple, sans vrai A* pour l'instant.
+// En cas d'égalité, l'ordre d'apparition des cibles dans les tableaux
+// (unités puis villes) sert de départage déterministe.
 void barbares_move(Unit *barb, Map *map, City *player_cities[], int num_cities, 
                    Unit *player_units[], int num_player_units);
 
