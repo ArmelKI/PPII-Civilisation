@@ -659,7 +659,8 @@ int main(int argc, char **argv) {
 
         mvprintw(log_y, 0, "COMMANDES : [n] Finir Tour | [u] Choisir une unité | [c] Gerer Ville | [t] Technologies | [S] Sauvegarder (Maj+s) | [0] Voir les objectifs | [x] Quitter");
         if (game.combat_log_ready) {
-            snprintf(status_msg, sizeof(status_msg), "%s", game.combat_log);
+            strncpy(status_msg, game.combat_log, sizeof(status_msg) - 1);
+            status_msg[sizeof(status_msg) - 1] = '\0';
             game.combat_log_ready = 0;
         }
         attron(COLOR_PAIR(3) | A_BOLD);
