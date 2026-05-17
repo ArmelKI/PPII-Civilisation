@@ -279,7 +279,7 @@ BarbarianCamp *barbares_init_camps(Map *map, int num_camps, int player_city_x, i
                 continue;
             }
 
-            if (abs(x - player_city_x) < 5 && abs(y - player_city_y) < 5) {
+            if (chebyshev_distance(x, y, player_city_x, player_city_y) < 5) {
                 continue;
             }
 
@@ -301,7 +301,7 @@ BarbarianCamp *barbares_init_camps(Map *map, int num_camps, int player_city_x, i
                         continue;
                     }
 
-                    if (abs(x - player_city_x) < 5 && abs(y - player_city_y) < 5) {
+                    if (chebyshev_distance(x, y, player_city_x, player_city_y) < 5) {
                         continue;
                     }
 
