@@ -243,11 +243,13 @@ static void test_attack_and_destroy(void)
     map.tiles[3][4].unit = &enemy;
     Unit *player_units[1] = {&enemy};
     City *cities[1] = {NULL};
+    char logbuf[256] = {0};
 
-    int fought = barbares_attack_if_adjacent(&barb, &map, cities, 0, player_units, 1);
+    int fought = barbares_attack_if_adjacent(&barb, &map, cities, 0, player_units, 1, logbuf, sizeof(logbuf));
     EXPECT(fought == 1, "combat adjacent devrait être détecté");
     EXPECT(enemy.hp < 10, "ennemi devrait perdre des PV");
     EXPECT(barb.hp < 10, "barbare devrait subir le contre-coup");
+    EXPECT(strstr(logbuf, "Combat contre guerrier") != NULL, "le combat barbare doit produire un message lisible");
 
     BarbarianCamp camp = {.x = 1, .y = 1, .destroyed = 0, .id = 2};
     int destroyed_count = 0;
