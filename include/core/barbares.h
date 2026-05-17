@@ -1,6 +1,7 @@
 #ifndef CORE_BARBARES_H
 #define CORE_BARBARES_H
 
+#include <stddef.h>
 #include "types.h"
 
 // Fonctions liées aux barbares : campements, unités et combats.
@@ -21,8 +22,10 @@ void barbares_move(Unit *barb, Map *map, City *player_cities[], int num_cities,
 
 // Vérifie si le barbare peut attaquer automatiquement une cible voisine.
 // Retourne 1 si un combat a eu lieu, 0 sinon.
+// Si `out_log` est fourni, la fonction y écrit un résumé lisible du combat.
 int barbares_attack_if_adjacent(Unit *barb, Map *map, City *player_cities[], int num_cities,
-                                Unit *player_units[], int num_player_units);
+                                Unit *player_units[], int num_player_units,
+                                char *out_log, size_t out_log_len);
 
 // Détruit un campement et donne le bonus d'or associé.
 void barbares_destroy_camp(BarbarianCamp *camp, int *total_destroyed, Player *player);
