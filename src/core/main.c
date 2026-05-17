@@ -865,15 +865,10 @@ int main(int argc, char **argv) {
                     // --- SUCCÈS ---
                     strcpy(status_msg, "Ville fondee avec succes !");
                     
-                    // A) On retire le Colon de la carte (TRÈS IMPORTANT)
-                    game.map.tiles[mon_unite_f->y][mon_unite_f->x].unit = NULL;
-                    
-                    // B) On "tue" le Colon dans le tableau du joueur
-                    mon_unite_f->hp = 0; 
-                    game.player_units[selected_unit_idx] = NULL; 
-                    
-                    // C) On désélectionne l'unité morte
-                    selected_unit_idx = -1;
+                   game.player_units[selected_unit_idx] = game.player_units[game.player_unit_count - 1]; // Remplace le colon fondateur par le dernier de la liste
+                   game.player_units[game.player_unit_count - 1] = NULL; // Met le dernier slot à NULL
+                   game.player_unit_count--; // Réduit le nombre d'unités
+                    selected_unit_idx = -1; // Désélectionne l'unité (car elle n'existe plus)
                     
                 } else {
                     // --- ÉCHEC ---
