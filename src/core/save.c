@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "core/save.h"
 #include "core/game.h"
+#include "core/barbares.h"
 #include <string.h>
 #include <time.h>
 #include <ncurses.h>
@@ -41,8 +42,19 @@ int save_game(const char*filename, GameState * state) {
 
     for (int y=0; y< state->map.height; y++) {
         for (int x=0; x< state->map.width; x++) {
-            fwrite(&state->map.tiles[y][x], sizeof(Tile), 1, file);
+            Tile temp_tile = state->map.tiles[y][x];
+            temp_tile.camp = NULL;
+            fwrite(&temp_tile, sizeof(Tile), 1, file);
             fwrite(&state->map.tiles[y][x].visibility, sizeof(FogState), 1, file); // Sauvegarde de l'état de visibilité de chaque tuile
+        }
+    }
+
+    // 4bis. Sauvegarde des campements barbares
+    fwrite(&state->barbarian_camp_count, sizeof(int), 1, file);
+    fwrite(&state->barbarian_camps_destroyed, sizeof(int), 1, file);
+    for (int i = 0; i < state->barbarian_camp_count; ++i) {
+        if (state->barbarian_camps) {
+            fwrite(&state->barbarian_camps[i], sizeof(BarbarianCamp), 1, file);
         }
     }
 
@@ -129,6 +141,20 @@ int load_game(const char*filename, GameState *state) {
         int cx = state->cities[i]->x;
         int cy = state->cities[i]->y;
         state->map.tiles[cy][cx].city = state->cities[i];
+    }
+
+    // 8bis. Lecture et reconstruction des campements barbares
+    fread(&state->barbarian_camp_count, sizeof(int), 1, file);
+    fread(&state->barbarian_camps_destroyed, sizeof(int), 1, file);
+    if (state->barbarian_camp_count > 0) {
+        state->barbarian_camps = calloc((size_t)state->barbarian_camp_count, sizeof(BarbarianCamp));
+        for (int i = 0; i < state->barbarian_camp_count; ++i) {
+            fread(&state->barbarian_camps[i], sizeof(BarbarianCamp), 1, file);
+            if (state->barbarian_camps[i].x >= 0 && state->barbarian_camps[i].y >= 0 &&
+                state->barbarian_camps[i].x < state->map.width && state->barbarian_camps[i].y < state->map.height) {
+                state->map.tiles[state->barbarian_camps[i].y][state->barbarian_camps[i].x].camp = &state->barbarian_camps[i];
+            }
+        }
     }
 
     // 9. Lecture et placement des unités du joueur
