@@ -658,6 +658,10 @@ int main(int argc, char **argv) {
         attroff(COLOR_PAIR(40));
 
         mvprintw(log_y, 0, "COMMANDES : [n] Finir Tour | [u] Choisir une unité | [c] Gerer Ville | [t] Technologies | [S] Sauvegarder (Maj+s) | [0] Voir les objectifs | [x] Quitter");
+        if (game.combat_log_ready) {
+            snprintf(status_msg, sizeof(status_msg), "%s", game.combat_log);
+            game.combat_log_ready = 0;
+        }
         attron(COLOR_PAIR(3) | A_BOLD);
         mvprintw(log_y + 2, 0, ">> %s", status_msg);
         attroff(COLOR_PAIR(3) | A_BOLD);
@@ -1067,6 +1071,8 @@ int main(int argc, char **argv) {
 
                         // A1. Combat contre une unité ennemie (Barbare)
                         if (target_tile->unit && target_tile->unit->owner != mon_unite->owner) {
+                            int attacker_hp_before = mon_unite->hp;
+                            int defender_hp_before = target_tile->unit->hp;
                             mon_unite->pm--; // On consomme le PM pour attaquer
                             has_attacked = 1;
                             action_logged = true;
@@ -1074,6 +1080,13 @@ int main(int argc, char **argv) {
                             printw("-> Avant : Toi (%d PV) vs Barbare (%d PV)\n", mon_unite->hp, target_tile->unit->hp);
                             resolve_combat(mon_unite, target_tile->unit);
                             printw("-> Apres : Toi (%d PV) vs Barbare (%d PV)\n", mon_unite->hp, target_tile->unit->hp);
+                            game_set_combat_log(&game,
+                                                "[COMBAT] Ton %s vs barbare : PV toi %d -> %d, PV ennemi %d -> %d",
+                                                unit_label(mon_unite->type),
+                                                attacker_hp_before,
+                                                mon_unite->hp,
+                                                defender_hp_before,
+                                                target_tile->unit->hp);
 
                             // VERDICT DU COMBAT
 
@@ -1085,6 +1098,8 @@ int main(int argc, char **argv) {
 
                         // A2. Combat contre une ville ennemie (Barbare)
                         else if (target_tile->city && target_tile->city->owner != mon_unite->owner) {
+                            int attacker_hp_before = mon_unite->hp;
+                            int city_hp_before = target_tile->city->hp;
                             mon_unite->pm--;
                             has_attacked = 1;
                             action_logged = true;
@@ -1092,6 +1107,13 @@ int main(int argc, char **argv) {
                             printw("-> Avant : Toi (%d PV) vs Ville (%d PV)\n", mon_unite->hp, target_tile->city->hp);
                             resolve_combat_city(mon_unite, target_tile->city);
                             printw("-> Apres : Toi (%d PV) vs Ville (%d PV)\n", mon_unite->hp, target_tile->city->hp);
+                            game_set_combat_log(&game,
+                                                "[COMBAT] Ton %s contre ville : PV toi %d -> %d, PV ville %d -> %d",
+                                                unit_label(mon_unite->type),
+                                                attacker_hp_before,
+                                                mon_unite->hp,
+                                                city_hp_before,
+                                                target_tile->city->hp);
 
                             if (target_tile->city->hp <= 0) {
                                 printw("VICTOIRE ! La ville a été rasée !\n");
