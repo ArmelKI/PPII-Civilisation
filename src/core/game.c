@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include "../../include/core/game.h"
 #include "../../include/core/barbares.h"
 #include "../../include/core/physics.h"
@@ -23,6 +24,20 @@ static int count_living_barbarians(const GameState *game)
     }
 
     return count;
+}
+
+void game_set_combat_log(GameState *game, const char *fmt, ...)
+{
+    va_list args;
+
+    if (!game || !fmt) {
+        return;
+    }
+
+    va_start(args, fmt);
+    vsnprintf(game->combat_log, sizeof(game->combat_log), fmt, args);
+    va_end(args);
+    game->combat_log_ready = 1;
 }
 
 /*
@@ -215,6 +230,18 @@ void move_barbarians_random(GameState *game) {
             continue;
         }
 
+        char combat_log[256];
+        combat_log[0] = '\0';
+
+        if (barbares_attack_if_adjacent(barb, &game->map, game->cities, game->city_count,
+                                        game->player_units, game->player_unit_count,
+                                        combat_log, sizeof(combat_log))) {
+            if (combat_log[0] != '\0') {
+                game_set_combat_log(game, "%s", combat_log);
+            }
+            continue;
+        }
+
         int dx = (rand() % 3) - 1;
         int dy = (rand() % 3) - 1;
         if (dx == 0 && dy == 0) {
@@ -241,6 +268,15 @@ void move_barbarians_random(GameState *game) {
         barb->y = ny;
         barb->pm -= 1;
         game->map.tiles[barb->y][barb->x].unit = barb;
+
+        combat_log[0] = '\0';
+        if (barbares_attack_if_adjacent(barb, &game->map, game->cities, game->city_count,
+                                        game->player_units, game->player_unit_count,
+                                        combat_log, sizeof(combat_log))) {
+            if (combat_log[0] != '\0') {
+                game_set_combat_log(game, "%s", combat_log);
+            }
+        }
     }
 }
 
