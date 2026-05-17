@@ -7,7 +7,7 @@
 
 int can_research(Player *p, TechType tech);
 void start_research(Player *p, TechType tech);
-void update_research(Player *p);
+void update_research(Player *p, const GameState *game);
 
 extern const TechnologyDef TECH_CATALOG[MAX_TECHNOLOGIES];
 

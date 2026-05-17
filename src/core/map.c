@@ -2,6 +2,7 @@
 #include "../../include/core/types.h"
 #include "../../include/core/game.h"
 #include "../../include/core/ressources.h"
+#include "../../include/core/special_ressources.h"
 
 #define STB_PERLIN_IMPLEMENTATION
 #include "../../include/core/stb_perlin.h"
@@ -61,6 +62,9 @@ Map* create_map_noise(int width, int height, int seed) {
             tuiles[h][w].city = NULL;
             tuiles[h][w].unit = NULL;
             tuiles[h][w].camp = NULL;
+            /* par défaut pas de merveille ni de ressource spéciale. */
+            tuiles[h][w].wonder = WONDER_NONE;
+            tuiles[h][w].special_ressources = SPRES_NONE;
         }
     }
 
@@ -95,6 +99,20 @@ Map* create_map_noise(int width, int height, int seed) {
 
     if (!found) {
         tuiles[start_y][start_x].type = TERRAIN_PLAINE;
+    }
+
+    srand((unsigned int)seed);
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            if (tuiles[y][x].type == TERRAIN_EAU) continue;
+            if (x == start_x && y == start_y) continue;
+            if ((rand() % 100) >= 15) continue;
+
+            SpecialResourceType sr = sres_random_for_terrain(tuiles[y][x].type);
+            if (sr != SPRES_NONE) {
+                tuiles[y][x].special_ressources = (int)sr;
+            }
+        }
     }
 
     // Allocation de la ville
@@ -159,6 +177,8 @@ Map* create_map(int width, int height,int seed) {
             tuiles[h][w].city = NULL;
             tuiles[h][w].unit = NULL;
             tuiles[h][w].camp = NULL;
+            tuiles[h][w].wonder = WONDER_NONE;
+            tuiles[h][w].special_ressources = SPRES_NONE; 
         }
     }
 
@@ -177,7 +197,7 @@ Map* create_map(int width, int height,int seed) {
     return new_map;
 }
 
-void display_map_color(Map* map) {
+void display_map_color(Map* map, const Player *player) {
     if (map == NULL) return;
 
     for (int h = 0; h < map->height; h++) {
@@ -232,6 +252,30 @@ void display_map_color(Map* map) {
                     }
                     continue; // Si il y a un camp on affiche que ça et on passe à la case suivante
                 }
+
+                /* Merveille visible */
+                else if (tile->wonder != WONDER_NONE) {
+                    attron(COLOR_PAIR(50) | A_BOLD); printw("M "); attroff(COLOR_PAIR(50) | A_BOLD);
+                    continue;
+                }
+
+                /* Ressource spéciale visible uniquement si la techno requise
+                 * est débloquée (ou si player == NULL, mode debug). */
+                else if (tile->special_ressources != SPRES_NONE) {
+                    SpecialResourceType sr = (SpecialResourceType)tile->special_ressources;
+                    if (!player || sres_visible(player, sr)) {
+                        const SpecialResourceDef *def = sres_get(sr);
+                        if (def) {
+                            int pair = 51 + (int)sr; /* 51..55 selon le type */
+                            attron(COLOR_PAIR(pair) | A_BOLD);
+                            printw("%c ", def->ascii_char);
+                            attroff(COLOR_PAIR(pair) | A_BOLD);
+                            continue;
+                        }
+                    }
+                    /* Sinon : on retombe sur l'affichage du terrain normal */
+                }
+                
             }
 
             if (tile->visibility == FOG_EXPLORED) {

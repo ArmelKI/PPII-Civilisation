@@ -4,6 +4,9 @@
 #include "../../include/core/types.h"
 #include "../../include/core/game.h"
 #include "../../include/core/config.h"
+#include "../../include/core/wonder.h"
+#include "../../include/core/special_ressources.h"
+
 
 // mise en place du rendement en fonction du type de case
 TileYield get_terrain_yield(TerrainType type) {
@@ -92,10 +95,12 @@ City* get_tile_owner(int target_x, int target_y, Map* map){
 }
 
 //fonction qui actualise la ville à chaque tour
-void process_city_resources(City *city, Map *map) {
+void process_city_resources(City *city, Map *map, const GameState *game) {
     if (!city || !city->owner || !map) return;
     const GameConfig *config = game_config_get_active();
     float production_multiplier = config ? config->production_multiplier : 1.0f;
+
+    const Player *player = game ? &game->player : NULL;
 
     //rayon d'exploitation de la ville
     int rayon = 1;
@@ -119,8 +124,22 @@ void process_city_resources(City *city, Map *map) {
                 City* rightful_owner = get_tile_owner(target_x, target_y, map);
 
                 if (rightful_owner == city) {
-                    TerrainType t_type = map->tiles[target_y][target_x].type;
-                    TileYield tile_y = get_terrain_yield(t_type);
+                    Tile *t = &map->tiles[target_y][target_x];
+
+                    if (t->wonder != WONDER_NONE) {
+                        continue;
+                    }
+
+                    TileYield tile_y = get_terrain_yield( t -> type);
+
+                    if (t->special_ressources != SPRES_NONE) {
+                        SpecialResourceType sr = (SpecialResourceType)t->special_ressources;
+                        TileYield bonus = sres_yield_for_player(sr, player);
+                        tile_y.food       += bonus.food;
+                        tile_y.production += bonus.production;
+                        tile_y.gold       += bonus.gold;
+                        tile_y.science    += bonus.science;
+                    }
                     
                     total_yield.food += tile_y.food;
                     total_yield.production += tile_y.production;
@@ -144,6 +163,12 @@ void process_city_resources(City *city, Map *map) {
         total_yield.gold += 3;
     }
 
+    float food_mult = wonder_food_multiplier(game);
+    if (food_mult != 1.0f) {
+        total_yield.food = (int)(total_yield.food * food_mult + 0.5f);
+    }
+    total_yield.gold += wonder_extra_gold_per_city(game);
+
     int food_consumed = city->population * 2;       // consommation de nourriture
     
     // Maj des ressources de city et player
@@ -162,7 +187,7 @@ void process_city_resources(City *city, Map *map) {
 
 
 //fonction qui gère la croissance et la famine
-void process_city_growth(City *city,Map *map){
+void process_city_growth(City *city,Map *map, GameState *game){
 
     if (!city || !map) return;
 
@@ -174,6 +199,11 @@ void process_city_growth(City *city,Map *map){
 
     if(city -> has_granary){
         growth_seuil = (growth_seuil*2)/3;
+    }
+
+    float wonder_mult = wonder_growth_threshold_multiplier(game);
+    if (wonder_mult != 1.0f) {
+        growth_seuil = (int)(growth_seuil * wonder_mult + 0.5f);
     }
 
     growth_seuil = (int)(growth_seuil * growth_multiplier + 0.5f);
@@ -200,6 +230,11 @@ void process_city_growth(City *city,Map *map){
         if (city -> population <= 0){ 
             printw("\nFAMINE : La ville en [%d, %d] a perdu son dernier habitant et disparait...\n", city->x, city->y);
             map->tiles[city->y][city->x].city = NULL; // peu être modififier pour faire un free
+            /* la ville disparaît, on libère toutes les Merveilles
+             * qu'elle hébergeait pour qu'elles puissent être reconstruites. */
+            if (game) {
+                wonder_handle_city_destroyed(game, city->id);
+            }
             printw("[Appuyez sur une touche pour continuer...]\n");
             attroff(COLOR_PAIR(20) | A_BOLD);
             refresh(); getch();
@@ -375,7 +410,7 @@ int found_city(Unit *settler, Map *map, int *city_id_counter, City **player_citi
 
 
 //gestion de la production de bâtiments et d'unités
-void process_city_production(City *city, Map *map, Unit **player_units, int *player_unit_count) {
+void process_city_production(City *city, Map *map, Unit **player_units, int *player_unit_count, GameState *game) {
     if (!city || !map) return;
 
     // pas de projet => la production est perdue !
@@ -385,6 +420,9 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
     }
 
     int cost = 0;
+    WonderType wonder_proj = project_to_wonder(city->current_project); /* WONDER_NONE si pas une merveille */
+    int wonder_target_x = -1, wonder_target_y = -1;
+
     switch (city->current_project) {
         case PROJECT_GRANARY:  cost = 30; break;
         case PROJECT_WORKSHOP: cost = 40; break;
@@ -396,6 +434,13 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
         case PROJECT_WARRIOR:  cost = 40; break;
         case PROJECT_ARCHER:   cost = 55; break;
         case PROJECT_CAVALIER: cost = 60; break;
+        case PROJECT_WONDER_PYRAMIDS:
+        case PROJECT_WONDER_GREAT_LIBRARY:
+        case PROJECT_WONDER_COLISEUM:
+        case PROJECT_WONDER_BABEL:
+        case PROJECT_WONDER_HANGING_GARDEN:
+            cost = wonder_cost(wonder_proj);
+            break;
         default: return;
     }
 
@@ -416,6 +461,46 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
         return;
     }
 
+    /* Pré-conditions pour les Merveilles
+     * - Une autre ville (ou la même) a-t-elle déjà construit cette merveille ?
+     * - Existe-t-il une case du terrain requis libre dans le rayon ?
+     * Si l'une des deux échoue, on annule le projet (la prod est perdue).
+     * On a besoin de GameState pour ces vérifications. */
+    if (wonder_proj != WONDER_NONE) {
+        if (!game) {
+            /* Pas de GameState : on ne peut pas garantir l'unicité, on annule par sécurité. */
+            city->current_project = PROJECT_NONE;
+            city->production_stored = 0;
+            return;
+        }
+        if (wonder_is_built(game, wonder_proj)) {
+            /* Quelqu'un d'autre l'a déjà bâtie pendant qu'on accumulait. La prod est perdue. */
+            attron(COLOR_PAIR(20) | A_BOLD);
+            printw("\nLa Merveille \"%s\" a deja ete batie ailleurs. Projet annule.\n",
+                   wonder_name(wonder_proj));
+            printw("[Appuyez sur une touche pour continuer...]\n");
+            attroff(COLOR_PAIR(20) | A_BOLD);
+            refresh(); getch();
+            city->current_project = PROJECT_NONE;
+            city->production_stored = 0;
+            return;
+        }
+        if (!wonder_can_build_in_city(game, city, wonder_proj,
+                                       &wonder_target_x, &wonder_target_y)) {
+            /* Plus de case du bon terrain disponible (peut-être occupée
+             * par une autre construction). On annule. */
+            attron(COLOR_PAIR(20) | A_BOLD);
+            printw("\nPlus de terrain compatible pour \"%s\". Projet annule.\n",
+                   wonder_name(wonder_proj));
+            printw("[Appuyez sur une touche pour continuer...]\n");
+            attroff(COLOR_PAIR(20) | A_BOLD);
+            refresh(); getch();
+            city->current_project = PROJECT_NONE;
+            city->production_stored = 0;
+            return;
+        }
+    }
+
     if (city->production_stored >= cost) {
 
         city->production_stored -= cost; 
@@ -428,7 +513,7 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
             case PROJECT_GRANARY:  city->has_granary = 1;  printw("Grenier construit !\n"); break;
             case PROJECT_WORKSHOP: city->has_workshop = 1; printw("Atelier construit !\n"); break;
             case PROJECT_LIBRARY:  city->has_library = 1;  printw("Bibliotheque construite !\n"); break;
-            case PROJECT_MARKET:   city->has_market = 1;   printw("Marche construit !\n"); break;
+            case PROJECT_MARKET:   city->has_market = 1;   printw("Marché construit !\n"); break;
             case PROJECT_BARRACKS: city->has_barrack = 1; printw("Caserne construite !\n"); break;
             case PROJECT_WALL: {
                 city->has_wall = 1;
@@ -437,6 +522,21 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
                 break;
             }
 
+            /* Construction d'une Merveille */
+            case PROJECT_WONDER_PYRAMIDS:
+            case PROJECT_WONDER_GREAT_LIBRARY:
+            case PROJECT_WONDER_COLISEUM:
+            case PROJECT_WONDER_BABEL:
+            case PROJECT_WONDER_HANGING_GARDEN: {
+                wonder_mark_built(game, wonder_proj, wonder_target_x, wonder_target_y, city->id);
+                printw("MERVEILLE achevee : %s [%d,%d] !\n", wonder_name(wonder_proj),wonder_target_x, wonder_target_y);
+                /* Grande Bibliothèque : effet one-shot immédiat */
+                if (wonder_proj == WONDER_GREAT_LIBRARY) {
+                    wonder_apply_great_library_effect(game);
+                    printw("Effet : la technologie en cours est decouverte instantanement !\n");
+                }
+                break;
+            }
 
             case PROJECT_WARRIOR:
             case PROJECT_ARCHER:
@@ -489,6 +589,31 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
                         new_unit->pm_max = 2;
                     }
 
+                    /* Bonus Chevaux: Si la ville a une ressource
+                     * Chevaux dans son rayon ET que la techno Équitation
+                     * est débloquée, les unités produites gagnent +1 PM. */
+                    if (city->owner && city->owner->unlocked_techs[TECH_EQUITATION]) {
+                        int rayon = 1;
+                        if (city->population >= 10 && city->population <= 25) rayon = 2;
+                        else if (city->population > 25) rayon = 3;
+
+                        int found_horses = 0;
+                        for (int dy = -rayon; dy <= rayon && !found_horses; dy++) {
+                            for (int dx = -rayon; dx <= rayon && !found_horses; dx++) {
+                                int tx = city->x + dx;
+                                int ty = city->y + dy;
+                                if (tx < 0 || tx >= map->width || ty < 0 || ty >= map->height) continue;
+                                if (map->tiles[ty][tx].special_ressources == (int)SPRES_HORSES) {
+                                    found_horses = 1;
+                                }
+                            }
+                        }
+                        if (found_horses) {
+                            new_unit->pm_max += 1;
+                            printw("(Bonus Chevaux : +1 PM)\n");
+                        }
+                    }
+
                     new_unit->hp = new_unit->hp_max;
                     new_unit->pm = new_unit->pm_max;
                     
@@ -518,7 +643,7 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
 }
 
 
-void control_city_project(City *city) {
+void control_city_project(City *city, const GameState *game) {
     if (!city) return;
 
     const GameConfig *config = game_config_get_active();
@@ -574,10 +699,28 @@ void control_city_project(City *city) {
     if (city->has_granary)  { printw("Grenier  "); has_buildings = 1; }
     if (city->has_workshop) { printw("Atelier  "); has_buildings = 1; }
     if (city->has_library)  { printw("Bibliotheque  "); has_buildings = 1; }
-    if (city->has_market)   { printw("Marche  "); has_buildings = 1; }
+    if (city->has_market)   { printw("Marché "); has_buildings = 1; }
     if (city->has_barrack)  { printw("Caserne  "); has_buildings = 1; }
     if (city->has_wall)     { printw("Muraille  "); has_buildings = 1; }
     if (!has_buildings) printw("Aucun");
+
+    /* On liste les Merveilles hébergées par cette ville. */
+    if (game) {
+        int has_wonder_here = 0;
+        for (int w = 0; w < NUM_WONDERS; w++) {
+            if (game->wonder_built[w] && game->wonder_host_city_id[w] == city->id) {
+                if (!has_wonder_here) {
+                    move(line++, start_x);
+                    printw("Merveilles hébergées : ");
+                    has_wonder_here = 1;
+                }
+                attron(COLOR_PAIR(50) | A_BOLD);
+                printw("%s  ", wonder_name((WonderType)w));
+                attroff(COLOR_PAIR(50) | A_BOLD);
+            }
+        }
+    }
+
     line++;
 
     // --- PROJET ACTUEL ---
@@ -594,9 +737,20 @@ void control_city_project(City *city) {
         case PROJECT_GRANARY: printw("Construction : Grenier"); break;
         case PROJECT_WORKSHOP: printw("Construction : Atelier"); break;
         case PROJECT_LIBRARY: printw("Construction : Bibliotheque"); break;
-        case PROJECT_MARKET: printw("Construction : Marche"); break;
+        case PROJECT_MARKET: printw("Construction : Marché"); break;
         case PROJECT_BARRACKS: printw("Construction : Caserne"); break;
         case PROJECT_WALL: printw("Construction : Muraille"); break;
+        case PROJECT_WONDER_PYRAMIDS:
+        case PROJECT_WONDER_GREAT_LIBRARY:
+        case PROJECT_WONDER_COLISEUM:
+        case PROJECT_WONDER_BABEL:
+        case PROJECT_WONDER_HANGING_GARDEN: {
+            WonderType w = project_to_wonder(city->current_project);
+            printw("MERVEILLE : %s (%d / %d Prod)",
+                   wonder_name(w),
+                   city->production_stored, wonder_cost(w));
+            break;
+        }
         default: printw("Inconnu."); break;
     }
     line++;
@@ -619,7 +773,7 @@ void control_city_project(City *city) {
     if (!city->has_granary)  { move(line++, start_x); printw("[3] Grenier (30 Prod)     - Bonus : +3 Nourriture/tour"); }
     if (!city->has_workshop) { move(line++, start_x); printw("[4] Atelier (40 Prod)     - Bonus : +3 Production/tour"); }
     if (!city->has_library)  { move(line++, start_x); printw("[5] Bibliotheque (50 Prod)- Bonus : +4 Science/tour"); }
-    if (!city->has_market)   { move(line++, start_x); printw("[6] Marche (40 Prod)      - Bonus : +3 Or/tour"); }
+    if (!city->has_market)   { move(line++, start_x); printw("[6] Marché(40 Prod)      - Bonus : +3 Or/tour"); }
     if (!city->has_barrack)  { move(line++, start_x); printw("[7] Caserne (60 Prod)     - Bonus : Permet de recruter des Guerriers"); }
     if (!city->has_wall)     { move(line++, start_x); printw("[8] Muraille (80 Prod)    - Bonus : Double les PV max de la ville"); }
 
@@ -630,7 +784,6 @@ void control_city_project(City *city) {
         attron(A_DIM); printw("[9] [BLOQUE] Archer       - Necessite Une Caserne + La technologie Chasse"); attroff(A_DIM);
     }
 
-    line++;
     move(line++, start_x);
 
     if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_EQUITATION]) {
@@ -641,56 +794,136 @@ void control_city_project(City *city) {
 
     line++;
     move(line++, start_x);
+
+    /*  Bloc Merveilles: Touches P, B, C, T, J. */
+    line++;
+    move(line++, start_x);
+    attron(A_BOLD); printw("-- MERVEILLES DU MONDE --"); attroff(A_BOLD);
+
+    static const struct { WonderType w; char key; } MENU[NUM_WONDERS] = {
+        { WONDER_PYRAMIDS,       'P' },
+        { WONDER_GREAT_LIBRARY,  'B' },
+        { WONDER_COLISEUM,       'C' },
+        { WONDER_BABEL,          'T' },
+        { WONDER_HANGING_GARDEN, 'J' }
+    };
+
+    for (int i = 0; i < NUM_WONDERS; i++) {
+        WonderType w = MENU[i].w;
+        char key = MENU[i].key;
+        const char *name_w = wonder_name(w);
+        int cost_w = wonder_cost(w);
+        const char *desc = WONDER_CATALOG[w].effect_desc;
+
+        move(line++, start_x);
+        if (!game) {
+            attron(A_DIM);
+            printw("[%c] [INDISPONIBLE] %s", key, name_w);
+            attroff(A_DIM);
+        } else if (wonder_is_built(game, w)) {
+            if (game->wonder_host_city_id[w] == city->id) {
+                printw("[%c] [DEJA ICI] %s", key, name_w);
+            } else {
+                printw("[%c] [DEJA BATIE AILLEURS] %s", key, name_w);
+            }
+            attroff(A_DIM);
+        } else {
+            int tx, ty;
+            int possible = wonder_can_build_in_city(game, city, w, &tx, &ty);
+            if (!possible) {
+                attron(A_DIM);
+                printw("[%c] [PAS DE TERRAIN] %s (necessite %s dans le rayon)",
+                       key, name_w,
+                       /* nom court du terrain */
+                       (WONDER_CATALOG[w].terrain == TERRAIN_DESERT)   ? "Desert" :
+                       (WONDER_CATALOG[w].terrain == TERRAIN_TOUNDRA)  ? "Toundra" :
+                       (WONDER_CATALOG[w].terrain == TERRAIN_PLAINE)   ? "Plaine" :
+                       (WONDER_CATALOG[w].terrain == TERRAIN_MONTAGNE) ? "Montagne" :
+                       (WONDER_CATALOG[w].terrain == TERRAIN_FORET)    ? "Foret" : "?");
+                attroff(A_DIM);
+            } else {
+                printw("[%c] %s (%d Prod) - %s", key, name_w, cost_w, desc);
+            }
+        }
+    }
+        attron(A_DIM);
+
+    line++;
+    move(line++, start_x);
+
+    
     
     printw("Votre choix : ");
     refresh();
     
     // Récupération du choix
     int ch = getch();
-    
+
     move(line++, start_x);
-    switch(ch) {
-        case '0': 
-            printw("Action annulee, Le projet actuel est maintenu.");
-            break;
-        case '1':
-            city->current_project = PROJECT_SETTLER; city->production_stored = 0; // Perte de la production accumulée
-            printw("Projet defini: Colon");
-            break;
-        case '2':
-            if (city->has_barrack) {
-                city->current_project = PROJECT_WARRIOR; city->production_stored = 0;
-                printw("Projet defini: Guerrier");
+
+    /* On traite d'abord les touches lettre pour les Merveilles */
+    WonderType picked_wonder = WONDER_NONE;
+    switch (ch) {
+        case 'P': case 'p': picked_wonder = WONDER_PYRAMIDS;       break;
+        case 'B': case 'b': picked_wonder = WONDER_GREAT_LIBRARY;  break;
+        case 'C':           picked_wonder = WONDER_COLISEUM;       break;
+        case 'T': case 't': picked_wonder = WONDER_BABEL;          break;
+        case 'J': case 'j': picked_wonder = WONDER_HANGING_GARDEN; break;
+        default: break;
+    }
+
+    if (picked_wonder != WONDER_NONE) {
+        if (!game) {
+            printw("Impossible : pas de contexte de jeu (mode test).");
+        } else if (wonder_is_built(game, picked_wonder)) {
+            printw("Impossible : la Merveille \"%s\" est deja construite.", wonder_name(picked_wonder));
+        } else {
+            int tx, ty;
+            if (!wonder_can_build_in_city(game, city, picked_wonder, &tx, &ty)) {
+                printw("Impossible : aucun terrain compatible dans le rayon de la ville.");
             } else {
-                printw("Projet Guerrier bloque : Caserne requise.");
+                city->current_project = wonder_to_project(picked_wonder);
+                city->production_stored = 0;
+                printw("Projet defini : Merveille \"%s\" sur [%d,%d]", wonder_name(picked_wonder), tx, ty);
             }
-            break;
-        case '3': city -> current_project = PROJECT_GRANARY; city->production_stored = 0; printw("Projet defini: Grenier"); break;
-        case '4': city -> current_project = PROJECT_WORKSHOP; city->production_stored = 0; printw("Projet defini: Atelier"); break;
-        case '5': city -> current_project = PROJECT_LIBRARY; city->production_stored = 0; printw("Projet defini: Bibliotheque"); break;
-        case '6': city -> current_project = PROJECT_MARKET; city->production_stored = 0; printw("Projet defini: Marche"); break;
-        case '7': city -> current_project = PROJECT_BARRACKS; city->production_stored = 0; printw("Projet defini: Caserne"); break;
-        case '8': city -> current_project = PROJECT_WALL; city->production_stored = 0; printw("Projet defini: Muraille"); break;
-        case '9':
-            if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_CHASSE]) {
-                city->current_project = PROJECT_ARCHER; city->production_stored = 0;
-                printw("Projet defini: Archer");
-            } else {
-                printw("Projet Archer bloque : Caserne + Chasse requises.");
+        }
+    } else {
+        int choix = ch - '0';
+        if (choix < 0 || choix > 9) {
+            printw("Entree invalide ou annulee.");
+        } else {
+            switch (choix) {
+                case 0: 
+                    printw("Action annulee. Le projet actuel est maintenu.");
+                    break;
+                case 1: 
+                    city->current_project = PROJECT_SETTLER; city->production_stored = 0; 
+                    printw("Projet defini : Colon"); 
+                    break;
+                case 2: 
+                    if (city->has_barrack) {
+                        city->current_project = PROJECT_WARRIOR; city->production_stored = 0;
+                        printw("Projet defini : Guerrier");
+                    } else {
+                        printw("Impossible : Vous n'avez pas de caserne !");
+                    }
+                    break;
+                case 3: city->current_project = PROJECT_GRANARY; city->production_stored = 0; printw("Projet defini : Grenier"); break;
+                case 4: city->current_project = PROJECT_WORKSHOP; city->production_stored = 0; printw("Projet defini : Atelier"); break;
+                case 5: city->current_project = PROJECT_LIBRARY; city->production_stored = 0; printw("Projet defini : Bibliotheque"); break;
+                case 6: city->current_project = PROJECT_MARKET; city->production_stored = 0; printw("Projet defini : Marché"); break;
+                case 7: city->current_project = PROJECT_BARRACKS; city->production_stored = 0; printw("Projet defini : Caserne"); break;
+                case 8: city->current_project = PROJECT_WALL; city->production_stored = 0; printw("Projet defini : Muraille"); break;
+                case 9:
+                    if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_CHASSE]) {
+                        city->current_project = PROJECT_ARCHER; city->production_stored = 0;
+                        printw("Projet defini : Archer");
+                    } else {
+                        printw("Impossible : Archer requis Caserne + Technologie Chasse !");
+                    }
+                    break;
             }
-            break;
-        case 'c':
-        case 'C':
-            if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_EQUITATION]) {
-                city->current_project = PROJECT_CAVALIER; city->production_stored = 0;
-                printw("Projet defini: Cavalier");
-            } else {
-                printw("Projet Cavalier bloque : Caserne + Equitation requises.");
-            }
-            break;
-        default:
-            printw("Choix invalide, aucun changement n'a ete effectue.");
-            break;
+        }
     }
     line++;
     move(line++, start_x);

@@ -44,6 +44,11 @@ typedef struct GameState {
     int consecutive_zero_production_turns;
     int game_over;
     int seed;
+
+    int wonder_built[NUM_WONDERS];       // 1 si construite, 0 sinon
+    int wonder_x[NUM_WONDERS];           // coordonnées de la merveille (si built)
+    int wonder_y[NUM_WONDERS];
+    int wonder_host_city_id[NUM_WONDERS];// id de la ville qui héberge (pour gérer destruction)
 } GameState;
 
 // --- FONCTIONS DE GESTION DU JEU ---

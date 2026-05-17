@@ -3,9 +3,11 @@
 #include "core/save.h"
 #include "core/game.h"
 #include "core/barbares.h"
+#include "core/wonder.h"
 #include <string.h>
 #include <time.h>
 #include <ncurses.h>
+
 int save_game(const char*filename, GameState * state) {
     if (state == NULL) return 0;
 
@@ -80,10 +82,16 @@ int save_game(const char*filename, GameState * state) {
     for (int i=0; i<state->barbarian_count; i++) {
         if(state->barbarians[i] != NULL) {
             Unit temp_barb = *(state->barbarians[i]);
-            temp_barb.owner = NULL; // On ne sauvegarde pas le pointeur vers le joueur pour éviter les problèmes de référence circulaire
+            temp_barb.owner = NULL; // On ne sauvegarde pas le pointeur vers le joueur pour éviter les problèmes de référence circulaire 
             fwrite(&temp_barb, sizeof(Unit), 1, file);
         }
     }
+
+    // 7. Sauvegarde de l'état global des Merveilles.
+    fwrite(state->wonder_built,         sizeof(int), NUM_WONDERS, file);
+    fwrite(state->wonder_x,             sizeof(int), NUM_WONDERS, file);
+    fwrite(state->wonder_y,             sizeof(int), NUM_WONDERS, file);
+    fwrite(state->wonder_host_city_id,  sizeof(int), NUM_WONDERS, file);
 
     fclose(file);
 

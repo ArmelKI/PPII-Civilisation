@@ -65,6 +65,8 @@ typedef struct Tile{
     City* city;      // Pointeur vers la ville présente sur ce terrain (NULL si aucune)
     Unit* unit;      // Pointeur vers l'unité présente sur ce terrain (NULL si aucune)
     BarbarianCamp* camp; // Pointeur vers le camp de barbares présent sur ce terrain (NULL si aucun)
+    int wonder;     // -1 si aucune merveilles
+    int special_ressources; // -1 si aucune ressource spéciale
 } Tile;
 
 typedef struct Map{
@@ -109,7 +111,13 @@ typedef enum {
     PROJECT_LIBRARY,    // Bibliothèque (50 prod)
     PROJECT_MARKET,     // Marché (40 prod)
     PROJECT_BARRACKS,   // Caserne (60 prod)
-    PROJECT_WALL        // Muraille (80 prod)
+    PROJECT_WALL,        // Muraille (80 prod)
+
+    PROJECT_WONDER_PYRAMIDS,        // 200 prod, Désert, +50% Nourriture globale
+    PROJECT_WONDER_GREAT_LIBRARY,   // 250 prod, Toundra, offre la techno en cours
+    PROJECT_WONDER_COLISEUM,        // 180 prod, Plaine, +2 Or/tour par ville
+    PROJECT_WONDER_BABEL,           // 300 prod, Montagne, -25% coût techs
+    PROJECT_WONDER_HANGING_GARDEN   // 220 prod, Forêt, -20% seuil de croissance
 } ProjectType;
 
 typedef struct City {
@@ -182,7 +190,27 @@ typedef struct {
 } TileYield;             //permet de définir et manipuler le rendement d'une case
 
 
+/* Les 5 Merveilles du Monde. Une seule peut exister dans toute la partie. */
+typedef enum {
+    WONDER_NONE = -1,
+    WONDER_PYRAMIDS = 0,        // 200 prod, Désert, +50% Nourriture toutes villes
+    WONDER_GREAT_LIBRARY = 1,   // 250 prod, Toundra, offre la techno en cours
+    WONDER_COLISEUM = 2,        // 180 prod, Plaine, +2 Or/tour par ville
+    WONDER_BABEL = 3,           // 300 prod, Montagne, -25% coût futures techs
+    WONDER_HANGING_GARDEN = 4,  // 220 prod, Forêt, -20% seuil de croissance
+    NUM_WONDERS = 5
+} WonderType;
 
+/* Les 5 ressources spéciales. ~15% des tuiles éligibles en portent une. */
+typedef enum {
+    SPRES_NONE = -1,
+    SPRES_WHEAT = 0,     // Blé, Plaine, +3 Food, requiert Agriculture
+    SPRES_IRON = 1,      // Fer, Montagne, +3 Prod, requiert Artisanat
+    SPRES_SPICES = 2,    // Épices, Forêt ou Désert, +4 Or, requiert Commerce
+    SPRES_SPECIMENS = 3, // Spécimens, Toundra, +3 Science, requiert Écriture
+    SPRES_HORSES = 4,    // Chevaux, Plaine ou Toundra, +1 PM unités produites, requiert Équitation
+    NUM_SPECIAL_RESOURCES = 5
+} SpecialResourceType;
 
 
 

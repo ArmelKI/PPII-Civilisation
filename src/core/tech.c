@@ -1,4 +1,5 @@
 #include "../../include/core/game.h"
+#include "../../include/core/wonder.h"
 #include <stdio.h>
 
 
@@ -59,11 +60,20 @@ void start_research(Player *p, TechType tech) {
 
 
 // Fonction à appeler à chaque FIN DE TOUR pour vérifier si on a trouvé
-void update_research(Player *p) {
+void update_research(Player *p, const GameState *game) {
     if (p->current_research == TECH_NONE) return; // Pas de recherche en cours
 
     TechType tech = p->current_research;
     int cost = TECH_CATALOG[tech].cost;
+
+    /* la Tour de Babel applique -25% sur le coût des futures techs.
+     * Le helper renvoie 1.0 si Babel n'est pas construite ou si game == NULL,
+     * donc l'ancien comportement est préservé. */
+    float mult = wonder_tech_cost_multiplier(game);
+    if (mult != 1.0f) {
+        cost = (int)(cost * mult + 0.5f);
+        if (cost < 1) cost = 1;
+    }
 
     if(p->science >= cost) {
         // Technologie débloquée !

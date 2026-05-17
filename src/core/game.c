@@ -73,6 +73,13 @@ void init_game(GameState *game, int width, int height, int seed, int barbarian_c
     game ->consecutive_turns_10_cities = 0;
     game -> consecutive_zero_production_turns = 0;
 
+    /* EXT-2 : memset() laisse host_city_id à 0, ce qui se confondrait
+     * avec une ville valide. On force -1 (= "personne"). Les autres
+     * champs wonder_built/x/y sont bien à 0 grâce au memset. */
+    for (int i = 0; i < NUM_WONDERS; i++) {
+        game->wonder_host_city_id[i] = -1;
+    }
+
     // Initialisation Joueur
     game->player.gold = 100;
     game->player.science = 100;
@@ -245,9 +252,9 @@ void next_turn(GameState *game) {
     // 2) Revenus des villes (Boucle sur toutes les villes possédées)
     for (int i = 0; i < game->city_count; i++) {
         if (game->cities[i] != NULL) {
-            process_city_resources(game->cities[i], &game->map);
-            process_city_growth(game->cities[i], &game->map);
-            process_city_production(game->cities[i], &game->map, game->player_units, &game->player_unit_count);
+            process_city_resources(game->cities[i], &game->map, game);
+            process_city_growth(game->cities[i], &game->map, game);
+            process_city_production(game->cities[i], &game->map, game->player_units, &game->player_unit_count, game);
         }
     }
     
@@ -259,7 +266,7 @@ void next_turn(GameState *game) {
     move_barbarians_random(game);
 
     // 4) mise à jour de la recherche des technologies
-    update_research(&game->player);
+    update_research(&game->player, game);
 
     game->turn++;
 }

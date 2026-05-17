@@ -17,6 +17,7 @@
 #include "../../include/core/ressources.h"
 #include "../../include/core/config.h"
 #include "../../include/core/barbares.h"
+#include "../../include/core/wonder.h"
 
 #define MAX_TURNS 200
 
@@ -529,6 +530,13 @@ int main(int argc, char **argv) {
     init_pair(64, 130, 53);  // Montagne exploitée
     init_pair(65, 214, 53);  // Désert exploité
     init_pair(66, 253, 53);  // Toundra exploitée
+    // -- MERVEILLES ET RESSOURCES SPECIALES --
+    init_pair(50, 220, COLOR_BLACK); // Merveille (M) : Or doré
+    init_pair(51, 226, COLOR_BLACK); // Blé (b) : Jaune blé
+    init_pair(52, 245, COLOR_BLACK); // Fer (i) : Gris acier
+    init_pair(53, 208, COLOR_BLACK); // Épices (e) : Orange épicé
+    init_pair(54, 87,  COLOR_BLACK); // Spécimens (s) : Cyan clair
+    init_pair(55, 137, COLOR_BLACK); // Chevaux (h) : Marron clair
 
     // MENU PRINCIPAL
     int state = run_main_menu(&diff_level_ui, &enable_fow_ui);
@@ -602,7 +610,7 @@ int main(int argc, char **argv) {
         update_fog_of_war(&game, enable_fow_ui);
         
         move(0, 0);
-        display_map_color(&game.map);
+        display_map_color(&game.map, &game.player);
 
         // 1. Affichage d'état (hook externe ou console)
         print_state_maxence_stub(&game);
@@ -895,7 +903,7 @@ int main(int argc, char **argv) {
                         continue;
                     }
                     // On envoie la ville sélectionnée à la fonction de gestion
-                    control_city_project(game.cities[selected_city_idx]);
+                    control_city_project(game.cities[selected_city_idx], &game);
                 } else {
                     strcpy(status_msg, "Selectionnez une ville avec la souris d'abord !");
                 }
@@ -1090,6 +1098,7 @@ int main(int argc, char **argv) {
 
                             if (target_tile->city->hp <= 0) {
                                 printw("VICTOIRE ! La ville a été rasée !\n");
+                                wonder_handle_city_destroyed(&game, target_tile->city->id);
                                 free(target_tile->city);
                                 target_tile->city = NULL; //On vide la place de parking de la ville
                             }
