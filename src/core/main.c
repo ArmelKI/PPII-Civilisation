@@ -997,7 +997,7 @@ int main(int argc, char **argv) {
                     int tech_idx = tech_choice - '0';
                     if (can_research(&game.player, tech_idx)) {
                         start_research(&game.player, tech_idx);
-                        sprintf(status_msg, "\033[1;33mNouvelle recherche lancee : %s\033[0m", TECH_CATALOG[tech_idx].name);
+                        sprintf(status_msg, "Nouvelle recherche lancee : %s !", TECH_CATALOG[tech_idx].name);
                     } else {
                         strcpy(status_msg, "Recherche impossible (prérequis manquants).");
                     }
