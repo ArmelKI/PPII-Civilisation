@@ -170,6 +170,10 @@ void spawn_random_barbarian(GameState *game) {
         return;
     }
 
+    // La difficulté agit ici comme un pourcentage de réussite par camp.
+    // On garde le modèle "un essai par camp" et on laisse la config moduler
+    // la probabilité qu'un camp produise effectivement une unité ce tour.
+    int spawn_chance = game_config_barbarian_spawn_chance();
     int max_living_barbarians = game->barbarian_camp_count * 3;
     if (max_living_barbarians > MAX_BARBARIANS) {
         max_living_barbarians = MAX_BARBARIANS;
@@ -186,6 +190,10 @@ void spawn_random_barbarian(GameState *game) {
 
         BarbarianCamp *camp = &game->barbarian_camps[i];
         if (!camp || camp->destroyed) {
+            continue;
+        }
+
+        if ((rand() % 100) >= spawn_chance) {
             continue;
         }
 
