@@ -2,12 +2,64 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../../include/core/game.h"
+#include "../../include/core/barbares.h"
 #include "../../include/core/physics.h"
 #include "../../include/core/tech.h"
 #include "../../include/core/ressources.h"
 #include "../../include/core/config.h"
 
-void init_game(GameState *game, int width, int height, int seed) {
+static int count_living_barbarians(const GameState *game)
+{
+    int count = 0;
+
+    if (!game) {
+        return 0;
+    }
+
+    for (int i = 0; i < game->barbarian_count; ++i) {
+        if (game->barbarians[i] && game->barbarians[i]->hp > 0) {
+            count++;
+        }
+    }
+
+    return count;
+}
+
+static void compact_barbarians(GameState *game)
+{
+    int write_index = 0;
+
+    if (!game) {
+        return;
+    }
+
+    for (int read_index = 0; read_index < game->barbarian_count; ++read_index) {
+        Unit *barb = game->barbarians[read_index];
+        if (!barb) {
+            continue;
+        }
+
+        if (barb->hp <= 0) {
+            if (barb->x >= 0 && barb->x < game->map.width && barb->y >= 0 && barb->y < game->map.height) {
+                if (game->map.tiles[barb->y][barb->x].unit == barb) {
+                    game->map.tiles[barb->y][barb->x].unit = NULL;
+                }
+            }
+            free(barb);
+            continue;
+        }
+
+        game->barbarians[write_index++] = barb;
+    }
+
+    for (int i = write_index; i < game->barbarian_count; ++i) {
+        game->barbarians[i] = NULL;
+    }
+
+    game->barbarian_count = write_index;
+}
+
+void init_game(GameState *game, int width, int height, int seed, int barbarian_camp_count) {
     memset(game, 0, sizeof(GameState));
     game->seed = seed;
     game->turn = 1;
@@ -49,6 +101,27 @@ void init_game(GameState *game, int width, int height, int seed) {
         game->cities[0]->has_barrack = 1;
         game->map.tiles[game->cities[0]->y][game->cities[0]->x].city = game->cities[0];
 }
+
+    if (barbarian_camp_count <= 0) {
+        barbarian_camp_count = 3;
+    }
+
+    game->barbarian_camp_count = barbarian_camp_count;
+    game->barbarian_camps_destroyed = 0;
+    game->barbarian_camps = barbares_init_camps(&game->map, barbarian_camp_count,
+                                               game->cities[0] ? game->cities[0]->x : game->map.start_x,
+                                               game->cities[0] ? game->cities[0]->y : game->map.start_y);
+    if (game->barbarian_camps) {
+        for (int i = 0; i < game->barbarian_camp_count; ++i) {
+            BarbarianCamp *camp = &game->barbarian_camps[i];
+            if (camp->x >= 0 && camp->x < game->map.width && camp->y >= 0 && camp->y < game->map.height) {
+                game->map.tiles[camp->y][camp->x].camp = camp;
+            }
+        }
+    } else {
+        game->barbarian_camp_count = 0;
+    }
+
     // Initialisation Guerrier de départ
     Unit *warrior = malloc(sizeof(Unit));
     if (warrior && game->cities[0] != NULL) {
@@ -80,44 +153,40 @@ void restore_pm(Unit **units, int count) {
 }
 
 void spawn_random_barbarian(GameState *game) {
-    // Plafond global de barbares (version test, simple à ajuster ensuite).
-    if (game->barbarian_count >= MAX_BARBARIANS) {
+    if (!game || !game->barbarian_camps || game->barbarian_camp_count <= 0) {
         return;
     }
 
-    // Probabilité de spawn à chaque tour.
-    int spawn_chance = game_config_barbarian_spawn_chance();
-    if ((rand() % 100) >= spawn_chance) {
+    int max_living_barbarians = game->barbarian_camp_count * 3;
+    if (max_living_barbarians > MAX_BARBARIANS) {
+        max_living_barbarians = MAX_BARBARIANS;
+    }
+
+    if (count_living_barbarians(game) >= max_living_barbarians) {
         return;
     }
 
-    int x = rand() % game->map.width;
-    int y = rand() % game->map.height;
+    for (int i = 0; i < game->barbarian_camp_count; ++i) {
+        if (count_living_barbarians(game) >= max_living_barbarians) {
+            break;
+        }
 
-    if (game->map.tiles[y][x].type == TERRAIN_EAU) {
-        return;
+        BarbarianCamp *camp = &game->barbarian_camps[i];
+        if (!camp || camp->destroyed) {
+            continue;
+        }
+
+        int spawned = barbares_spawn_unit(camp, &game->map, game->barbarians, &game->barbarian_count,
+                                          max_living_barbarians);
+        if (!spawned) {
+            continue;
+        }
     }
-
-    if (game->map.tiles[y][x].unit || game->map.tiles[y][x].city) {
-        return;
-    }
-
-    Unit *barb = (Unit *)malloc(sizeof(Unit));
-    if (!barb) {
-        return;
-    }
-
-    barb->type = game_config_select_barbarian_type(rand() % 100);
-    barb->x = x;
-    barb->y = y;
-    barb->owner = NULL;
-    game_config_apply_barbarian_stats(barb);
-
-    game->barbarians[game->barbarian_count++] = barb;
-    game->map.tiles[y][x].unit = barb;
 }
 
 void move_barbarians_random(GameState *game) {
+    compact_barbarians(game);
+
     // Déplacement aléatoire d'une case : utile pour valider la phase Barbares.
     for (int i = 0; i < game->barbarian_count; ++i) {
         Unit *barb = game->barbarians[i];
@@ -156,6 +225,7 @@ void move_barbarians_random(GameState *game) {
 
 void next_turn(GameState *game) {
     // 1) Restauration PM
+    compact_barbarians(game);
     restore_pm(game->player_units, game->player_unit_count);
     restore_pm(game->barbarians, game->barbarian_count);
 
@@ -196,6 +266,8 @@ void cleanup_game(GameState *game) {
     for (int i = 0; i < game->barbarian_count; ++i) {
         free(game->barbarians[i]);
     }
+
+    barbares_cleanup(game->barbarian_camps, game->barbarian_camp_count);
 
     if (game->map.tiles) {
         for (int i = 0; i < game->map.height; i++) {
