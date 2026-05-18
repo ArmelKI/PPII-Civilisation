@@ -602,6 +602,10 @@ int main(int argc, char **argv) {
 
     // Boucle centrale demandée dans le ticket.
     while (!game.game_over) {
+
+        attrset(A_NORMAL); // Réinitialise les attributs pour éviter les résidus de styles
+
+        
         clear();
         int max_y, max_x;
         getmaxyx(stdscr, max_y, max_x);
