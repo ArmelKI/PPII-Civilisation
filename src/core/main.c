@@ -583,91 +583,13 @@ int main(int argc, char **argv) {
             clear();
         }
 
+       
+    
+
+    
+
         if (!game_in_progress) continue;
 
-    printw("[CIV] Boucle principale lancée (prototype).\n");
-    printw("\n>> Appuyez sur une touche pour commencer la partie...\n");
-    refresh();
-    getch();
-
-    int city_id_counter=1;
-    int selected_unit_idx = -1;
-    int selected_city_idx = -1;
-    char status_msg[128] = "Bienvenue ! Cliquez sur vos unites ou villes.";
-
-    // Boucle centrale demandée dans le ticket.
-    while (!game.game_over) {
-
-        attrset(A_NORMAL); // Réinitialise les attributs pour éviter les résidus de styles
-
-        
-        clear();
-        int max_y, max_x;
-        getmaxyx(stdscr, max_y, max_x);
-
-        // On calcule ce que le joueur a le droit de voir(Brouillard de Guerre)
-        update_fog_of_war(&game, enable_fow_ui);
-        
-        move(0, 0);
-        display_map_color(&game.map, &game.player);
-
-        // 1. Affichage d'état (hook externe ou console)
-        print_state_maxence_stub(&game);
-
-        // --- DASHBOARD : ANCRÉ À DROITE DE L'ÉCRAN ---
-        int ui_x = max_x - 35; // Le panneau de droite fera toujours 35 colonnes
-        int log_y = max_y - 6; // Le panneau de logs prendra les 6 dernières lignes
-
-        // Séparateurs visuels
-        attron(COLOR_PAIR(30));
-        for(int i=0; i<max_y; i++) mvaddch(i, ui_x - 1, ACS_VLINE); 
-        mvhline(log_y - 1, 0, ACS_HLINE, max_x);
-        attroff(COLOR_PAIR(30));
-
-        attron(COLOR_PAIR(3) | A_BOLD);
-        mvprintw(0, ui_x, "=== L'EMPIRE ===");
-        attroff(COLOR_PAIR(3) | A_BOLD);
-        mvprintw(2, ui_x, "Tour    : %d / %d", game.turn, nb_turns);
-        mvprintw(3, ui_x, "Or      : %d", game.player.gold);
-        mvprintw(4, ui_x, "Science : %d", game.player.science);
-
-        mvprintw(6, ui_x, "-- EFFECTIFS --");
-        mvprintw(7, ui_x, "Unites actives : %d / 8", game.player_unit_count);
-        mvprintw(8, ui_x, "Villes         : %d", game.city_count);
-
-        mvprintw(11, ui_x, "-- SELECTION --");
-        
-        if (selected_unit_idx != -1 && game.player_units[selected_unit_idx] && game.player_units[selected_unit_idx]->hp > 0) {
-            Unit *u = game.player_units[selected_unit_idx];
-            attron(COLOR_PAIR(10) | A_BOLD);
-            mvprintw(13, ui_x, "Unite  : %s", unit_label(u->type));
-            mvprintw(14, ui_x, "Pos    : (%d, %d)", u->x, u->y);
-            mvprintw(15, ui_x, "PM     : %d / %d", u->pm, u->pm_max);
-            mvprintw(16, ui_x, "PV     : %d / %d", u->hp, u->hp_max);
-            mvprintw(18, ui_x, "[z/q/s/d] Deplacer");
-            if (u->type == UNIT_SETTLER) mvprintw(19, ui_x, "[f] Fonder Ville");
-            attroff(COLOR_PAIR(10) | A_BOLD);
-        } else if (selected_city_idx != -1 && game.cities[selected_city_idx] && game.cities[selected_city_idx]->hp > 0) {
-            City *c = game.cities[selected_city_idx];
-            attron(COLOR_PAIR(30) | A_BOLD);
-            mvprintw(13, ui_x, "Ville  : Capitale (%d, %d)", c->x, c->y);
-            mvprintw(14, ui_x, "Pop    : %d", c->population);
-            mvprintw(15, ui_x, "PV     : %d", c->hp);
-            mvprintw(17, ui_x, "[v] Gerer Ville");
-            attroff(COLOR_PAIR(30) | A_BOLD);
-        } else {
-            mvprintw(13, ui_x, "Aucune selection.");
-        }
-
-        // Ajout de la Seed en bas du carré de Dashboard
-        attron(COLOR_PAIR(40));
-        mvprintw(log_y - 2, ui_x + 2, "Seed : %d", seed);
-        attroff(COLOR_PAIR(40));
-
-        mvprintw(log_y, 0, "COMMANDES : [n] Finir Tour | [u] Choisir une unité | [c] Gerer Ville | [t] Technologies | [S] Sauvegarder (Maj+s) | [0] Voir les objectifs | [x] Quitter");
-        attron(COLOR_PAIR(3) | A_BOLD);
-        mvprintw(log_y + 2, 0, ">> %s", status_msg);
-        attroff(COLOR_PAIR(3) | A_BOLD);
         printw("[CIV] Boucle principale lancée (prototype).\n");
         printw("\n>> Appuyez sur une touche pour commencer la partie...\n");
         refresh();
@@ -678,9 +600,10 @@ int main(int argc, char **argv) {
         char status_msg[128] = "Bienvenue ! Cliquez sur vos unites ou villes.";
         
         game.game_over = 0;
-
         // Boucle centrale demandée dans le ticket.
         while (!game.game_over) {
+
+            attrset(A_NORMAL);
             clear();
             int max_y, max_x;
             getmaxyx(stdscr, max_y, max_x);
@@ -1279,7 +1202,8 @@ int main(int argc, char **argv) {
                 }
                 continue;
             }
-        }
+        
+        
 
         // 2. Gestion de la fin de partie 
 
@@ -1323,6 +1247,10 @@ int main(int argc, char **argv) {
         }
 
     }
+    }
 
+    endwin(); // Fin de ncurses
     return 0;
 }
+
+

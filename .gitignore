@@ -8,3 +8,4 @@ bin/
 *.o
 *.sav
 compile_flags.txt
+current_game.tmp
