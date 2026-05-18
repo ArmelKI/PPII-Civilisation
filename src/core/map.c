@@ -310,7 +310,7 @@ void display_map_color(Map* map, const Player *player, int sel_x, int sel_y) {
                 // Zone visible et vide : On affiche le terrain avec ses vraies couleurs
                 City* city_case = get_tile_owner(w,h,map);
                 bool is_exploited = (city_case !=  NULL);
-                int exploited = is_exploited ? 50 : 0; // Si la tuile est exploitée on change le fond de couleur de la case
+                int exploited = is_exploited ? 70 : 0; // Si la tuile est exploitée on change le fond de couleur de la case
                 if (is_exploited && city_case->has_wall) exploited = 60;
                 switch (map->tiles[h][w].type) {
                     case TERRAIN_EAU:      

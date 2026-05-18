@@ -480,12 +480,12 @@ int main(int argc, char **argv) {
     init_pair(40, 236, COLOR_BLACK); // Zone Explorée : Gris extrêmement sombre
 
     // -- TERRAINS EXPLOITES (Fond gris pour marquer le territoire) --
-    init_pair(51, 39, 238);   // Eau exploitée
-    init_pair(52, 118, 238);  // Plaine exploitée
-    init_pair(53, 28, 238);   // Forêt exploitée
-    init_pair(54, 130, 238);  // Montagne exploitée
-    init_pair(55, 214, 238);  // Désert exploité
-    init_pair(56, 253, 238);  // Toundra exploitée
+    init_pair(71, 39, 238);   // Eau exploitée
+    init_pair(72, 118, 238);  // Plaine exploitée
+    init_pair(73, 28, 238);   // Forêt exploitée
+    init_pair(74, 130, 238);  // Montagne exploitée
+    init_pair(75, 214, 238);  // Désert exploité
+    init_pair(76, 253, 238);  // Toundra exploitée
 
     // -- TERRAINS EXPLOITES AVEC MURAILLE --
     init_pair(61, 39, 53);   // Eau exploitée
@@ -583,11 +583,6 @@ int main(int argc, char **argv) {
             clear();
         }
 
-       
-    
-
-    
-
         if (!game_in_progress) continue;
 
         printw("[CIV] Boucle principale lancée (prototype).\n");
@@ -600,10 +595,9 @@ int main(int argc, char **argv) {
         char status_msg[128] = "Bienvenue ! Cliquez sur vos unites ou villes.";
         
         game.game_over = 0;
+
         // Boucle centrale demandée dans le ticket.
         while (!game.game_over) {
-
-            attrset(A_NORMAL);
             clear();
             int max_y, max_x;
             getmaxyx(stdscr, max_y, max_x);
@@ -1203,8 +1197,6 @@ int main(int argc, char **argv) {
                 continue;
             }
         }
-        
-        
 
         // 2. Gestion de la fin de partie 
 
@@ -1247,11 +1239,7 @@ int main(int argc, char **argv) {
             remove("current_game.tmp");
         }
 
-    
     }
 
-    endwin(); // Fin de ncurses
     return 0;
 }
-
-
