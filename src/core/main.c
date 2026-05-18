@@ -1202,6 +1202,7 @@ int main(int argc, char **argv) {
                 }
                 continue;
             }
+        }
         
         
 
@@ -1246,7 +1247,7 @@ int main(int argc, char **argv) {
             remove("current_game.tmp");
         }
 
-    }
+    
     }
 
     endwin(); // Fin de ncurses
