@@ -65,6 +65,7 @@ Map* create_map_noise(int width, int height, int seed) {
             /* par défaut pas de merveille ni de ressource spéciale. */
             tuiles[h][w].wonder = WONDER_NONE;
             tuiles[h][w].special_ressources = SPRES_NONE;
+            tuiles[h][w].visibility = FOG_HIDDEN;
         }
     }
 
@@ -197,7 +198,7 @@ Map* create_map(int width, int height,int seed) {
     return new_map;
 }
 
-void display_map_color(Map* map, const Player *player) {
+void display_map_color(Map* map, const Player *player, int sel_x, int sel_y) {
     if (map == NULL) return;
 
     for (int h = 0; h < map->height; h++) {
@@ -213,6 +214,9 @@ void display_map_color(Map* map, const Player *player) {
             if (tile->visibility == FOG_VISIBLE) {
             
                 if (map->tiles[h][w].unit != NULL) {
+
+                    if (w == sel_x && h == sel_y) attron(A_REVERSE);
+
                     switch (map->tiles[h][w].unit->type) {
                         case UNIT_BARBARIAN:
                             attron(COLOR_PAIR(20)); printw("B "); attroff(COLOR_PAIR(20)); // B pour les Barbares ennemis
@@ -234,14 +238,19 @@ void display_map_color(Map* map, const Player *player) {
                             break;
                         // A MODIFIER SUREMENT APRES SI ON RAJOUTE LES ARCHERS, ETC
                     }
+                    if (w == sel_x && h == sel_y) attroff(A_REVERSE);
                     continue; // Si il y a une unité on affiche que ça et on passe à la case suivante
                 }
                 else if (map->tiles[h][w].city != NULL) {
+
+                    if (w == sel_x && h == sel_y) attron(A_REVERSE);
+
                     if (map->tiles[h][w].city->has_wall) {
                         attron(COLOR_PAIR(31)); printw("C "); attroff(COLOR_PAIR(31)); // Blanc Brillant sur fond noir si muraille
                     } else {
                         attron(COLOR_PAIR(32)); printw("C "); attroff(COLOR_PAIR(32)); // Blanc simple avec fond gris clair
                     }
+                    if (w == sel_x && h == sel_y) attroff(A_REVERSE);
                     continue; // Si il y a une ville on affiche que ça et on passe à la case suivante
 
                 } else if (map->tiles[h][w].camp != NULL) {

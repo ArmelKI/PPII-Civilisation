@@ -11,7 +11,7 @@ Map* create_map(int width, int height, int seed);
 Map* create_map_noise(int width, int height, int seed);
 
 // Affiche la carte dans le terminal (TUI)
-void display_map_color(Map* map, const Player *player);
+void display_map_color(Map* map, const Player *player, int sel_x, int sel_y);
 void update_fog_of_war(GameState *game, int is_fow_enabled); //Logique du brouillard de guerre
 
 // Libère la mémoire
