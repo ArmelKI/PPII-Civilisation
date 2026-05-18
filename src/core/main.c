@@ -598,7 +598,12 @@ int main(int argc, char **argv) {
 
         // Boucle centrale demandée dans le ticket.
         while (!game.game_over) {
+
+            attrset(A_NORMAL);
+
             clear();
+
+
             int max_y, max_x;
             getmaxyx(stdscr, max_y, max_x);
 
