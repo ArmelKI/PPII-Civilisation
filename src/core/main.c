@@ -18,6 +18,7 @@
 #include "../../include/core/config.h"
 #include "../../include/core/barbares.h"
 #include "../../include/core/wonder.h"
+#include "../../include/core/engine_sdl.h"
 
 #define MAX_TURNS 200
 
@@ -427,14 +428,31 @@ int main(int argc, char **argv) {
         seed = (int)time(NULL);
     }
 
+    GameState game;
+    memset(&game, 0, sizeof(GameState));
+    bool game_in_progress = false;
+    int city_id_counter = 1;
+
+    FILE *temp_fp = fopen("current_game.tmp", "r");
+    if (temp_fp != NULL) {
+        game_in_progress = true;
+        fclose(temp_fp);
+    }
+
     // GESTION DU MODE D'AFFICHAGE
 
     if (strcmp(mode, "sdl") == 0) {
-        puts("[CIV] Mode SDL initialise (squelette).\nInstallez SDL2 et branchez l'UI plus tard.");
+        printf("[DEBUG] 1. Argument SDL detecte avec succes.\n"); fflush(stdout);
+        
+        printf("[DEBUG] 2. Initialisation de la partie logique (init_game)...\n"); fflush(stdout);
+        init_game(&game, width, height, seed, nb_barbarians);
+        
+        printf("[DEBUG] 3. Generation terminee. Lancement de la fenetre SDL...\n"); fflush(stdout);
+        run_sdl_mode(&game, nb_turns, enable_fow_ui);
+        
+        printf("[DEBUG] 4. Sortie du jeu. Nettoyage...\n"); fflush(stdout);
+        cleanup_game(&game);
         return 0;
-    } else if (strcmp(mode, "cli") != 0) {
-        fprintf(stderr, "Mode invalide: %s\n", mode);
-        return 1;
     }
 
 // --- INITIALISATION NCURSES ---
@@ -502,16 +520,8 @@ int main(int argc, char **argv) {
     init_pair(54, 87,  COLOR_BLACK); // Spécimens (s) : Cyan clair
     init_pair(55, 137, COLOR_BLACK); // Chevaux (h) : Marron clair
 
-    GameState game;
-    memset(&game, 0, sizeof(GameState));
-    bool game_in_progress = false;
-    int city_id_counter = 1;
-
-    FILE *temp_fp = fopen("current_game.tmp", "r");
-    if (temp_fp != NULL) {
-        game_in_progress = true;
-        fclose(temp_fp);
-    }
+    
+    
 
     while (1) {
         // MENU PRINCIPAL
