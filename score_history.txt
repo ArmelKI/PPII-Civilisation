@@ -4,3 +4,6 @@
 [17/05/2026] | Joueur: nnnnnnnnnnnn | Score: 150   | Tours: 201 | Issue: DEFAITE
 [17/05/2026] | Joueur: vxxxxx     | Score: 170   | Tours: 201 | Issue: DEFAITE
 [17/05/2026] | Joueur: ok         | Score: 2090  | Tours: 6   | Issue: DEFAITE
+[18/05/2026] | Joueur: ok         | Score: 2070  | Tours: 6   | Issue: DEFAITE
+[18/05/2026] | Joueur: ok         | Score: 2050  | Tours: 6   | Issue: DEFAITE
+[18/05/2026] | Joueur: ok         | Score: 2070  | Tours: 6   | Issue: DEFAITE

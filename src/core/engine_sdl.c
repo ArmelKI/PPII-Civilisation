@@ -32,12 +32,23 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui) {
         return;
     }
 
-    int screen_w = game->map.width * TILE_SIZE;
-    int screen_h = game->map.height * TILE_SIZE;
+    // On récupère les infos de l'écran du user
+    SDL_DisplayMode dm;
+    SDL_GetCurrentDisplayMode(0, &dm);
+    
+    int screen_w = dm.w;
+    int screen_h = dm.h;
 
+    // Créer la fenêtre en plein écran fenêtré (Borderless)
     SDL_Window *window = SDL_CreateWindow("Civilization - Edition Graphique",
                                           SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                          screen_w, screen_h, SDL_WINDOW_SHOWN);
+                                          screen_w, screen_h, SDL_WINDOW_SHOWN | SDL_WINDOW_MAXIMIZED);
+
+    // Variables de la cam (coordonnées en pixels du coin haut-gauche comme en cli)
+    int camera_x = 0;
+    int camera_y = 0;
+    int camera_speed = 32; // Vitesse de déplacement de la cam
+
     if (!window) {
         fprintf(stderr, "[SDL2 ERROR] Erreur création de fenêtre : %s\n", SDL_GetError());
         SDL_Quit();
@@ -86,6 +97,30 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui) {
                         sel_unit_idx = -1;
                         sprintf(console_status, "Tour %d terminé. À vous de jouer !", game->turn - 1);
                         break;
+                    
+                    // MOUVEMENTS DE LA CAMERA
+                    case SDLK_UP:    
+                        camera_y -= camera_speed; 
+                        // Bloque en haut pour éviter de sortir des limites de la map
+                        if (camera_y < 0) camera_y = 0;
+                        break;
+                    case SDLK_DOWN:  
+                        camera_y += camera_speed; 
+                        // Bloque en bas
+                        int max_y = (game->map.height * TILE_SIZE) - screen_h;
+                        if (camera_y > max_y) camera_y = max_y;
+                        break;
+                    case SDLK_LEFT:  
+                        camera_x -= camera_speed; 
+                        // Bloque à gauche
+                        if (camera_x < 0) camera_x = 0;
+                        break;
+                    case SDLK_RIGHT: 
+                        camera_x += camera_speed; 
+                        // Bloque à droite
+                        int max_x = (game->map.width * TILE_SIZE) - screen_w;
+                        if (camera_x > max_x) camera_x = max_x;
+                        break;
                     default:
                         break;
                 }
@@ -95,8 +130,8 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui) {
             else if (event.type == SDL_MOUSEBUTTONDOWN) {
                 if (event.button.button == SDL_BUTTON_LEFT) {
                     // Traduction magique des coordonnées pixel en index de matrice C
-                    int click_grid_x = event.button.x / TILE_SIZE;
-                    int click_grid_y = event.button.y / TILE_SIZE;
+                    int click_grid_x = (event.button.x + camera_x) / TILE_SIZE;
+                    int click_grid_y = (event.button.y + camera_y) / TILE_SIZE;
 
                     if (click_grid_x >= 0 && click_grid_x < game->map.width &&
                         click_grid_y >= 0 && click_grid_y < game->map.height) {
@@ -154,56 +189,65 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui) {
             for (int x = 0; x < game->map.width; x++) {
                 Tile *tile = &game->map.tiles[y][x];
                 
-                // Emplacement géométrique précis en pixels sur la fenêtre
-                SDL_Rect visual_rect = { x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE };
+                // 1. Calcul de la position à l'écran en soustrayant la caméra
+                int screen_pos_x = (x * TILE_SIZE) - camera_x;
+                int screen_pos_y = (y * TILE_SIZE) - camera_y;
 
-                // 1. Dessin obligatoire du terrain sous-jacent
+                // si la tuile est en dehors de la caméra on ne l'affiche pas
+                if (screen_pos_x + TILE_SIZE < 0 || screen_pos_x > screen_w ||
+                    screen_pos_y + TILE_SIZE < 0 || screen_pos_y > screen_h) {
+                    continue; 
+                }
+                
+                // Le rectangle principal de la tuile
+                SDL_Rect visual_rect = { screen_pos_x, screen_pos_y, TILE_SIZE, TILE_SIZE };
+
+                // Dessin du terrain de la tuile
                 draw_terrain_primitive(renderer, tile->type, &visual_rect);
 
-                // 2. Rendu des entités actives si la tuile n'est pas plongée dans le noir absolu
+                // Rendu des entités actives sur la tuile
                 if (tile->visibility != FOG_HIDDEN) {
                     
-                    // Rendu de la ville (Gros carré central blanc)
+                    // Rendu de la ville
                     if (tile->city && tile->city->hp > 0) {
-                        SDL_Rect city_box = { x * TILE_SIZE + 4, y * TILE_SIZE + 4, TILE_SIZE - 8, TILE_SIZE - 8 };
+                        SDL_Rect city_box = { screen_pos_x + 4, screen_pos_y + 4, TILE_SIZE - 8, TILE_SIZE - 8 };
                         SDL_SetRenderDrawColor(renderer, 245, 245, 245, 255); 
                         SDL_RenderFillRect(renderer, &city_box);
                     }
 
-                    // Rendu des unités (Petit carré concentré au milieu)
+                    // Rendu des unités
                     if (tile->unit && tile->unit->hp > 0) {
-                        SDL_Rect unit_box = { x * TILE_SIZE + 9, y * TILE_SIZE + 9, TILE_SIZE - 18, TILE_SIZE - 18 };
-                        
+                        SDL_Rect unit_box = { screen_pos_x + 9, screen_pos_y + 9, TILE_SIZE - 18, TILE_SIZE - 18 };
                         if (tile->unit->owner == &game->player) {
-                            SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255); // Cyan éclatant (Joueur)
+                            SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255); // Cyan (Joueur)
                         } else {
-                            SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);   // Rouge sang (Barbare)
+                            SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);   // Rouge (Barbare)
                         }
                         SDL_RenderFillRect(renderer, &unit_box);
                     }
 
-                    // Rendu d'un campement barbare actif (Carré évidé bordeaux)
+                    // Rendu d'un campement barbare
                     if (tile->camp && tile->camp->destroyed == 0) {
-                        SDL_Rect camp_box = { x * TILE_SIZE + 6, y * TILE_SIZE + 6, TILE_SIZE - 12, TILE_SIZE - 12 };
+                        SDL_Rect camp_box = { screen_pos_x + 6, screen_pos_y + 6, TILE_SIZE - 12, TILE_SIZE - 12 };
                         SDL_SetRenderDrawColor(renderer, 150, 0, 0, 255);
                         SDL_RenderDrawRect(renderer, &camp_box);
                     }
                 }
 
-                // 3. Application immédiate des filtres de Brouillard de Guerre
+                // Brouillard de Guerre
                 if (tile->visibility == FOG_HIDDEN) {
-                    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Cache noir opaque
+                    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
                     SDL_RenderFillRect(renderer, &visual_rect);
                 } 
                 else if (tile->visibility == FOG_EXPLORED) {
-                    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 160); // Filtre d'obscurité semi-transparent
+                    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 160);
                     SDL_RenderFillRect(renderer, &visual_rect);
                 }
 
-                // Surlignage visuel si l'élément sur cette case est sélectionné par l'utilisateur
+                // Surlignage de sélection
                 if ((sel_unit_idx != -1 && game->player_units[sel_unit_idx] && game->player_units[sel_unit_idx]->x == x && game->player_units[sel_unit_idx]->y == y) ||
                     (sel_city_idx != -1 && game->cities[sel_city_idx] && game->cities[sel_city_idx]->x == x && game->cities[sel_city_idx]->y == y)) {
-                    SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255); // Contour Jaune vif
+                    SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
                     SDL_RenderDrawRect(renderer, &visual_rect);
                 }
             }

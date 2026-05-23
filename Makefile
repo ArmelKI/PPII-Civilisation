@@ -30,6 +30,17 @@ TEST_BIN := $(BIN_DIR)/tests_runner
 APP_SRC := $(shell find $(SRC_DIR) -type f -name '*.c' 2>/dev/null)
 TEST_SRC := $(shell find $(TEST_DIR) -type f -name '*.c' 2>/dev/null)
 
+# Compilation conditionnelle -> on compile les fichiers SDL seulement si on utilise cette version
+ifeq ($(filter sdl,$(MAKECMDGOALS)),sdl)
+    # Si le joueur a tapé 'make sdl', on active la macro C et on lie la librairie
+    CFLAGS += -DUSE_SDL
+    CPPFLAGS += $(SDL_CFLAGS)
+    LDLIBS += $(SDL_LIBS)
+else	
+    # Si pas de sdl, on exclut le fichier de la compilation
+    APP_SRC := $(filter-out %engine_sdl.c, $(APP_SRC))
+endif
+
 # Transformation des fichiers source en objets
 APP_OBJ := $(patsubst %.c,$(BUILD_DIR)/%.o,$(APP_SRC))
 TEST_OBJ := $(patsubst %.c,$(BUILD_DIR)/%.o,$(TEST_SRC))
@@ -72,8 +83,6 @@ cli: $(APP_BIN)
 	./$(APP_BIN) --mode cli
 
 # Lancement de la version SDL
-sdl: CPPFLAGS += $(SDL_CFLAGS)
-sdl: LDLIBS += $(SDL_LIBS)
 sdl: $(APP_BIN)
 	./$(APP_BIN) --mode sdl
 
