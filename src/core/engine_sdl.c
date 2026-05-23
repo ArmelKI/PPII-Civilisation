@@ -23,6 +23,20 @@ static void draw_terrain_primitive(SDL_Renderer *renderer, TerrainType type, SDL
     SDL_RenderFillRect(renderer, rect);
 }
 
+// Fonction utilitaire pour bloquer la caméra dans les limites
+static void clamp_camera(int *x, int *y, int map_w, int map_h, int screen_w, int screen_h) {
+    int max_x = (map_w * TILE_SIZE) - screen_w;
+    int max_y = (map_h * TILE_SIZE) - screen_h;
+
+    if (*x < 0) *x = 0;
+    if (max_x > 0 && *x > max_x) *x = max_x;
+    else if (max_x <= 0) *x = 0;
+
+    if (*y < 0) *y = 0;
+    if (max_y > 0 && *y > max_y) *y = max_y;
+    else if (max_y <= 0) *y = 0;
+}
+
 void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui) {
     (void)nb_turns; // Évite les avertissements de compilation non utilisée
 
@@ -42,7 +56,8 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui) {
     // Créer la fenêtre en plein écran fenêtré (Borderless)
     SDL_Window *window = SDL_CreateWindow("Civilization - Edition Graphique",
                                           SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                          screen_w, screen_h, SDL_WINDOW_SHOWN | SDL_WINDOW_MAXIMIZED);
+                                          screen_w, screen_h, SDL_WINDOW_SHOWN | 
+                                          SDL_WINDOW_MAXIMIZED | SDL_WINDOW_FULLSCREEN_DESKTOP);
 
     // Variables de la cam (coordonnées en pixels du coin haut-gauche comme en cli)
     int camera_x = 0;
@@ -99,31 +114,25 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui) {
                         break;
                     
                     // MOUVEMENTS DE LA CAMERA
-                    case SDLK_UP:    
-                        camera_y -= camera_speed; 
-                        // Bloque en haut pour éviter de sortir des limites de la map
-                        if (camera_y < 0) camera_y = 0;
+                    case SDLK_UP:    camera_y -= camera_speed; break;
+                    case SDLK_DOWN:  camera_y += camera_speed; break;
+                    case SDLK_LEFT:  camera_x -= camera_speed; break;
+                    case SDLK_RIGHT: camera_x += camera_speed; break;
+                    
+                    case SDLK_F11: { //F11 pour basculer en plein écran
+                        Uint32 fullScreenFlag = SDL_WINDOW_FULLSCREEN_DESKTOP;
+                        bool isFullScreen = SDL_GetWindowFlags(window) & fullScreenFlag;
+
+                        // Si on est plein écran, on repasse en fenêtré, sinon l'inverse
+                        SDL_SetWindowFullscreen(window, isFullScreen ? 0 : fullScreenFlag);
+                        SDL_GetWindowSize(window, &screen_w, &screen_h); // MAJ des dimensions
                         break;
-                    case SDLK_DOWN:  
-                        camera_y += camera_speed; 
-                        // Bloque en bas
-                        int max_y = (game->map.height * TILE_SIZE) - screen_h;
-                        if (camera_y > max_y) camera_y = max_y;
-                        break;
-                    case SDLK_LEFT:  
-                        camera_x -= camera_speed; 
-                        // Bloque à gauche
-                        if (camera_x < 0) camera_x = 0;
-                        break;
-                    case SDLK_RIGHT: 
-                        camera_x += camera_speed; 
-                        // Bloque à droite
-                        int max_x = (game->map.width * TILE_SIZE) - screen_w;
-                        if (camera_x > max_x) camera_x = max_x;
-                        break;
+                    }
                     default:
                         break;
                 }
+                // On applique les limites via la fonction utilitaire
+                clamp_camera(&camera_x, &camera_y, game->map.width, game->map.height, screen_w, screen_h);
             }
 
             // Écoute de la souris (Sélection de tes éléments graphiques)
