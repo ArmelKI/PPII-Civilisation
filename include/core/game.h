@@ -60,7 +60,7 @@ typedef struct GameState {
 // --- FONCTIONS DE GESTION DU JEU ---
 
 // Initialisation globale
-void init_game(GameState *game, int width, int height, int seed, int barbarian_camp_count);
+void init_game(GameState *game, int width, int height, int seed, int barbarian_camp_count, int nb_turns);
 
 // Logique de tour
 void next_turn(GameState *game);

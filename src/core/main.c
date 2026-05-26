@@ -449,7 +449,7 @@ int main(int argc, char **argv) {
         printf("[DEBUG] 1. Argument SDL detecte avec succes.\n"); fflush(stdout);
         
         printf("[DEBUG] 2. Initialisation de la partie logique (init_game)...\n"); fflush(stdout);
-        init_game(&game, width, height, seed, nb_barbarians);
+        init_game(&game, width, height, seed, nb_barbarians, nb_turns);
         
         printf("[DEBUG] 3. Generation terminee. Lancement de la fenetre SDL...\n"); fflush(stdout);
         run_sdl_mode(&game, nb_turns, enable_fow_ui);
@@ -573,7 +573,7 @@ int main(int argc, char **argv) {
             if (!is_seed) {
                 seed = (int)time(NULL);
             }
-            init_game(&game, width, height, seed, nb_barbarians);
+            init_game(&game, width, height, seed, nb_barbarians, nb_turns);
             clear();
             printw("[CIV] Nouvelle partie; Generation avec la graine : %d\n", seed);
             printw("[BARBARES] %d campements places, plafond vivant = %d\n",
@@ -589,7 +589,7 @@ int main(int argc, char **argv) {
                 if (!is_seed) {
                     seed = (int)time(NULL);
                 }
-                init_game(&game, width, height, seed, nb_barbarians);
+                init_game(&game, width, height, seed, nb_barbarians, nb_turns);
                 printw("[CIV] Nouvelle partie; Generation avec la graine : %d\n", seed);
                 printw("[BARBARES] %d campements places, plafond vivant = %d\n",
                        game.barbarian_camp_count, game.barbarian_camp_count * 3);

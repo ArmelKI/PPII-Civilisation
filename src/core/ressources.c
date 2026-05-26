@@ -310,6 +310,7 @@ void process_player_gold(Player *player, Map *map) {
             printw("Une unite de type %d a ete licenciee pour des raisons economiques en [%d,%d]...\n",martyr_unit -> type, martyr_unit -> x, martyr_unit-> y );
 
             map->tiles[martyr_unit->y][martyr_unit->x].unit = NULL;
+            martyr_unit->hp = 0;
 
         } else {
 
@@ -458,6 +459,18 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
     // Le cavalier nécessite la technologie Équitation.
     if (city->current_project == PROJECT_CAVALIER &&
         (!city->owner || !city->owner->unlocked_techs[TECH_EQUITATION])) {
+        return;
+    }
+
+    // La bibliothèque nécessite la technologie Écriture.
+    if (city->current_project == PROJECT_LIBRARY &&
+        (!city->owner || !city->owner->unlocked_techs[TECH_ECRITURE])) {
+        return;
+    }
+
+    // La muraille nécessite la technologie Maçonnerie.
+    if (city->current_project == PROJECT_WALL &&
+        (!city->owner || !city->owner->unlocked_techs[TECH_MAÇONNERIE])) {
         return;
     }
 

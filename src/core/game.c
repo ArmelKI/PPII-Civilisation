@@ -79,11 +79,40 @@ static void compact_barbarians(GameState *game)
     game->barbarian_count = write_index;
 }
 
-void init_game(GameState *game, int width, int height, int seed, int barbarian_camp_count) {
+static void compact_player_units(GameState *game)
+{
+    int write_index = 0;
+
+    if (!game) {
+        return;
+    }
+
+    for (int read_index = 0; read_index < game->player_unit_count; ++read_index) {
+        Unit *u = game->player_units[read_index];
+        if (!u) {
+            continue;
+        }
+
+        if (u->hp <= 0) {
+            free(u);
+            continue;
+        }
+
+        game->player_units[write_index++] = u;
+    }
+
+    for (int i = write_index; i < game->player_unit_count; ++i) {
+        game->player_units[i] = NULL;
+    }
+
+    game->player_unit_count = write_index;
+}
+
+void init_game(GameState *game, int width, int height, int seed, int barbarian_camp_count, int nb_turns) {
     memset(game, 0, sizeof(GameState));
     game->seed = seed;
     game->turn = 1;
-    game -> max_turns = MAX_TURNS;
+    game->max_turns = (nb_turns > 0) ? nb_turns : MAX_TURNS;
     game->game_over = 0;
     game ->consecutive_turns_10_cities = 0;
     game -> consecutive_zero_production_turns = 0;
@@ -304,13 +333,14 @@ void next_turn(GameState *game) {
     
     // Le joueur paie l'entretien global (une seule fois par tour, avec le &)
     process_player_gold(&game->player, &game->map);
+    compact_player_units(game);
 
-    // 3) Phase Barbares (spawn + déplacement)
+    // 3) mise à jour de la recherche des technologies (avant la phase barbares)
+    update_research(&game->player, game);
+
+    // 4) Phase Barbares (spawn + déplacement)
     spawn_random_barbarian(game);
     move_barbarians_random(game);
-
-    // 4) mise à jour de la recherche des technologies
-    update_research(&game->player, game);
 
     game->turn++;
 }
@@ -369,7 +399,7 @@ void check_victory_and_defeat(GameState *game) {
         return;
     }
 
-    if (game->turn > MAX_TURNS) {
+    if (game->turn > game->max_turns) {
         game->game_over = 2;    // Défaite temps écoulé
         return;
     }

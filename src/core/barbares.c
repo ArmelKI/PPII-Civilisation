@@ -316,6 +316,17 @@ BarbarianCamp *barbares_init_camps(Map *map, int num_camps, int player_city_x, i
                 continue;
             }
 
+            int already_taken = 0;
+            for (int j = 0; j < i; ++j) {
+                if (camps[j].x == x && camps[j].y == y) {
+                    already_taken = 1;
+                    break;
+                }
+            }
+            if (already_taken) {
+                continue;
+            }
+
             camps[i].x = x;
             camps[i].y = y;
             camps[i].destroyed = 0;
@@ -335,6 +346,17 @@ BarbarianCamp *barbares_init_camps(Map *map, int num_camps, int player_city_x, i
                     }
 
                     if (chebyshev_distance(x, y, player_city_x, player_city_y) < 5) {
+                        continue;
+                    }
+
+                    int already_taken = 0;
+                    for (int j = 0; j < i; ++j) {
+                        if (camps[j].x == x && camps[j].y == y) {
+                            already_taken = 1;
+                            break;
+                        }
+                    }
+                    if (already_taken) {
                         continue;
                     }
 
@@ -590,6 +612,10 @@ int barbares_attack_if_adjacent(Unit *barb, Map *map, City *player_cities[], int
 
         if (city->hp <= 0) {
             city->hp = 0;
+            if (city->x >= 0 && city->y >= 0 &&
+                city->x < map->width && city->y < map->height) {
+                map->tiles[city->y][city->x].city = NULL;
+            }
         }
 
         if (barb->hp <= 0) {
