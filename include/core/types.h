@@ -67,7 +67,7 @@ typedef struct Tile{
     BarbarianCamp* camp; // Pointeur vers le camp de barbares présent sur ce terrain (NULL si aucun)
     int wonder;     // -1 si aucune merveilles
     int special_ressources; // -1 si aucune ressource spéciale
-} Tile;
+} Tile; 
 
 typedef struct Map{
     int width;       // Largeur de la carte

@@ -18,10 +18,6 @@ CPPFLAGS := -I$(INCLUDE_DIR)
 LDFLAGS =
 LDLIBS := -lncursesw
 
-# Flags SDL utilises seulement pour la cible sdl
-SDL_CFLAGS := $(shell pkg-config --cflags sdl2 2>/dev/null)
-SDL_LIBS := $(shell pkg-config --libs sdl2 2>/dev/null)
-
 # Nom des executables produits par le projet
 APP_BIN := $(BIN_DIR)/$(PROJECT)
 TEST_BIN := $(BIN_DIR)/tests_runner
@@ -29,6 +25,27 @@ TEST_BIN := $(BIN_DIR)/tests_runner
 # On recupere automatiquement tous les .c du projet et des tests
 APP_SRC := $(shell find $(SRC_DIR) -type f -name '*.c' 2>/dev/null)
 TEST_SRC := $(shell find $(TEST_DIR) -type f -name '*.c' 2>/dev/null)
+
+# Flags SDL
+SDL_CFLAGS := $(shell pkg-config --cflags sdl2 SDL2_ttf SDL2_image)
+SDL_LIBS   := $(shell pkg-config --libs sdl2 SDL2_ttf SDL2_image)
+
+# Compilation conditionnelle -> on compile les fichiers SDL seulement si on utilise cette version
+ifeq ($(filter sdl,$(MAKECMDGOALS)),sdl)
+    # Vérification que SDL_LIBS n'est pas vide
+    ifeq ($(strip $(SDL_LIBS)),)
+        $(error "ERREUR: SDL2, SDL2_ttf ou SDL2_image introuvables via pkg-config. Installez les paquets -dev.")
+    endif
+    
+    CFLAGS += -DUSE_SDL
+    CPPFLAGS += $(SDL_CFLAGS)
+    # On ajoute les libs SDL ET ncurses
+    LDLIBS := $(SDL_LIBS) -lncursesw
+else    
+    # Si pas de sdl, on exclut le fichier de la compilation
+    APP_SRC := $(filter-out %engine_sdl.c, $(APP_SRC))
+    LDLIBS := -lncursesw
+endif
 
 # Transformation des fichiers source en objets
 APP_OBJ := $(patsubst %.c,$(BUILD_DIR)/%.o,$(APP_SRC))
@@ -72,8 +89,6 @@ cli: $(APP_BIN)
 	./$(APP_BIN) --mode cli
 
 # Lancement de la version SDL
-sdl: CPPFLAGS += $(SDL_CFLAGS)
-sdl: LDLIBS += $(SDL_LIBS)
 sdl: $(APP_BIN)
 	./$(APP_BIN) --mode sdl
 
@@ -95,11 +110,11 @@ $(TEST_BIN): $(TEST_OBJ) $(CORE_OBJ_NO_MAIN)
 req:
 	@echo "Verification des prerequis..."
 	@command -v $(CC) >/dev/null 2>&1 || { echo "Erreur: $(CC) introuvable"; exit 1; }
-	@if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists sdl2; then \
-		echo "SDL2 detecte via pkg-config."; \
+	@if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists sdl2 SDL2_ttf; then \
+		echo "SDL2 et SDL2_ttf detecte via pkg-config."; \
 	else \
-		echo "SDL2 non detecte automatiquement."; \
-		echo "Installez SDL2 (ex: sudo apt install libsdl2-dev)."; \
+		echo "SDL2 ou SDL2_ttf non detecte automatiquement."; \
+		echo "Installez SDL2 (ex: sudo apt install libsdl2-dev libsdl2-ttf-dev)."; \
 	fi
 
 # Nettoyage des fichiers de compilation et des binaires

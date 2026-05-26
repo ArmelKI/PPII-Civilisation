@@ -18,7 +18,10 @@
 #include "../../include/core/config.h"
 #include "../../include/core/barbares.h"
 #include "../../include/core/wonder.h"
+
+#ifdef USE_SDL
 #include "../../include/core/engine_sdl.h"
+#endif
 
 #define MAX_TURNS 200
 
@@ -442,6 +445,7 @@ int main(int argc, char **argv) {
     // GESTION DU MODE D'AFFICHAGE
 
     if (strcmp(mode, "sdl") == 0) {
+#ifdef USE_SDL
         printf("[DEBUG] 1. Argument SDL detecte avec succes.\n"); fflush(stdout);
         
         printf("[DEBUG] 2. Initialisation de la partie logique (init_game)...\n"); fflush(stdout);
@@ -453,6 +457,12 @@ int main(int argc, char **argv) {
         printf("[DEBUG] 4. Sortie du jeu. Nettoyage...\n"); fflush(stdout);
         cleanup_game(&game);
         return 0;
+#else
+        // Si le joueur essaie de lancer avec SDL mais qu'il a compilé sans la commande
+        fprintf(stderr, "\033[1;31m[Erreur]\033[0m Le jeu a ete compile sans le support graphique (SDL).\n");
+        fprintf(stderr, "Veuillez recompiler avec la commande : make sdl\n");
+        return 1;
+#endif
     }
 
 // --- INITIALISATION NCURSES ---
