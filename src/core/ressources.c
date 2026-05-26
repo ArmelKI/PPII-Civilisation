@@ -461,6 +461,22 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
         return;
     }
 
+    // La bibliothèque nécessite écriture
+    if (city->current_project == PROJECT_LIBRARY &&
+        (!city->owner || !city->owner->unlocked_techs[TECH_ECRITURE])) {
+        return;
+    }
+    // Le marché nécessite Commerce.
+    if (city->current_project == PROJECT_MARKET &&
+        (!city->owner || !city->owner->unlocked_techs[TECH_COMMERCE])) {
+        return;
+    }
+    // La muraille nécessite Maçonnerie.
+    if (city->current_project == PROJECT_WALL &&
+        (!city->owner || !city->owner->unlocked_techs[TECH_MAÇONNERIE])) {
+        return;
+    }
+
     /* Pré-conditions pour les Merveilles
      * - Une autre ville (ou la même) a-t-elle déjà construit cette merveille ?
      * - Existe-t-il une case du terrain requis libre dans le rayon ?
@@ -772,10 +788,31 @@ void control_city_project(City *city, const GameState *game) {
 
     if (!city->has_granary)  { move(line++, start_x); printw("[3] Grenier (30 Prod)     - Bonus : +3 Nourriture/tour"); }
     if (!city->has_workshop) { move(line++, start_x); printw("[4] Atelier (40 Prod)     - Bonus : +3 Production/tour"); }
-    if (!city->has_library)  { move(line++, start_x); printw("[5] Bibliotheque (50 Prod)- Bonus : +4 Science/tour"); }
-    if (!city->has_market)   { move(line++, start_x); printw("[6] Marché(40 Prod)      - Bonus : +3 Or/tour"); }
+    if (!city->has_library)  {
+        move(line++, start_x);
+        if (city->owner && city->owner->unlocked_techs[TECH_ECRITURE]) {
+            printw("[5] Bibliotheque (50 Prod)- Bonus : +4 Science/tour");
+        } else {
+            attron(A_DIM); printw("[5] [BLOQUE] Bibliotheque - Necessite la technologie Ecriture"); attroff(A_DIM);
+        }
+    }
+    if (!city->has_market)   {
+        move(line++, start_x);
+        if (city->owner && city->owner->unlocked_techs[TECH_COMMERCE]) {
+            printw("[6] Marché (40 Prod)      - Bonus : +3 Or/tour");
+        } else {
+            attron(A_DIM); printw("[6] [BLOQUE] Marché       - Necessite la technologie Commerce"); attroff(A_DIM);
+        }
+    }    
     if (!city->has_barrack)  { move(line++, start_x); printw("[7] Caserne (60 Prod)     - Bonus : Permet de recruter des Guerriers"); }
-    if (!city->has_wall)     { move(line++, start_x); printw("[8] Muraille (80 Prod)    - Bonus : Double les PV max de la ville"); }
+    if (!city->has_wall)     {
+        move(line++, start_x);
+        if (city->owner && city->owner->unlocked_techs[TECH_MAÇONNERIE]) {
+            printw("[8] Muraille (80 Prod)    - Bonus : Double les PV max de la ville");
+        } else {
+            attron(A_DIM); printw("[8] [BLOQUE] Muraille     - Necessite la technologie Maçonnerie"); attroff(A_DIM);
+        }
+    }
 
     move(line++, start_x);
     if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_CHASSE]) {
@@ -910,10 +947,31 @@ void control_city_project(City *city, const GameState *game) {
                     break;
                 case 3: city->current_project = PROJECT_GRANARY; city->production_stored = 0; printw("Projet defini : Grenier"); break;
                 case 4: city->current_project = PROJECT_WORKSHOP; city->production_stored = 0; printw("Projet defini : Atelier"); break;
-                case 5: city->current_project = PROJECT_LIBRARY; city->production_stored = 0; printw("Projet defini : Bibliotheque"); break;
-                case 6: city->current_project = PROJECT_MARKET; city->production_stored = 0; printw("Projet defini : Marché"); break;
+                case 5: 
+                    if (city->owner && city->owner->unlocked_techs[TECH_ECRITURE]) {
+                        city->current_project = PROJECT_LIBRARY; city->production_stored = 0;
+                        printw("Projet defini : Bibliotheque");
+                    } else {
+                        printw("Impossible : la Bibliotheque necessite la technologie Ecriture !");
+                    }
+                    break;
+                case 6: 
+                    if (city->owner && city->owner->unlocked_techs[TECH_COMMERCE]) {
+                        city->current_project = PROJECT_MARKET; city->production_stored = 0;
+                        printw("Projet defini : Marché");
+                    } else {
+                        printw("Impossible : le Marché necessite la technologie Commerce !");
+                    }
+                    break;
                 case 7: city->current_project = PROJECT_BARRACKS; city->production_stored = 0; printw("Projet defini : Caserne"); break;
-                case 8: city->current_project = PROJECT_WALL; city->production_stored = 0; printw("Projet defini : Muraille"); break;
+                case 8: 
+                    if (city->owner && city->owner->unlocked_techs[TECH_MAÇONNERIE]) {
+                        city->current_project = PROJECT_WALL; city->production_stored = 0;
+                        printw("Projet defini : Muraille");
+                    } else {
+                        printw("Impossible : la Muraille necessite la technologie Maçonnerie !");
+                    }
+                    break;
                 case 9:
                     if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_CHASSE]) {
                         city->current_project = PROJECT_ARCHER; city->production_stored = 0;
