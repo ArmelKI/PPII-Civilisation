@@ -1,174 +1,237 @@
-# Modalités communes — Projets PPII
+# PPII - Early Civilization (Les Incivilises)
 
-Ce document présente les règles générales communes aux deux sujets du projet PPII. Il doit être lu avec le sujet choisi par votre groupe.
+Projet PPII FISE 2025-2026. Sujet choisi: Civilization (version minimaliste).
 
-## Accès aux sujets
-
-- Sujet 1 — Civilization : [README_CIV.md](README_CIV.md)
-- Sujet 2 — Carcassonne : [README_CARCASSONNE.md](README_CARCASSONNE.md)
-
-## Questions 
-
-- Un salon Discord a été créé pour y poser vos questions sur le/les sujets : [https://discord.gg/YpqZ3ESC]
-- Ces sujets sont suceptibles d'être remis à jour, en particulier sur les livrables de gestion de projets. Voici [le lien du dépôt sujet](https://gibson.telecomnancy.univ-lorraine.fr/projets/2526/PPII/ppii-s6/template/sujet). Une notification Discord sera envoyée à chaque modification.
+[[_TOC_]]
 
 ---
 
-## Cadre du module
+## 1. Contrat academique (exigences README)
 
-Le projet s’inscrit dans l’UE **Projet Pluridisciplinaire d’Informatique Intégrative 2**.
+Ce README contient toutes les informations requises par le sujet:
+- membres et roles;
+- sujet choisi + extensions realisees;
+- dependances logicielles;
+- commandes de compilation, lancement et tests;
+- parametres de lancement supportes;
+- limites connues;
+- liens vers les documents de gestion de projet (gantt, comptes rendus, charte).
 
-- Travail en équipe de **3 à 4 étudiants**.
-- Charge de travail indicative : **100 h projet** par équipe.
-- Développement attendu par **itérations** : socle jouable, stabilisation, enrichissements, finalisation.
+## 2. Equipe
 
-Le sujet évalue autant la qualité du logiciel produit que la démarche d’ingénierie adoptée pendant le semestre.
+| Membre | Role principal | Perimetre technique |
+| --- | --- | --- |
+| Maxence ARDITTI | Lead technique | Architecture, carte, CLI, SDL, parser |
+| Armel Stephane Novak KI | IA & barbares | Makefile, barbares, IA, extension |
+| Ababacar DIENE | Unites, combat & technologie | Unites, combat, arbre technologique |
+| Wassim OUKAZI | Villes, ressources & documentation | Villes, ressources, batiments, evenements |
 
----
+## 3. Sujet et objectif
 
-## Objectifs communs
+Early Civilization: jeu de strategie au tour par tour en C, jouable en CLI (ncurses) et en SDL2.
+Le joueur developpe sa civilisation (villes, unites, technologies) et affronte les barbares.
 
-Les deux projets visent à développer une application de jeu en langage C avec :
+## 4. Fonctionnalites principales (socle)
 
-- une architecture modulaire et maintenable ;
-- une logique de jeu correctement implémentée ;
-- un mode d’exécution en ligne de commande entièrement dans le terminal (TUI - Text-based user interface) ;
-- un mode d’exécution graphique utilisant la bibliothèque [libSDL](https://www.libsdl.org/) ;
-- des tests unitaires couvrant a minima le cœur du programme ;
-- une documentation technique claire.
+- Generation de carte par bruit de Perlin, seed reproductible.
+- Gestion des villes, croissance, production, batiments, murs.
+- Unites: colon, guerrier; combats contre unites et villes.
+- Ressources globales: nourriture, production, science, or.
+- Arbre technologique et recherche active.
+- Barbares: camps, spawn progressif, attaques sur unites/villes.
+- Conditions de victoire/defaite et score de fin.
 
----
+## 5. Extensions et ajouts
 
-## Exigences techniques communes
+- Brouillard de guerre (zones cachees/explorees/visibles).
+- Unites avancees: archer, cavalier.
+- Technologie bateau: deplacement sur l'eau.
+- Ressources speciales conditionnees par technologies (ble, fer, epices, specimens, chevaux).
+- Merveilles du monde (Pyramides, Grande Bibliotheque, Colisee, Tour de Babel, Jardins suspendus).
+- Presets de difficulte + multiplicateurs configurables.
+- Sauvegarde/chargement + historique des scores.
 
-- Langage principal : **C**.
-- Build : **Makefile** avec compilation séparée.
-- Contrôle de version : **Git/GitLab**.
-- Qualité de code : gestion des erreurs, lisibilité, séparation des responsabilités.
-- Architecture : la logique métier du jeu doit être **indépendante** des interfaces CLI et SDL.
-- Robustesse : les entrées invalides doivent être gérées proprement ; les scénarios normaux d’utilisation ne doivent pas conduire à des plantages répétés ou à des fuites mémoire manifestes.
+## 6. Regles de victoire, defaite et score
 
-### Cibles Make minimales attendues
+Victoire:
+- Scientifique: toutes les technologies debloquees.
+- Territoriale: 10 villes ou plus pendant 5 tours consecutifs.
 
-- `make` : compiler le projet
-- `make cli` : lancer la version terminal
-- `make sdl` : lancer la version graphique
-- `make test` : exécuter les tests
-- `make clean` : nettoyer les artefacts de compilation
-- `make req` : installer les dépendances du projet
+Defaite:
+- Plus aucune ville active.
+- Limite de tours atteinte (200).
+- Production nulle pendant 5 tours consecutifs.
 
-> Selon le sujet, d’autres cibles peuvent être demandées (`make reset`, etc.).
+Score final:
+```
+score = (nb_technos * 100) + (nb_villes * 50) + (population_totale * 20) + bonus_tours
+bonus_tours = max(0, (200 - tour_actuel) * 10)
+```
 
-Les cibles `make cli` et `make sdl` doivent lancer une partie avec des paramètres par défaut raisonnables. Les exécutables doivent aussi pouvoir être lancés directement avec des arguments personnalisés.
+## 7. Sequence d'un tour
 
----
+1. Restauration des PM (joueur + barbares).
+2. Revenus des villes, croissance et production.
+3. Paiement de l'entretien global (or).
+4. Phase barbares: spawn + deplacement/attaques.
+5. Mise a jour de la recherche.
+6. Incrementation du compteur de tours.
 
-## Livrables communs
+## 8. Controles (CLI)
 
-Le dépôt GitLab doit contenir a minima :
+- Clic: selectionner une unite ou une ville.
+- z/q/s/d: deplacer l'unite selectionnee.
+- f: fonder une ville (colon).
+- c / v: gerer la ville selectionnee (construction/recrutement).
+- t: ouvrir l'arbre des technologies.
+- n: terminer le tour.
+- Maj+S: sauvegarder la partie.
+- x: quitter le jeu.
 
-- un fichier `README.md` décrivant le projet rendu ;
-- le code source complet ;
-- un Makefile fonctionnel ;
-- des instructions d’installation et d’exécution ;
-- les tests unitaires ;
-- une documentation technique ;
-- les éléments de gestion de projet (planning, comptes-rendus, répartition des tâches, bilan).
+La liste complete et a jour est accessible via le menu "Regles & commandes".
 
-Le `README.md` du dépôt de rendu doit préciser au minimum :
+## 9. Controles (SDL)
 
-- les prénoms et noms des membres du groupe ;
-- le sujet choisi et, le cas échéant, les extensions implémentées ;
-- les dépendances logicielles ;
-- les commandes de compilation, de lancement et de test ;
-- les paramètres de lancement pris en charge ;
-- les limites connues ou fonctionnalités non terminées.
+- Clic: selectionner une unite ou une ville.
+- z/q/s/d: deplacer l'unite selectionnee.
+- Fleches: deplacer la camera.
+- v: ouvrir le menu de ville.
+- t: ouvrir l'arbre des technologies.
+- n: terminer le tour.
+- Maj+S: sauvegarde manuelle.
+- Echap: retour au menu principal (sauvegarde auto sur current_game.tmp).
+- F11: plein ecran fenetre.
 
----
+## 10. Arbre technologique
 
-## Évaluation (principes communs)
+| Techno | Cout | Prerequis | Effet principal |
+| --- | --- | --- | --- |
+| Chasse | 50 | - | +1 nourriture sur forets |
+| Agriculture | 60 | - | +10% nourriture globale |
+| Artisanat | 70 | - | Debloque guerrier/archer, +10% production |
+| Ecriture | 80 | - | Debloque bibliotheque, +10% science |
+| Equitation | 100 | - | Debloque cavalier, +1 PM |
+| Irrigation | 90 | Agriculture | +20% nourriture supplementaire |
+| Maconnerie | 100 | Artisanat | Debloque muraille (double PV ville) |
+| Commerce | 90 | Artisanat | Debloque marche, +10% or |
+| Bateau | 110 | Commerce | Traverser l'eau (cout: 2 PM) |
 
-L’évaluation porte notamment sur :
+## 11. Ressources speciales
 
-- la qualité de la modélisation ;
-- la conformité aux règles du sujet choisi ;
-- la robustesse de l’application ;
-- la qualité des interfaces (CLI + SDL) ;
-- la qualité des tests et de la documentation ;
-- les pratiques de développement collaboratif.
+Environ 15% des tuiles eligibles contiennent une ressource speciale, visible
+et productive uniquement si la technologie requise est debloquee.
 
-Une fonctionnalité partiellement implémentée mais documentée honnêtement sera mieux évaluée qu’une fonctionnalité annoncée comme terminée alors qu’elle est instable ou non démontrable.
+| Ressource | Terrain(s) | Techno requise | Bonus |
+| --- | --- | --- | --- |
+| Ble | Plaine | Agriculture | +3 nourriture |
+| Fer | Montagne | Artisanat | +3 production |
+| Epices | Foret, desert | Commerce | +4 or |
+| Specimens | Toundra | Ecriture | +3 science |
+| Chevaux | Plaine, toundra | Equitation | +1 PM sur les unites produites |
 
----
+## 12. Merveilles du monde
 
-## Méthode de travail recommandée
+| Merveille | Terrain requis | Cout | Effet |
+| --- | --- | --- | --- |
+| Pyramides | Desert | 200 | +50% nourriture globale |
+| Grande Bibliotheque | Toundra | 250 | Debloque immediatement la techno en cours |
+| Colisee | Plaine | 200 | +2 or/tour par ville |
+| Tour de Babel | Montagne | 300 | -25% cout des futures technos |
+| Jardins suspendus | Foret | 220 | -20% seuil de croissance |
 
-- développer par incréments (socle jouable → stabilisation → enrichissements) ;
-- valider régulièrement avec des tests ;
-- garder la logique de jeu indépendante du rendu (CLI/SDL) ;
-- documenter les choix techniques au fil de l’avancement ;
-- tracer et conserver les décisions importantes : structures de données, arbitrages fonctionnels, limites connues ;
-- s’appuyer sur des outils de diagnostic adaptés (`gdb`, sanitizers, `valgrind`, etc.).
+## 13. Architecture (vue rapide)
 
----
+- Core moteur de jeu: [src/core](src/core)
+- En-tetes publics: [include/core](include/core)
+- UI CLI ncurses et UI SDL2 partageant la meme logique
+- Tests unitaires: [tests](tests)
 
-## Choix du sujet
+## 14. Dependances
 
-Chaque groupe choisit un sujet principal à réaliser. Une justification du choix n'est pas forcément attendue, mais peut constituer un plus.
+- GCC (C11), make, pkg-config
+- ncursesw
+- SDL2, SDL2_ttf, SDL2_image (uniquement pour le mode SDL)
 
-- Civilization : [README_CIV.md](README_CIV.md)
-- Carcassonne : [README_CARCASSONNE.md](README_CARCASSONNE.md)
+## 15. Compilation et execution
 
-Dans votre dépôt de rendu, ce document pourra être remplacé ou renommé afin de laisser la place à votre propre `README.md` décrivant le projet effectivement réalisé.
+```bash
+make
+make cli
+make sdl
+make test
+make clean
+make reset
+make req
+```
 
----
+Executables:
+- CLI: ./bin/civ --mode cli
+- SDL: ./bin/civ --mode sdl (compiler avec `make sdl`)
 
-## Clarifications utiles
+## 16. Parametres de lancement
 
-- sauf mention contraire dans le sujet choisi, une règle simplifiée est acceptable si elle est **cohérente, stable et documentée** ;
-- si vous modifiez des constantes de jeu ou simplifiez une mécanique, vous devez l’indiquer explicitement dans la documentation technique ;
-- quand le sujet propose une graine (`seed`) ou des paramètres de lancement, ils doivent être réellement exploités par le programme afin de rendre les parties reproductibles ;
-- les interfaces CLI et SDL peuvent différer visuellement, mais elles doivent piloter le **même moteur de jeu** et les **mêmes règles**.
+Executable attendu: `civ`.
 
----
+| Option | Valeur | Defaut | Description |
+| --- | --- | --- | --- |
+| `--help` | - | - | Affiche l'aide |
+| `--mode` / `-m` | `cli` ou `sdl` | `cli` | Mode d'affichage |
+| `--difficulty` / `-d` | `facile`, `normal`, `difficile` | `normal` | Preset de difficulte |
+| `--production-multiplier` / `-p` | float | 1.0 | Multiplie la production |
+| `--growth-multiplier` / `-g` | float | 1.0 | Multiplie le seuil de croissance |
+| `--barbarian-spawn-multiplier` / `-B` | float | 1.0 | Multiplie le spawn barbare |
+| `--famine` / `-f` | on/off, true/false, 1/0 | true | Active/desactive la famine |
+| `--seed` / `-s` | int | aleatoire | Graine de generation |
+| `--width` / `-W` | int | 50 | Largeur de la carte |
+| `--height` / `-H` | int | 30 | Hauteur de la carte |
+| `--turns` / `-t` | int | 200 | Tours max |
+| `--barbarians` / `-b` | int | 3 | Nombre de campements initiaux |
 
-## Date de rendu et soutenance
+Exemples:
+```bash
+./bin/civ --mode sdl --width 40 --height 25 --seed 12345
+./bin/civ -m cli -t 150 -b 5
+```
 
-Le projet est à rendre pour le **29 mai 2026 à 22 heures au plus tard**.
+## 17. Presets de difficulte
 
-Des soutenances de groupes de projet seront organisées dans la foulée, début juin 2026.
+Voir [docs/CONFIG.md](docs/CONFIG.md) pour les multiplicateurs exacts.
 
-Votre projet fera l'objet d'une démonstration devant un jury composé d'au moins 2 membres de l’équipe pédagogique. Durant cette soutenance, vous serez jugés sur la démonstration de l'application et sur votre capacité à expliquer votre projet, son architecture et les choix effectués.
+- Facile: production 1.25, croissance 0.75, spawn barbares 0.75, famine desactivee.
+- Normal: production 1.0, croissance 1.0, spawn barbares 1.0, famine activee.
+- Difficile: production 0.75, croissance 1.25, spawn barbares 1.25, famine activee.
 
-Chaque membre du groupe devra être présent lors de la soutenance et participer activement. *Toute personne ne se présentant pas à la soutenance sera considérée comme démissionnaire de l'UE et, en conséquence, ne pourra pas la valider pour l’année universitaire 2025-2026.*
+## 18. Tests
 
-Il est attendu que chaque membre du groupe ait contribué à plusieurs parties fonctionnelles du code. Il ne s'agit pas d'avoir uniquement corrigé quelques lignes de manière marginale.
+Les tests unitaires couvrent le coeur du moteur:
+- [tests/test_archer.c](tests/test_archer.c)
+- [tests/test_barbares.c](tests/test_barbares.c)
+- [tests/test_cavalier.c](tests/test_cavalier.c)
+- [tests/test_config.c](tests/test_config.c)
+- [tests/test_difficulty_effects.c](tests/test_difficulty_effects.c)
+- [tests/test_physique.c](tests/test_physique.c)
 
----
+Lancer avec:
 
-## Fraude, tricherie et plagiat
+```bash
+make test
+```
 
-Ne trichez pas. Ne copiez pas. Ne plagiez pas. Si vous le faites, vous serez lourdement sanctionnés. Nous ne ferons pas de distinction entre copieur et copié. Vous ne devez pas utiliser de solution clé en main trouvée sur internet.
+## 19. Sauvegardes et scores
 
-Par tricher, nous entendons notamment :
+- Sauvegarde manuelle: `savegame.sav`
+- Sauvegarde auto de session: `current_game.tmp`
+- Historique des scores: `score_history.txt`
 
-- rendre le travail d’un collègue en y apposant votre nom ;
-- obtenir un code ou une solution par un moteur de recherche ou une IA, puis le rendre sous votre nom ;
-- récupérer du code et ne changer que les noms de variables et fonctions ou leur ordre avant de le présenter sous votre nom ;
-- autoriser consciemment ou inconsciemment un collègue à s'approprier votre travail personnel. Assurez-vous notamment que votre projet et ses différentes copies locales ne soient lisibles que par vous et les membres de votre groupe.
+## 20. Documentation et gestion de projet
 
-Nous encourageons les séances de *brainstorming* et de discussion entre les élèves sur le projet. C’est une démarche naturelle et saine, comme vous la rencontrerez dans votre vie professionnelle. Si les réflexions communes sont fortement recommandées, vous ne pouvez rendre que du code et des documents écrits par vous-même. Vous indiquerez en particulier, dans votre rapport, toutes vos sources (comme les sites internet consultés), en précisant brièvement ce que vous en avez retenu.
+- Charte de projet: [docs/charte_projet_incivilises-1.pdf](docs/charte_projet_incivilises-1.pdf)
+- Gantt final: [docs/gantt_civilization_final.pdf](docs/gantt_civilization_final.pdf)
+- Presets de difficulte: [docs/CONFIG.md](docs/CONFIG.md)
+- Comptes rendus de reunion: [docs](docs)
 
-Il est quasi certain que nous détecterons les tricheries. En effet, les rapports et les codes sont systématiquement soumis à des outils de détection de plagiat et de copie. Il existe notamment des outils de détection de manipulation de code mis à disposition par l’Université de Stanford, tels que `MOSS` (https://theory.stanford.edu/~aiken/moss/) ou `compare50` (https://cs50.readthedocs.io/projects/compare50/). De plus, chacun a son propre style de programmation et personne ne développe exactement la même chose de la même manière.
+## 21. Limites connues
 
-Puisqu'il s'agit d'un projet réalisé dans le cadre de cours avancés de programmation, nous nous attendons à ce que vous soyez capables d'apprendre à déboguer des programmes par vous-mêmes. Par exemple, demander à un autre élève de regarder directement votre code et de donner des suggestions d'amélioration commence à devenir délicat au niveau éthique.
-
-Dans le cadre du présent projet, l’utilisation d’outils d’intelligence artificielle générative, dont les modèles de langage de type LLM, assistants de programmation, générateurs de code, de tests, de documentation ou de rapports, est strictement encadrée.
-
-Sont notamment interdits : la génération automatique, totale ou partielle, de code source, d’architectures, de jeux de tests, de rapports, de livrables ou de présentations destinés à être évalués ; la reformulation substantielle de travaux rédigés par les étudiants ; l’utilisation d’IA pour résoudre directement des problèmes techniques ou algorithmiques constitutifs des objectifs pédagogiques ; ainsi que toute utilisation visant à contourner l’évaluation des compétences individuelles.
-
-En revanche, l’usage d’outils d’IA est autorisé à des fins d’apprentissage et de documentation, par exemple pour obtenir des explications conceptuelles, clarifier des notions, explorer des pistes de compréhension ou identifier des ressources pertinentes, dès lors que le travail remis est intégralement produit, compris et maîtrisé par les étudiants. Les outils d’IA peuvent également être utilisés, sauf indication contraire explicite de l’équipe pédagogique, à des fins accessoires telles que la correction orthographique mineure ou la clarification linguistique, sans modification du contenu technique.
-
-Toute utilisation autorisée doit être explicitement déclarée et documentée. Le non-respect de ces règles constitue un manquement à l’intégrité académique et pourra donner lieu à des sanctions.
-
-**Si vous rencontrez des difficultés pour terminer une tâche, veuillez contacter l'un de vos enseignants afin que nous puissions vous aider. Nous préférons de loin passer du temps à vous aider plutôt que de traiter des cas de fraude.**
+- L'historique des scores est affiche en CLI a partir de `score_history.txt`; l'ecran SDL lit `scores.txt`.
+- Le parametre `--turns` n'influence pas la condition de fin (limite fixe a 200 tours).
+- Le mode SDL requiert une compilation specifique (`make sdl`).
