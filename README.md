@@ -1,237 +1,318 @@
-# PPII - Early Civilization (Les Incivilises)
+# PPII — Early Civilization (Les Incivilises)
 
-Projet PPII FISE 2025-2026. Sujet choisi: Civilization (version minimaliste).
+Projet PPII FISE 2025-2026. Sujet choisi : Civilization (version minimaliste).
 
 [[_TOC_]]
 
 ---
 
-## 1. Contrat academique (exigences README)
+## 1. Contrat académique
 
-Ce README contient toutes les informations requises par le sujet:
-- membres et roles;
-- sujet choisi + extensions realisees;
-- dependances logicielles;
-- commandes de compilation, lancement et tests;
-- parametres de lancement supportes;
-- limites connues;
-- liens vers les documents de gestion de projet (gantt, comptes rendus, charte).
+Ce README contient toutes les informations requises par le sujet :
 
-## 2. Equipe
+- membres et rôles ;
+- sujet choisi et extensions réalisées ;
+- dépendances logicielles ;
+- commandes de compilation, lancement et tests ;
+- paramètres de lancement supportés ;
+- limites connues ;
+- liens vers les documents de gestion de projet.
 
-| Membre | Role principal | Perimetre technique |
-| --- | --- | --- |
+---
+
+## 2. Équipe
+
+| Membre | Rôle principal | Périmètre technique |
+|---|---|---|
 | Maxence ARDITTI | Lead technique | Architecture, carte, CLI, SDL, parser |
-| Armel Stephane Novak KI | IA & barbares | Makefile, barbares, IA, extension |
-| Ababacar DIENE | Unites, combat & technologie | Unites, combat, arbre technologique |
-| Wassim OUKAZI | Villes, ressources & documentation | Villes, ressources, batiments, evenements |
+| Armel Stephane Novak KI | IA & barbares | Makefile, barbares, IA, extensions |
+| Ababacar DIENE | Unités, combat & technologie | Unités, combat, arbre technologique |
+| Wassim OUKAZI | Villes, ressources & documentation | Villes, ressources, bâtiments, événements |
+
+---
 
 ## 3. Sujet et objectif
 
-Early Civilization: jeu de strategie au tour par tour en C, jouable en CLI (ncurses) et en SDL2.
-Le joueur developpe sa civilisation (villes, unites, technologies) et affronte les barbares.
+**Early Civilization** est un jeu de stratégie au tour par tour en C, jouable en mode CLI (ncurses) et en mode graphique (SDL2). Le joueur développe sa civilisation — villes, unités, technologies — et affronte les barbares avant que le temps ne soit écoulé.
 
-## 4. Fonctionnalites principales (socle)
+---
 
-- Generation de carte par bruit de Perlin, seed reproductible.
-- Gestion des villes, croissance, production, batiments, murs.
-- Unites: colon, guerrier; combats contre unites et villes.
-- Ressources globales: nourriture, production, science, or.
-- Arbre technologique et recherche active.
-- Barbares: camps, spawn progressif, attaques sur unites/villes.
-- Conditions de victoire/defaite et score de fin.
+## 4. Fonctionnalités réalisées (socle)
 
-## 5. Extensions et ajouts
+- Génération de carte par bruit de Perlin, graine (*seed*) reproductible.
+- 6 types de terrain avec bonus de ressources et coûts en PM distincts.
+- Gestion des villes : croissance, famine, production, bâtiments, murailles.
+- Unités : colon, guerrier ; combats automatiques contre unités et villes.
+- Ressources globales : nourriture, production, science, or.
+- Arbre technologique en graphe orienté (9 technologies, prérequis multiples).
+- Barbares : campements, spawn progressif, pathfinding BFS, priorité des cibles.
+- Conditions de victoire/défaite et calcul du score de fin de partie.
 
-- Brouillard de guerre (zones cachees/explorees/visibles).
-- Unites avancees: archer, cavalier.
-- Technologie bateau: deplacement sur l'eau.
-- Ressources speciales conditionnees par technologies (ble, fer, epices, specimens, chevaux).
-- Merveilles du monde (Pyramides, Grande Bibliotheque, Colisee, Tour de Babel, Jardins suspendus).
-- Presets de difficulte + multiplicateurs configurables.
-- Sauvegarde/chargement + historique des scores.
+---
 
-## 6. Regles de victoire, defaite et score
+## 5. Extensions réalisées
 
-Victoire:
-- Scientifique: toutes les technologies debloquees.
-- Territoriale: 10 villes ou plus pendant 5 tours consecutifs.
+| Extension | Description |
+|---|---|
+| **EXT-1** Navigation & Carte | Technologie **Bateaux** (traversée maritime, 2 PM), génération Perlin avec continents cohérents |
+| **EXT-2** Merveilles & Ressources | 5 Merveilles du monde uniques, 5 ressources spéciales conditionnées par technologies |
+| **EXT-4** Gestion de partie | Menu principal, sauvegarde/chargement, historique des scores |
+| **EXT-5** Difficulté & Unités avancées | Presets Facile/Normal/Difficile, multiplicateurs configurables, unités **Archer** et **Cavalier** |
+| **EXT-6** Brouillard de guerre | Statut par tuile : inconnue / explorée / visible, champ de vision unités et villes |
 
-Defaite:
-- Plus aucune ville active.
-- Limite de tours atteinte (200).
-- Production nulle pendant 5 tours consecutifs.
+---
 
-Score final:
+## 6. Conditions de victoire, défaite et score
+
+### Victoire
+
+| Condition | Règle |
+|---|---|
+| Scientifique | Débloquer les 9 technologies de l'arbre |
+| Territoriale | Posséder ≥ 10 villes pendant 5 tours consécutifs |
+
+### Défaite
+
+| Condition | Règle |
+|---|---|
+| Extinction | Plus aucune ville active |
+| Temps écoulé | Limite de tours atteinte (`--turns`, défaut 200) |
+| Faillite | Production totale nulle pendant 5 tours consécutifs |
+
+### Score
+
 ```
-score = (nb_technos * 100) + (nb_villes * 50) + (population_totale * 20) + bonus_tours
-bonus_tours = max(0, (200 - tour_actuel) * 10)
+score = (nb_technos × 100)
+      + (nb_villes × 50)
+      + (population_totale × 20)
+      + max(0, (tours_max − tour_actuel) × 10)
 ```
 
-## 7. Sequence d'un tour
+---
 
-1. Restauration des PM (joueur + barbares).
-2. Revenus des villes, croissance et production.
-3. Paiement de l'entretien global (or).
-4. Phase barbares: spawn + deplacement/attaques.
-5. Mise a jour de la recherche.
-6. Incrementation du compteur de tours.
+## 7. Séquence d'un tour
 
-## 8. Controles (CLI)
+Chaque tour s'exécute dans l'ordre suivant :
 
-- Clic: selectionner une unite ou une ville.
-- z/q/s/d: deplacer l'unite selectionnee.
-- f: fonder une ville (colon).
-- c / v: gerer la ville selectionnee (construction/recrutement).
-- t: ouvrir l'arbre des technologies.
-- n: terminer le tour.
-- Maj+S: sauvegarder la partie.
-- x: quitter le jeu.
+1. **Restauration des PM** — toutes les unités (joueur et barbares) récupèrent leur maximum.
+2. **Revenus des villes** — chaque ville exploite ses tuiles et accumule nourriture, production, science, or.
+3. **Croissance** — mise à jour de la population de chaque ville (croissance ou famine).
+4. **Production** — avancement des projets (bâtiments, unités).
+5. **Entretien** — le joueur paye l'entretien global en or ; en cas de découvert, une unité est dissoute.
+6. **Recherche** — avancement de la technologie en cours.
+7. **Phase barbares** — spawn depuis les campements puis déplacement et attaques.
+8. **Fin de tour** — incrémentation du compteur, vérification des conditions de victoire/défaite.
 
-La liste complete et a jour est accessible via le menu "Regles & commandes".
+---
 
-## 9. Controles (SDL)
+## 8. Contrôles — mode CLI (ncurses)
 
-- Clic: selectionner une unite ou une ville.
-- z/q/s/d: deplacer l'unite selectionnee.
-- Fleches: deplacer la camera.
-- v: ouvrir le menu de ville.
-- t: ouvrir l'arbre des technologies.
-- n: terminer le tour.
-- Maj+S: sauvegarde manuelle.
-- Echap: retour au menu principal (sauvegarde auto sur current_game.tmp).
-- F11: plein ecran fenetre.
+| Touche | Action |
+|---|---|
+| Clic / Entrée | Sélectionner une unité ou une ville |
+| `z` `q` `s` `d` | Déplacer l'unité sélectionnée |
+| `f` | Fonder une ville (colon) |
+| `c` / `v` | Gérer la ville (construction / recrutement) |
+| `t` | Ouvrir l'arbre des technologies |
+| `n` | Terminer le tour |
+| `Maj+S` | Sauvegarder la partie |
+| `x` | Quitter |
+
+La liste complète est accessible via le menu **Règles & commandes** en jeu.
+
+---
+
+## 9. Contrôles — mode SDL
+
+| Touche / Action | Effet |
+|---|---|
+| Clic | Sélectionner une unité ou une ville |
+| `z` `q` `s` `d` | Déplacer l'unité sélectionnée |
+| Flèches directionnelles | Déplacer la caméra |
+| `v` | Ouvrir le menu de ville |
+| `t` | Ouvrir l'arbre des technologies |
+| `n` | Terminer le tour |
+| `Maj+S` | Sauvegarde manuelle |
+| `Échap` | Retour au menu (sauvegarde auto dans `current_game.tmp`) |
+| `F11` | Plein écran |
+
+---
 
 ## 10. Arbre technologique
 
-| Techno | Cout | Prerequis | Effet principal |
-| --- | --- | --- | --- |
-| Chasse | 50 | - | +1 nourriture sur forets |
-| Agriculture | 60 | - | +10% nourriture globale |
-| Artisanat | 70 | - | Debloque guerrier/archer, +10% production |
-| Ecriture | 80 | - | Debloque bibliotheque, +10% science |
-| Equitation | 100 | - | Debloque cavalier, +1 PM |
-| Irrigation | 90 | Agriculture | +20% nourriture supplementaire |
-| Maconnerie | 100 | Artisanat | Debloque muraille (double PV ville) |
-| Commerce | 90 | Artisanat | Debloque marche, +10% or |
-| Bateau | 110 | Commerce | Traverser l'eau (cout: 2 PM) |
+| Technologie | Coût | Prérequis | Effet principal |
+|---|:---:|---|---|
+| Chasse | 50 | — | +1 nourriture sur les tuiles Forêt |
+| Agriculture | 60 | — | +10 % nourriture globale |
+| Artisanat | 70 | — | Débloque Guerrier, +10 % production |
+| Écriture | 80 | — | Débloque Bibliothèque, +10 % science |
+| Équitation | 100 | — | Débloque Cavalier, +1 PM sur les unités |
+| Irrigation | 90 | Agriculture | +20 % nourriture supplémentaire |
+| Maçonnerie | 100 | Artisanat | Débloque Muraille (double les PV de la ville) |
+| Commerce | 90 | Artisanat + Écriture | Débloque Marché, +10 % or |
+| Bateaux | 110 | Commerce | Navigation maritime (coût 2 PM/tuile eau) |
 
-## 11. Ressources speciales
+```
+Chasse       Agriculture    Artisanat    Écriture    Équitation
+                  |          |    \          |
+              Irrigation  Maçon. Commerce ←←←←←←←←←
+                               └──────────────→ Bateaux
+```
 
-Environ 15% des tuiles eligibles contiennent une ressource speciale, visible
-et productive uniquement si la technologie requise est debloquee.
+---
 
-| Ressource | Terrain(s) | Techno requise | Bonus |
-| --- | --- | --- | --- |
-| Ble | Plaine | Agriculture | +3 nourriture |
-| Fer | Montagne | Artisanat | +3 production |
-| Epices | Foret, desert | Commerce | +4 or |
-| Specimens | Toundra | Ecriture | +3 science |
-| Chevaux | Plaine, toundra | Equitation | +1 PM sur les unites produites |
+## 11. Ressources spéciales (EXT-2)
 
-## 12. Merveilles du monde
+Environ 15 % des tuiles éligibles portent une ressource spéciale, productive uniquement si la technologie correspondante est débloquée.
 
-| Merveille | Terrain requis | Cout | Effet |
-| --- | --- | --- | --- |
-| Pyramides | Desert | 200 | +50% nourriture globale |
-| Grande Bibliotheque | Toundra | 250 | Debloque immediatement la techno en cours |
-| Colisee | Plaine | 200 | +2 or/tour par ville |
-| Tour de Babel | Montagne | 300 | -25% cout des futures technos |
-| Jardins suspendus | Foret | 220 | -20% seuil de croissance |
+| Ressource | Terrain | Technologie requise | Bonus |
+|---|---|---|---|
+| Blé | Plaine | Agriculture | +3 nourriture/tour |
+| Fer | Montagne | Artisanat | +3 production/tour |
+| Épices | Forêt, Désert | Commerce | +4 or/tour |
+| Spécimens | Toundra | Écriture | +3 science/tour |
+| Chevaux | Plaine, Toundra | Équitation | +1 PM sur les unités produites dans la ville |
 
-## 13. Architecture (vue rapide)
+---
 
-- Core moteur de jeu: [src/core](src/core)
-- En-tetes publics: [include/core](include/core)
-- UI CLI ncurses et UI SDL2 partageant la meme logique
-- Tests unitaires: [tests](tests)
+## 12. Merveilles du monde (EXT-2)
 
-## 14. Dependances
+Chaque Merveille est unique dans la partie. Elle se construit dans une ville et son effet est global une fois achevée.
 
-- GCC (C11), make, pkg-config
-- ncursesw
-- SDL2, SDL2_ttf, SDL2_image (uniquement pour le mode SDL)
+| Merveille | Terrain requis | Coût | Effet |
+|---|---|:---:|---|
+| Pyramides | Désert | 200 | +50 % nourriture dans toutes les villes |
+| Grande Bibliothèque | Toundra | 250 | Débloque immédiatement la technologie en cours |
+| Colisée | Plaine | 200 | +2 or/tour par ville |
+| Tour de Babel | Montagne | 300 | −25 % coût de toutes les futures technologies |
+| Jardins suspendus | Forêt | 220 | −20 % seuil de croissance de toutes les villes |
 
-## 15. Compilation et execution
+---
+
+## 13. Architecture
+
+```
+include/core/      En-têtes publics (types.h, game.h, map.h, …)
+src/core/          Moteur de jeu (game.c, map.c, barbares.c, ressources.c, …)
+                   Interface CLI (main.c / ncurses)
+                   Interface SDL (engine_sdl.c)
+tests/             Tests unitaires (test_barbares.c, test_physique.c, …)
+docs/              Documents de gestion de projet
+assets/            Police et images pour le mode SDL
+```
+
+Le moteur de jeu est **strictement découplé** de l'affichage : CLI et SDL partagent exactement les mêmes règles et structures.
+
+---
+
+## 14. Dépendances
+
+| Dépendance | Usage |
+|---|---|
+| GCC (C11), make, pkg-config | Compilation |
+| ncursesw | Mode CLI |
+| SDL2, SDL2_ttf, SDL2_image | Mode SDL uniquement |
+
+Installation des dépendances système :
 
 ```bash
-make
-make cli
-make sdl
-make test
-make clean
-make reset
 make req
 ```
 
-Executables:
-- CLI: ./bin/civ --mode cli
-- SDL: ./bin/civ --mode sdl (compiler avec `make sdl`)
+---
 
-## 16. Parametres de lancement
+## 15. Compilation et lancement
 
-Executable attendu: `civ`.
-
-| Option | Valeur | Defaut | Description |
-| --- | --- | --- | --- |
-| `--help` | - | - | Affiche l'aide |
-| `--mode` / `-m` | `cli` ou `sdl` | `cli` | Mode d'affichage |
-| `--difficulty` / `-d` | `facile`, `normal`, `difficile` | `normal` | Preset de difficulte |
-| `--production-multiplier` / `-p` | float | 1.0 | Multiplie la production |
-| `--growth-multiplier` / `-g` | float | 1.0 | Multiplie le seuil de croissance |
-| `--barbarian-spawn-multiplier` / `-B` | float | 1.0 | Multiplie le spawn barbare |
-| `--famine` / `-f` | on/off, true/false, 1/0 | true | Active/desactive la famine |
-| `--seed` / `-s` | int | aleatoire | Graine de generation |
-| `--width` / `-W` | int | 50 | Largeur de la carte |
-| `--height` / `-H` | int | 30 | Hauteur de la carte |
-| `--turns` / `-t` | int | 200 | Tours max |
-| `--barbarians` / `-b` | int | 3 | Nombre de campements initiaux |
-
-Exemples:
 ```bash
-./bin/civ --mode sdl --width 40 --height 25 --seed 12345
-./bin/civ -m cli -t 150 -b 5
+make           # Compile le projet (mode CLI par défaut)
+make cli       # Compile et lance en mode CLI
+make sdl       # Compile avec SDL2 et lance en mode graphique
+make test      # Compile et exécute les tests unitaires
+make clean     # Supprime les fichiers de compilation et les exécutables
+make reset     # Supprime également les données (sauvegardes, scores, config)
 ```
 
-## 17. Presets de difficulte
+Exécutables produits dans `bin/civ`.
 
-Voir [docs/CONFIG.md](docs/CONFIG.md) pour les multiplicateurs exacts.
+---
 
-- Facile: production 1.25, croissance 0.75, spawn barbares 0.75, famine desactivee.
-- Normal: production 1.0, croissance 1.0, spawn barbares 1.0, famine activee.
-- Difficile: production 0.75, croissance 1.25, spawn barbares 1.25, famine activee.
+## 16. Paramètres de lancement
 
-## 18. Tests
+| Option longue | Forme courte | Défaut | Description |
+|---|:---:|:---:|---|
+| `--help` | — | — | Affiche l'aide et quitte |
+| `--mode MODE` | `-m` | `cli` | Mode d'affichage : `cli` ou `sdl` |
+| `--difficulty DIFF` | `-d` | `normal` | Preset : `facile`, `normal`, `difficile` |
+| `--seed N` | `-s` | aléatoire | Graine de génération de la carte |
+| `--width W` | `-W` | 50 | Largeur de la carte en tuiles |
+| `--height H` | `-H` | 30 | Hauteur de la carte en tuiles |
+| `--turns N` | `-t` | 200 | Nombre de tours maximum |
+| `--barbarians N` | `-b` | 3 | Nombre de campements barbares initiaux |
+| `--production-multiplier X` | `-p` | 1.0 | Multiplicateur de production |
+| `--growth-multiplier X` | `-g` | 1.0 | Multiplicateur du seuil de croissance |
+| `--barbarian-spawn-multiplier X` | `-B` | 1.0 | Multiplicateur de spawn barbare |
+| `--famine on/off` | `-f` | `on` | Active ou désactive la famine |
 
-Les tests unitaires couvrent le coeur du moteur:
-- [tests/test_archer.c](tests/test_archer.c)
-- [tests/test_barbares.c](tests/test_barbares.c)
-- [tests/test_cavalier.c](tests/test_cavalier.c)
-- [tests/test_config.c](tests/test_config.c)
-- [tests/test_difficulty_effects.c](tests/test_difficulty_effects.c)
-- [tests/test_physique.c](tests/test_physique.c)
+Exemples :
 
-Lancer avec:
+```bash
+./bin/civ --mode sdl --width 40 --height 25 --seed 12345
+./bin/civ -m cli -t 150 -b 5 -d difficile
+```
+
+---
+
+## 17. Presets de difficulté (EXT-5)
+
+| Paramètre | Facile | Normal | Difficile |
+|---|:---:|:---:|:---:|
+| Multiplicateur de production | 1.25 | 1.0 | 0.75 |
+| Multiplicateur seuil de croissance | 0.75 | 1.0 | 1.25 |
+| Multiplicateur spawn barbare | 0.75 | 1.0 | 1.25 |
+| Famine | désactivée | activée | activée |
+
+Voir [docs/CONFIG.md](docs/CONFIG.md) pour les détails complets.
+
+---
+
+## 18. Tests unitaires
 
 ```bash
 make test
 ```
 
+| Fichier | Ce qui est testé |
+|---|---|
+| [tests/test_barbares.c](tests/test_barbares.c) | Init camps, spawn, déplacement, pathfinding, combat, destruction, intégration |
+| [tests/test_physique.c](tests/test_physique.c) | Formules de combat, déplacement, PM |
+| [tests/test_archer.c](tests/test_archer.c) | Statistiques et contraintes de l'Archer |
+| [tests/test_cavalier.c](tests/test_cavalier.c) | Statistiques et contraintes du Cavalier |
+| [tests/test_config.c](tests/test_config.c) | Lecture et application des presets de difficulté |
+| [tests/test_difficulty_effects.c](tests/test_difficulty_effects.c) | Effets des multiplicateurs sur les règles du jeu |
+
+---
+
 ## 19. Sauvegardes et scores
 
-- Sauvegarde manuelle: `savegame.sav`
-- Sauvegarde auto de session: `current_game.tmp`
-- Historique des scores: `score_history.txt`
+| Fichier | Rôle |
+|---|---|
+| `savegame.sav` | Sauvegarde manuelle (`Maj+S`) |
+| `current_game.tmp` | Sauvegarde automatique de session (écrasée à chaque tour) |
+| `score_history.txt` | Historique des scores (mode CLI) |
+| `scores.txt` | Historique des scores (mode SDL) |
+
+---
 
 ## 20. Documentation et gestion de projet
 
-- Charte de projet: [docs/charte_projet_incivilises-1.pdf](docs/charte_projet_incivilises-1.pdf)
-- Gantt final: [docs/gantt_civilization_final.pdf](docs/gantt_civilization_final.pdf)
-- Presets de difficulte: [docs/CONFIG.md](docs/CONFIG.md)
-- Comptes rendus de reunion: [docs](docs)
+- Charte de projet : [docs/charte_projet_incivilises-1.pdf](docs/charte_projet_incivilises-1.pdf)
+- Gantt final : [docs/gantt_civilization_final.pdf](docs/gantt_civilization_final.pdf)
+- Presets de difficulté : [docs/CONFIG.md](docs/CONFIG.md)
+- Comptes rendus de réunion : [docs/](docs/)
+
+---
 
 ## 21. Limites connues
 
-- L'historique des scores est affiche en CLI a partir de `score_history.txt`; l'ecran SDL lit `scores.txt`.
-- Le parametre `--turns` n'influence pas la condition de fin (limite fixe a 200 tours).
-- Le mode SDL requiert une compilation specifique (`make sdl`).
+- Le mode SDL requiert une compilation spécifique avec SDL2 (`make sdl`) ; la cible `make` seule produit uniquement le binaire CLI.
+- L'historique des scores est stocké dans deux fichiers distincts selon le mode : `score_history.txt` (CLI) et `scores.txt` (SDL).
