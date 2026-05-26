@@ -11,7 +11,7 @@ typedef enum {
     TERRAIN_MONTAGNE,
     TERRAIN_EAU,
     TERRAIN_DESERT,
-    TERRAIN_VILLE
+    TERRAIN_TOUNDRA
 } TerrainType;
 
 /*enum pour dire qu'un terrain est dans cette zone et cette zone uniquement, utilse pour l'affichage et pour 

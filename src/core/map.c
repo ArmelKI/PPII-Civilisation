@@ -19,7 +19,7 @@ Map* create_map(int width, int height,Player* player) {
     // génération naïve
     for (int h = 0; h < height; h++) {
         for (int w = 0; w < width; w++) {
-            tuiles[h][w].type = (TerrainType)(rand() % 5);
+            tuiles[h][w].type = (TerrainType)(rand() % 6);
             tuiles[h][w].city = NULL;
             tuiles[h][w].unit = NULL;
         }
@@ -91,6 +91,7 @@ void display_map(Map* map) {
                     case TERRAIN_MONTAGNE: printf("^ "); break;
                     case TERRAIN_FORET:    printf("f "); break;
                     case TERRAIN_DESERT:   printf("_ "); break;
+                    case TERRAIN_TOUNDRA:  printf("T "); break;
                     default:               printf("? "); break;
                 }
             }
@@ -121,9 +122,11 @@ void display_map_color(Map* map) {
                         printf("\033[0;33m^ \033[0m"); break; // Jaune/Marron
                     case TERRAIN_FORET:    
                         printf("\033[2;32mf \033[0m"); break; // Vert foncé
-                    case TERRAIN_DESERT:   
+                    case TERRAIN_DESERT:
                         printf("\033[0;33;1m_ \033[0m"); break; // Jaune brillant
-                    default:               
+                    case TERRAIN_TOUNDRA:
+                        printf("\033[0;37mT \033[0m"); break; // Blanc/gris
+                    default:
                         printf("? "); break;
                 }
             }

@@ -12,6 +12,7 @@ typedef struct {
     int kind;      // 0 = unité, 1 = ville
     int id;
     int dist;
+    int priority;  // 2 = colon, 1 = autre unité, 0 = ville (§8.3)
 } TargetCandidate;
 
 static int chebyshev_distance(int x1, int y1, int x2, int y2)
@@ -61,6 +62,10 @@ static int is_walkable_for_barbarian(const Map *map, int x, int y, const Unit *b
 
 static int candidate_cmp(const TargetCandidate *a, const TargetCandidate *b)
 {
+    /* §8.3 : priorité colon > autres unités > villes, puis distance, puis id */
+    if (a->priority != b->priority) {
+        return (a->priority > b->priority) ? -1 : 1;
+    }
     if (a->dist != b->dist) {
         return (a->dist < b->dist) ? -1 : 1;
     }
@@ -236,6 +241,17 @@ BarbarianCamp *barbares_init_camps(Map *map, int num_camps, int player_city_x, i
                 continue;
             }
 
+            int already_taken = 0;
+            for (int j = 0; j < i; ++j) {
+                if (camps[j].x == x && camps[j].y == y) {
+                    already_taken = 1;
+                    break;
+                }
+            }
+            if (already_taken) {
+                continue;
+            }
+
             camps[i].x = x;
             camps[i].y = y;
             camps[i].destroyed = 0;
@@ -255,6 +271,17 @@ BarbarianCamp *barbares_init_camps(Map *map, int num_camps, int player_city_x, i
                     }
 
                     if (abs(x - player_city_x) < 5 && abs(y - player_city_y) < 5) {
+                        continue;
+                    }
+
+                    int already_taken = 0;
+                    for (int j = 0; j < i; ++j) {
+                        if (camps[j].x == x && camps[j].y == y) {
+                            already_taken = 1;
+                            break;
+                        }
+                    }
+                    if (already_taken) {
                         continue;
                     }
 
@@ -351,6 +378,8 @@ void barbares_move(Unit *barb, Map *map, City *player_cities[], int num_cities,
             candidates[candidate_count].kind = 0;
             candidates[candidate_count].id = u->id;
             candidates[candidate_count].dist = chebyshev_distance(barb->x, barb->y, u->x, u->y);
+            /* §8.3 : colon prioritaire sur les autres unités */
+            candidates[candidate_count].priority = (u->type == UNIT_SETTLER) ? 2 : 1;
             candidate_count++;
         }
 
@@ -369,6 +398,7 @@ void barbares_move(Unit *barb, Map *map, City *player_cities[], int num_cities,
             candidates[candidate_count].kind = 1;
             candidates[candidate_count].id = c->id;
             candidates[candidate_count].dist = chebyshev_distance(barb->x, barb->y, c->x, c->y);
+            candidates[candidate_count].priority = 0;
             candidate_count++;
         }
 
@@ -498,6 +528,9 @@ int barbares_attack_if_adjacent(Unit *barb, Map *map, City *player_cities[], int
 
         if (city->hp <= 0) {
             city->hp = 0;
+            if (city->x >= 0 && city->y >= 0) {
+                map->tiles[city->y][city->x].city = NULL;
+            }
         }
 
         if (barb->hp <= 0) {

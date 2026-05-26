@@ -95,6 +95,13 @@ static void test_init_camps(void)
             EXPECT(!(abs(camps[i].x - city.x) < 5 && abs(camps[i].y - city.y) < 5),
                      "campement trop proche de la ville de départ");
         }
+        /* Vérifie qu'aucun couple de camps ne partage la même case */
+        for (int i = 0; i < 3; ++i) {
+            for (int j = i + 1; j < 3; ++j) {
+                EXPECT(!(camps[i].x == camps[j].x && camps[i].y == camps[j].y),
+                       "deux campements sur la même tuile");
+            }
+        }
         barbares_cleanup(camps, 3);
     }
 
@@ -192,8 +199,6 @@ static void test_move_barbarian(void)
     EXPECT(map.tiles[barb.y][barb.x].type != TERRAIN_EAU, "barbare ne doit pas entrer sur eau");
 
     free_test_map(&map);
-<<<<<<< HEAD
-=======
 }
 
 static void test_move_barbarian_pathfinding_around_wall(void)
@@ -222,7 +227,6 @@ static void test_move_barbarian_pathfinding_around_wall(void)
     EXPECT(!(barb.x == 2 && barb.y == 5), "pathfinding: doit avancer en contournant le mur");
 
     free_test_map(&map);
->>>>>>> bdd7209 (test(tests): enhance barbarian movement tests for pathfinding and edge cases)
 }
 
 static void test_attack_and_destroy(void)
@@ -247,12 +251,11 @@ static void test_attack_and_destroy(void)
     EXPECT(barb.hp < 10, "barbare devrait subir le contre-coup");
 
     BarbarianCamp camp = {.x = 1, .y = 1, .destroyed = 0, .id = 2};
-    int destroyed_count = 0;
-    Player p = {.gold = 0, .science = 0};
+    Player p = {.gold = 0, .science = 0, .camps_destroyed = 0};
 
-    barbares_destroy_camp(&camp, &destroyed_count, &p);
+    barbares_destroy_camp(&camp, &p);
     EXPECT(camp.destroyed == 1, "camp devrait être détruit");
-    EXPECT(destroyed_count == 1, "compteur détruits incorrect");
+    EXPECT(p.camps_destroyed == 1, "compteur détruits incorrect");
     EXPECT(p.gold == 5, "bonus or incorrect pour 1er camp");
 
     free_test_map(&map);
@@ -310,12 +313,6 @@ static void test_integration_with_map_engine(void)
     Unit *players[1] = {target};
     City *cities[1] = {NULL};
 
-<<<<<<< HEAD
-    barbares_move(barb, map, cities, 0, players, 1);
-
-    EXPECT(barb->x == 2 && barb->y == 1, "intégration: barbare avance vers cible avec map réel");
-    EXPECT(map->tiles[1][2].unit == barb, "intégration: map moteur mise à jour après move");
-=======
     int old_dist = abs(target->x - barb->x);
     if (abs(target->y - barb->y) > old_dist) {
         old_dist = abs(target->y - barb->y);
@@ -330,7 +327,6 @@ static void test_integration_with_map_engine(void)
 
     EXPECT(new_dist < old_dist, "intégration: barbare doit se rapprocher de la cible");
     EXPECT(map->tiles[barb->y][barb->x].unit == barb, "intégration: map moteur mise à jour après move");
->>>>>>> bdd7209 (test(tests): enhance barbarian movement tests for pathfinding and edge cases)
 
     map->tiles[target->y][target->x].unit = NULL;
     free(target);
