@@ -34,6 +34,7 @@ Map* create_map(int width, int height,Player* player) {
 
     // Allocation de la ville
     City* start_city = malloc(sizeof(City));
+    start_city->id = 1;
     start_city->x = start_x;
     start_city->y = start_y;
     start_city->hp = 100;
@@ -50,6 +51,7 @@ Map* create_map(int width, int height,Player* player) {
     Unit* start_warrior = malloc(sizeof(Unit));
     if (start_warrior != NULL) {
         start_warrior->type = UNIT_WARRIOR;
+        start_warrior->id = 2;
         start_warrior->x = start_x;
         start_warrior->y = start_y;
         start_warrior->hp = 20;

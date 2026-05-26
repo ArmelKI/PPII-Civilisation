@@ -23,8 +23,8 @@ void barbares_move(Unit *barb, Map *map, City *player_cities[], int num_cities,
 int barbares_attack_if_adjacent(Unit *barb, Map *map, City *player_cities[], int num_cities,
                                 Unit *player_units[], int num_player_units);
 
-// Détruit un campement et donne le bonus d'or associé.
-void barbares_destroy_camp(BarbarianCamp *camp, int *total_destroyed, Player *player);
+// Détruit un campement et applique le bonus d'or: 5 * camps détruits (cumul joueur).
+void barbares_destroy_camp(BarbarianCamp *camp, Player *player);
 
 // Libère la mémoire du tableau de campements.
 void barbares_cleanup(BarbarianCamp *camps, int num_camps);

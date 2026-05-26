@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "core/barbares.h"
 #include "core/types.h"
 
 #define MAP_W 20
@@ -10,6 +11,7 @@
 #define MAX_TURNS 20
 #define MAX_PLAYER_UNITS 8
 #define MAX_BARBARIANS 16
+#define NUM_BARBARIAN_CAMPS 3
 
 // Je regroupe ici tout ce qui doit vivre pendant la partie.
 // Ça évite de passer 15 paramètres dans chaque fonction.
@@ -25,6 +27,8 @@ typedef struct GameState {
 
 	Unit *barbarians[MAX_BARBARIANS];
 	int barbarian_count;
+	BarbarianCamp *camps;
+	int camp_count;
 
 	int turn;
 	int game_over;
@@ -80,7 +84,9 @@ static void init_player_and_city(GameState *game)
 	// Valeurs de départ de test pour faire tourner le moteur sans attendre les autres modules.
 	game->player.gold = 10;
 	game->player.science = 0;
+	game->player.camps_destroyed = 0;
 
+	game->city.id = 1;
 	game->city.population = 2;
 	game->city.food_stored = 0;
 	game->city.production_stored = 0;
@@ -99,6 +105,7 @@ static void init_player_and_city(GameState *game)
 	}
 
 	warrior->type = UNIT_WARRIOR;
+	warrior->id = 2;
 	warrior->hp = 15;
 	warrior->hp_max = 15;
 	warrior->attack = 3;
@@ -153,88 +160,84 @@ static void print_state_maxence_stub(const GameState *game)
 	printf("\n=== TOUR %d ===\n", game->turn);
 	printf("Ressources: or=%d science=%d\n", game->player.gold, game->player.science);
 	printf("Ville: hp=%d pop=%d (%d,%d)\n", game->city.hp, game->city.population, game->city.x, game->city.y);
-	printf("Unités joueur: %d | Barbares: %d\n", game->player_unit_count, game->barbarian_count);
+	printf("Unités joueur: %d | Barbares: %d | Camps détruits: %d\n",
+		game->player_unit_count, game->barbarian_count, game->player.camps_destroyed);
 }
 
-static void spawn_random_barbarian(GameState *game)
+static void init_barbarian_camps(GameState *game)
 {
-	// Plafond global de barbares (version test, simple à ajuster ensuite).
-	if (game->barbarian_count >= MAX_BARBARIANS) {
-		return;
+	game->camp_count = NUM_BARBARIAN_CAMPS;
+	game->camps = barbares_init_camps(&game->map, game->camp_count, game->city.x, game->city.y);
+	if (!game->camps) {
+		fprintf(stderr, "Erreur d'initialisation des campements barbares\n");
+		exit(1);
 	}
-
-	// Probabilité de spawn à chaque tour.
-	if ((rand() % 100) >= 35) {
-		return;
-	}
-
-	int x = rand() % MAP_W;
-	int y = rand() % MAP_H;
-
-	if (game->map.tiles[y][x].type == TERRAIN_EAU) {
-		return;
-	}
-
-	if (game->map.tiles[y][x].unit || game->map.tiles[y][x].city) {
-		return;
-	}
-
-	Unit *barb = (Unit *)malloc(sizeof(Unit));
-	if (!barb) {
-		return;
-	}
-
-	barb->type = UNIT_BARBARIAN;
-	barb->hp = 15;
-	barb->hp_max = 15;
-	barb->attack = 3;
-	barb->defense = 2;
-	barb->pm = 3;
-	barb->pm_max = 3;
-	barb->x = x;
-	barb->y = y;
-	barb->owner = NULL;
-
-	game->barbarians[game->barbarian_count++] = barb;
-	game->map.tiles[y][x].unit = barb;
 }
 
-static void move_barbarians_random(GameState *game)
+static void resolve_camp_destruction(GameState *game)
 {
-	// Déplacement aléatoire d'une case : utile pour valider la phase Barbares.
+	for (int c = 0; c < game->camp_count; ++c) {
+		BarbarianCamp *camp = &game->camps[c];
+		if (camp->destroyed) {
+			continue;
+		}
+		for (int i = 0; i < game->player_unit_count; ++i) {
+			Unit *u = game->player_units[i];
+			if (!u || u->hp <= 0 || u->type != UNIT_WARRIOR) {
+				continue;
+			}
+			if (u->x == camp->x && u->y == camp->y) {
+				barbares_destroy_camp(camp, &game->player);
+				break;
+			}
+		}
+	}
+}
+
+static void spawn_barbarians_from_camps(GameState *game)
+{
+	const int max_alive = game->camp_count * 3;
+	for (int c = 0; c < game->camp_count; ++c) {
+		if (game->barbarian_count >= max_alive || game->barbarian_count >= MAX_BARBARIANS) {
+			return;
+		}
+		BarbarianCamp *camp = &game->camps[c];
+		if (barbares_spawn_unit(camp, &game->map, game->barbarians, &game->barbarian_count, max_alive) == 0) {
+			continue;
+		}
+	}
+}
+
+static void compact_dead_barbarians(GameState *game)
+{
+	int write_idx = 0;
+	for (int i = 0; i < game->barbarian_count; ++i) {
+		Unit *b = game->barbarians[i];
+		if (!b || b->hp <= 0) {
+			free(b);
+			continue;
+		}
+		game->barbarians[write_idx++] = b;
+	}
+	game->barbarian_count = write_idx;
+}
+
+static void play_barbarian_phase(GameState *game)
+{
+	City *cities[1] = { &game->city };
+	resolve_camp_destruction(game);
+	spawn_barbarians_from_camps(game);
+
 	for (int i = 0; i < game->barbarian_count; ++i) {
 		Unit *barb = game->barbarians[i];
 		if (!barb || barb->hp <= 0) {
 			continue;
 		}
-
-		int dx = (rand() % 3) - 1;
-		int dy = (rand() % 3) - 1;
-		if (dx == 0 && dy == 0) {
-			continue;
-		}
-
-		int nx = barb->x + dx;
-		int ny = barb->y + dy;
-
-		if (nx < 0 || nx >= MAP_W || ny < 0 || ny >= MAP_H) {
-			continue;
-		}
-
-		if (game->map.tiles[ny][nx].type == TERRAIN_EAU) {
-			continue;
-		}
-
-		if (game->map.tiles[ny][nx].unit || game->map.tiles[ny][nx].city) {
-			continue;
-		}
-
-		game->map.tiles[barb->y][barb->x].unit = NULL;
-		barb->x = nx;
-		barb->y = ny;
-		barb->pm -= 1;
-		game->map.tiles[barb->y][barb->x].unit = barb;
+		barbares_move(barb, &game->map, cities, 1, game->player_units, game->player_unit_count);
+		(void)barbares_attack_if_adjacent(barb, &game->map, cities, 1, game->player_units, game->player_unit_count);
 	}
+
+	compact_dead_barbarians(game);
 }
 
 static void next_turn(GameState *game)
@@ -246,9 +249,8 @@ static void next_turn(GameState *game)
 	// 2) Revenus de ville
 	apply_city_income_wassim(&game->player, &game->city);
 
-	// 3) Phase Barbares (spawn + déplacement)
-	spawn_random_barbarian(game);
-	move_barbarians_random(game);
+	// 3) Phase Barbares
+	play_barbarian_phase(game);
 }
 
 static void cleanup_game(GameState *game)
@@ -260,6 +262,7 @@ static void cleanup_game(GameState *game)
 	for (int i = 0; i < game->barbarian_count; ++i) {
 		free(game->barbarians[i]);
 	}
+	barbares_cleanup(game->camps, game->camp_count);
 
 	free(game->map.tiles);
 	free(game->tile_buffer);
@@ -303,6 +306,7 @@ int main(int argc, char **argv)
 	memset(&game, 0, sizeof(GameState));
 	init_map(&game);
 	init_player_and_city(&game);
+	init_barbarian_camps(&game);
 
 	puts("[CIV] Boucle principale lancée (prototype).\n");
 

@@ -10,7 +10,7 @@ typedef struct {
     int x;
     int y;
     int kind;      // 0 = unité, 1 = ville
-    int priority;
+    int id;
     int dist;
 } TargetCandidate;
 
@@ -61,11 +61,11 @@ static int is_walkable_for_barbarian(const Map *map, int x, int y, const Unit *b
 
 static int candidate_cmp(const TargetCandidate *a, const TargetCandidate *b)
 {
-    if (a->priority != b->priority) {
-        return (a->priority > b->priority) ? -1 : 1;
-    }
     if (a->dist != b->dist) {
         return (a->dist < b->dist) ? -1 : 1;
+    }
+    if (a->id != b->id) {
+        return (a->id < b->id) ? -1 : 1;
     }
     return 0;
 }
@@ -194,52 +194,6 @@ static int find_step_towards_target(const Unit *barb, const Map *map, int target
     return 1;
 }
 
-static int patrol_random_step(Unit *barb, Map *map)
-{
-    int options_x[8];
-    int options_y[8];
-    int count = 0;
-
-    for (int dy = -1; dy <= 1; ++dy) {
-        for (int dx = -1; dx <= 1; ++dx) {
-            if (dx == 0 && dy == 0) {
-                continue;
-            }
-
-            int nx = barb->x + dx;
-            int ny = barb->y + dy;
-            if (!is_walkable_for_barbarian(map, nx, ny, barb)) {
-                continue;
-            }
-
-            int cost = terrain_move_cost(map->tiles[ny][nx].type);
-            if (barb->pm < cost) {
-                continue;
-            }
-
-            options_x[count] = nx;
-            options_y[count] = ny;
-            count++;
-        }
-    }
-
-    if (count == 0) {
-        return 0;
-    }
-
-    int pick = rand() % count;
-    int nx = options_x[pick];
-    int ny = options_y[pick];
-    int cost = terrain_move_cost(map->tiles[ny][nx].type);
-
-    map->tiles[barb->y][barb->x].unit = NULL;
-    barb->x = nx;
-    barb->y = ny;
-    barb->pm -= cost;
-    map->tiles[barb->y][barb->x].unit = barb;
-    return 1;
-}
-
 // Place les campements barbares au démarrage
 BarbarianCamp *barbares_init_camps(Map *map, int num_camps, int player_city_x, int player_city_y)
 {
@@ -351,6 +305,7 @@ int barbares_spawn_unit(BarbarianCamp *camp, Map *map, Unit **units_array, int *
         }
 
         barb->type = UNIT_BARBARIAN;
+        barb->id = 100000 + *num_units;
         barb->hp = 15;
         barb->hp_max = 15;
         barb->attack = 3;
@@ -368,7 +323,8 @@ int barbares_spawn_unit(BarbarianCamp *camp, Map *map, Unit **units_array, int *
         return 1;
 }
 
-// Pathfinding simple vers cible la plus proche
+// Déplacement vers la cible la plus proche (distance de Tchebychev, tie-break par ID).
+// Le barbare consomme ses PM pour avancer de plusieurs cases si possible.
 void barbares_move(Unit *barb, Map *map, City *player_cities[], int num_cities, 
                    Unit *player_units[], int num_player_units)
 {
@@ -376,89 +332,90 @@ void barbares_move(Unit *barb, Map *map, City *player_cities[], int num_cities,
         return;
     }
 
-    TargetCandidate candidates[128];
-    int candidate_count = 0;
+    while (barb->pm > 0) {
+        TargetCandidate candidates[128];
+        int candidate_count = 0;
 
-    // Priorité IA: colon > guerrier > ville.
-    // On garde aussi la distance pour ne pas partir à l'opposé sans raison.
-    for (int i = 0; i < num_player_units; ++i) {
-        Unit *u = player_units[i];
-        if (!u || u->hp <= 0) {
-            continue;
+        for (int i = 0; i < num_player_units; ++i) {
+            Unit *u = player_units[i];
+            if (!u || u->hp <= 0) {
+                continue;
+            }
+
+            if (candidate_count >= (int)(sizeof(candidates) / sizeof(candidates[0]))) {
+                break;
+            }
+
+            candidates[candidate_count].x = u->x;
+            candidates[candidate_count].y = u->y;
+            candidates[candidate_count].kind = 0;
+            candidates[candidate_count].id = u->id;
+            candidates[candidate_count].dist = chebyshev_distance(barb->x, barb->y, u->x, u->y);
+            candidate_count++;
         }
 
-        if (candidate_count >= (int)(sizeof(candidates) / sizeof(candidates[0]))) {
-            break;
+        for (int i = 0; i < num_cities; ++i) {
+            City *c = player_cities[i];
+            if (!c || c->hp <= 0) {
+                continue;
+            }
+
+            if (candidate_count >= (int)(sizeof(candidates) / sizeof(candidates[0]))) {
+                break;
+            }
+
+            candidates[candidate_count].x = c->x;
+            candidates[candidate_count].y = c->y;
+            candidates[candidate_count].kind = 1;
+            candidates[candidate_count].id = c->id;
+            candidates[candidate_count].dist = chebyshev_distance(barb->x, barb->y, c->x, c->y);
+            candidate_count++;
         }
 
-        int priority = (u->type == UNIT_SETTLER) ? 300 : 200;
-        if (u->hp <= (u->hp_max / 2)) {
-            priority += 20;
+        if (candidate_count == 0) {
+            return;
         }
 
-        candidates[candidate_count].x = u->x;
-        candidates[candidate_count].y = u->y;
-        candidates[candidate_count].kind = 0;
-        candidates[candidate_count].priority = priority;
-        candidates[candidate_count].dist = chebyshev_distance(barb->x, barb->y, u->x, u->y);
-        candidate_count++;
-    }
-
-    for (int i = 0; i < num_cities; ++i) {
-        City *c = player_cities[i];
-        if (!c || c->hp <= 0) {
-            continue;
-        }
-
-        if (candidate_count >= (int)(sizeof(candidates) / sizeof(candidates[0]))) {
-            break;
-        }
-
-        candidates[candidate_count].x = c->x;
-        candidates[candidate_count].y = c->y;
-        candidates[candidate_count].kind = 1;
-        candidates[candidate_count].priority = 100;
-        candidates[candidate_count].dist = chebyshev_distance(barb->x, barb->y, c->x, c->y);
-        candidate_count++;
-    }
-
-    // Tri simple pour garder un code compact et lisible.
-    for (int i = 0; i < candidate_count; ++i) {
-        int best = i;
-        for (int j = i + 1; j < candidate_count; ++j) {
-            if (candidate_cmp(&candidates[j], &candidates[best]) < 0) {
-                best = j;
+        for (int i = 0; i < candidate_count; ++i) {
+            int best = i;
+            for (int j = i + 1; j < candidate_count; ++j) {
+                if (candidate_cmp(&candidates[j], &candidates[best]) < 0) {
+                    best = j;
+                }
+            }
+            if (best != i) {
+                TargetCandidate tmp = candidates[i];
+                candidates[i] = candidates[best];
+                candidates[best] = tmp;
             }
         }
-        if (best != i) {
-            TargetCandidate tmp = candidates[i];
-            candidates[i] = candidates[best];
-            candidates[best] = tmp;
+
+        int moved = 0;
+        for (int i = 0; i < candidate_count; ++i) {
+            int new_x = -1;
+            int new_y = -1;
+            if (!find_step_towards_target(barb, map, candidates[i].x, candidates[i].y, &new_x, &new_y)) {
+                continue;
+            }
+
+            int cost = terrain_move_cost(map->tiles[new_y][new_x].type);
+            if (barb->pm < cost) {
+                continue;
+            }
+
+            map->tiles[barb->y][barb->x].unit = NULL;
+            barb->x = new_x;
+            barb->y = new_y;
+            barb->pm -= cost;
+            map->tiles[barb->y][barb->x].unit = barb;
+            moved = 1;
+            break;
+        }
+
+        if (!moved) {
+            return;
         }
     }
-
-    for (int i = 0; i < candidate_count; ++i) {
-        int new_x = -1;
-        int new_y = -1;
-        if (!find_step_towards_target(barb, map, candidates[i].x, candidates[i].y, &new_x, &new_y)) {
-            continue;
-        }
-
-        int cost = terrain_move_cost(map->tiles[new_y][new_x].type);
-        if (barb->pm < cost) {
-            continue;
-        }
-
-        map->tiles[barb->y][barb->x].unit = NULL;
-        barb->x = new_x;
-        barb->y = new_y;
-        barb->pm -= cost;
-        map->tiles[barb->y][barb->x].unit = barb;
-        return;
-    }
-
-    // Aucune cible atteignable: patrouille aléatoire contrôlée plutôt que blocage complet.
-    (void)patrol_random_step(barb, map);
 }
 
 // Combat automatique si adjacent
@@ -557,7 +514,7 @@ int barbares_attack_if_adjacent(Unit *barb, Map *map, City *player_cities[], int
 }
 
 // Détruit un campement et donne bonus or
-void barbares_destroy_camp(BarbarianCamp *camp, int *total_destroyed, Player *player)
+void barbares_destroy_camp(BarbarianCamp *camp, Player *player)
 {
     if (!camp || camp->destroyed) {
         return;
@@ -565,12 +522,9 @@ void barbares_destroy_camp(BarbarianCamp *camp, int *total_destroyed, Player *pl
 
     camp->destroyed = 1;
 
-    if (total_destroyed) {
-        (*total_destroyed)++;
-    }
-
-    if (player && total_destroyed) {
-        player->gold += 5 * (*total_destroyed);
+    if (player) {
+        player->camps_destroyed++;
+        player->gold += 5 * player->camps_destroyed;
     }
 }
 

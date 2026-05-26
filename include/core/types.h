@@ -57,10 +57,12 @@ typedef struct BarbarianCamp {
 typedef struct Player {
     int gold;
     int science;
+    int camps_destroyed;
 
 } Player;
 
 typedef struct City {
+    int id;                     // Identifiant unique pour les règles déterministes
     int population;             // Nombre d'habitants
     int food_stored;            // Nourriture stockée pour faire agrandir la population
     int production_stored;      // Production stockée pour le projet en cours
@@ -87,6 +89,7 @@ typedef enum {
 // Structure représentant une unité sur la carte
 
 typedef struct Unit {
+    int id;               // Identifiant unique pour les règles déterministes
     UnitType type;        // Type de l'unité (Colon, Guerrier du joueur, Barbarian)
 
     int hp;              // Points de vie de l'unité
