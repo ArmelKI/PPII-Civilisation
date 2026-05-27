@@ -13,7 +13,7 @@ const TechnologyDef TECH_CATALOG[MAX_TECHNOLOGIES] = {
     {TECH_EQUITATION,   "Équitation",         100,  TECH_NONE,         TECH_NONE},
     {TECH_IRRIGATION,   "Irrigation",         90,   TECH_AGRICULTURE,  TECH_NONE},
     {TECH_MAÇONNERIE,   "Maçonnerie",         100,  TECH_ARTISANAT,    TECH_NONE},
-    {TECH_COMMERCE,     "Commerce",            90,  TECH_ARTISANAT,    TECH_NONE},
+    {TECH_COMMERCE,     "Commerce",            90,  TECH_ARTISANAT,    TECH_ECRITURE},
     {TECH_BATEAU,       "Bateau",              110, TECH_COMMERCE,     TECH_NONE},
 };
 

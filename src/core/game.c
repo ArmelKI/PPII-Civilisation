@@ -125,8 +125,8 @@ void init_game(GameState *game, int width, int height, int seed, int barbarian_c
     }
 
     // Initialisation Joueur
-    game->player.gold = 100;
-    game->player.science = 100;
+    game->player.gold = 10;
+    game->player.science = 0;
 
     // Initialisation de l'arbre technologique 
     game->player.current_research = TECH_NONE;
@@ -151,11 +151,11 @@ void init_game(GameState *game, int width, int height, int seed, int barbarian_c
         game->cities[0]->id = 0;
         game->cities[0]->current_project = PROJECT_NONE;
         game->cities[0]->has_wall = 1;
-        game->cities[0]->has_granary = 1;
-        game->cities[0]->has_workshop = 1;
-        game->cities[0]->has_library = 1;
-        game->cities[0]->has_market = 1;
-        game->cities[0]->has_barrack = 1;
+        game->cities[0]->has_granary = 0;
+        game->cities[0]->has_workshop = 0;
+        game->cities[0]->has_library = 0;
+        game->cities[0]->has_market = 0;
+        game->cities[0]->has_barrack = 0;
         game->map.tiles[game->cities[0]->y][game->cities[0]->x].city = game->cities[0];
 }
 
