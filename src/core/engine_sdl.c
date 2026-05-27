@@ -784,7 +784,7 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui) {
                         if (main_menu_highlight == 0 && game_in_progress) {
                             if (load_game("current_game.tmp", game)) current_view = VIEW_GAME;
                         }
-                        else if (main_menu_highlight == 1) { cleanup_game(game); memset(game, 0, sizeof(GameState)); init_game(game, 50, 30, (int)time(NULL), 3); current_view = VIEW_GAME; }
+                        else if (main_menu_highlight == 1) { cleanup_game(game); memset(game, 0, sizeof(GameState)); init_game(game, 50, 30, (int)time(NULL), 3, 0); current_view = VIEW_GAME; }
                         else if (main_menu_highlight == 2) { if (load_game("savegame.sav", game)) current_view = VIEW_GAME; }
                         else if (main_menu_highlight == 3) current_view = VIEW_RULES_MENU;
                         else if (main_menu_highlight == 4) current_view = VIEW_OPTIONS_MENU;
