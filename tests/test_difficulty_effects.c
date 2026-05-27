@@ -38,6 +38,8 @@ static void init_map(Map *map, int w, int h)
             rows[y][x].city = NULL;
             rows[y][x].unit = NULL;
             rows[y][x].camp = NULL;
+            rows[y][x].wonder = WONDER_NONE;
+            rows[y][x].special_ressources = SPRES_NONE;
         }
     }
 }
@@ -71,7 +73,7 @@ static void test_production_multiplier(void)
     city.owner = &player;
     map.tiles[1][1].city = &city;
 
-    process_city_resources(&city, &map);
+    process_city_resources(&city, &map, NULL);
 
     EXPECT(city.production_stored == 18, "la production doit être doublée par le multiplicateur");
 
@@ -96,13 +98,13 @@ static void test_growth_and_famine(void)
     city.y = 1;
     map.tiles[1][1].city = &city;
 
-    process_city_growth(&city, &map);
+    process_city_growth(&city, &map, NULL);
     EXPECT(city.population == 2, "le seuil de croissance doit être réduit par le multiplicateur");
     EXPECT(city.food_stored == 0, "la nourriture doit être remise à zéro après croissance");
 
     city.population = 2;
     city.food_stored = -3;
-    process_city_growth(&city, &map);
+    process_city_growth(&city, &map, NULL);
     EXPECT(city.population == 2, "la famine doit être désactivée sur ce preset");
     EXPECT(city.food_stored == 0, "le déficit doit être neutralisé si la famine est désactivée");
 

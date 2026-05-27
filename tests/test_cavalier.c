@@ -74,7 +74,7 @@ static void test_cavalier_production_success(void)
     Unit *player_units[8] = {0};
     int player_unit_count = 0;
 
-    process_city_production(&city, &map, player_units, &player_unit_count);
+    process_city_production(&city, &map, player_units, &player_unit_count, NULL);
 
     EXPECT(player_unit_count == 1, "un Cavalier doit être produit si les prérequis sont validés");
     EXPECT(player_units[0] != NULL, "le slot unité doit être rempli");
@@ -110,7 +110,7 @@ static void test_cavalier_production_requires_equitation(void)
     Unit *player_units[8] = {0};
     int player_unit_count = 0;
 
-    process_city_production(&city, &map, player_units, &player_unit_count);
+    process_city_production(&city, &map, player_units, &player_unit_count, NULL);
 
     EXPECT(player_unit_count == 0, "sans Equitation, le Cavalier ne doit pas être produit");
     EXPECT(city.current_project == PROJECT_CAVALIER, "le projet Cavalier doit rester en attente sans prérequis tech");
