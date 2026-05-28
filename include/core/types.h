@@ -93,6 +93,7 @@ typedef struct BarbarianCamp {
 typedef struct Player {
     int gold;
     int science;
+    int camps_destroyed;
 
     // Gestion des technologies
     TechType current_research; // Technologie en cours de recherche
@@ -157,6 +158,7 @@ typedef enum {
 // Structure représentant une unité sur la carte
 
 typedef struct Unit {
+    int id;               // Identifiant unique pour les règles déterministes
     UnitType type;        // Type de l'unité (Colon, Guerrier du joueur, Barbarian)
 
     int hp;              // Points de vie de l'unité

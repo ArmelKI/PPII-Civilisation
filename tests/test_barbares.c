@@ -101,6 +101,13 @@ static void test_init_camps(void)
             EXPECT(chebyshev >= 5,
                     "campement trop proche de la ville de départ");
         }
+        /* Vérifie qu'aucun couple de camps ne partage la même case */
+        for (int i = 0; i < 3; ++i) {
+            for (int j = i + 1; j < 3; ++j) {
+                EXPECT(!(camps[i].x == camps[j].x && camps[i].y == camps[j].y),
+                       "deux campements sur la même tuile");
+            }
+        }
         barbares_cleanup(camps, 3);
     }
 
@@ -252,12 +259,12 @@ static void test_attack_and_destroy(void)
     EXPECT(strstr(logbuf, "Combat contre guerrier") != NULL, "le combat barbare doit produire un message lisible");
 
     BarbarianCamp camp = {.x = 1, .y = 1, .destroyed = 0, .id = 2};
-    int destroyed_count = 0;
     Player p = {.gold = 0, .science = 0};
+    int total_destroyed = 0;
 
-    barbares_destroy_camp(&camp, &destroyed_count, &p);
+    barbares_destroy_camp(&camp, &total_destroyed, &p);
     EXPECT(camp.destroyed == 1, "camp devrait être détruit");
-    EXPECT(destroyed_count == 1, "compteur détruits incorrect");
+    EXPECT(total_destroyed == 1, "compteur détruits incorrect");
     EXPECT(p.gold == 5, "bonus or incorrect pour 1er camp");
 
     free_test_map(&map);
