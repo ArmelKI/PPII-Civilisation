@@ -8,19 +8,19 @@
 #include <ncurses.h>
 #include <locale.h>
 
-#include "../../include/core/game.h"
-#include "../../include/core/map.h"
-#include "../../include/core/types.h"
-#include "../../include/core/physics.h"
-#include "../../include/core/save.h"
-#include "../../include/core/tech.h"
-#include "../../include/core/ressources.h"
-#include "../../include/core/config.h"
-#include "../../include/core/barbares.h"
-#include "../../include/core/wonder.h"
+#include "../include/core/game.h"
+#include "../include/core/map.h"
+#include "../include/core/types.h"
+#include "../include/core/physics.h"
+#include "../include/core/save.h"
+#include "../include/core/tech.h"
+#include "../include/core/ressources.h"
+#include "../include/core/config.h"
+#include "../include/core/barbares.h"
+#include "../include/core/wonder.h"
 
 #ifdef USE_SDL
-#include "../../include/core/engine_sdl.h"
+#include "../include/ui/engine_sdl.h"
 #endif
 
 #define MAX_TURNS 200
@@ -452,7 +452,7 @@ int main(int argc, char **argv) {
         init_game(&game, width, height, seed, nb_barbarians, nb_turns);
         
         printf("[DEBUG] 3. Generation terminee. Lancement de la fenetre SDL...\n"); fflush(stdout);
-        run_sdl_mode(&game, nb_turns, enable_fow_ui);
+        run_sdl_mode(&game, nb_turns, enable_fow_ui, &city_id_counter);
         
         printf("[DEBUG] 4. Sortie du jeu. Nettoyage...\n"); fflush(stdout);
         cleanup_game(&game);
@@ -1249,7 +1249,7 @@ int main(int argc, char **argv) {
             if (scanf("%49s", player_name) == 1) {
                 // Enregistrer le score
                 save_final_score(player_name, final_score, game.turn, game.game_over);
-                printf("Score enregistré avec succés dans scores.txt !\n");
+                printf("Score enregistré avec succés dans score_history.txt !\n");
             }
             printf("\n[Appuyez sur Entrée pour retourner au menu]");
             getchar(); // Vide le buffer du scanf

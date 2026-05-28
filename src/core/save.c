@@ -204,6 +204,7 @@ int load_game(const char*filename, GameState *state) {
 
     fclose(file);
     printf("Parfait Lil bro, partie chargée avec succés depuis le fichier au tour %d !\n", state->turn);
+    state->game_over = 0;
     return 1;
 }
 
@@ -255,7 +256,7 @@ void display_history_ncurses() {
     mvprintw(2, (max_x - 30) / 2, "=== HISTORIQUE DES SCORES ===");
     attroff(COLOR_PAIR(3) | A_BOLD);
 
-    FILE* f = fopen("scores.txt", "r");
+    FILE* f = fopen("score_history.txt", "r");
     if (f == NULL) {
         mvprintw(5, 5, "Aucune partie n'a encore été enregistrée.");
     } else {

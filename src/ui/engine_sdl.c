@@ -7,7 +7,7 @@
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_image.h>
 
-#include "core/engine_sdl.h"
+#include "ui/engine_sdl.h"
 #include "core/game.h"
 #include "core/map.h"
 #include "core/types.h"
@@ -16,6 +16,7 @@
 #include "core/save.h" 
 #include "core/wonder.h"
 #include "core/special_ressources.h"
+#include "core/ressources.h"
 
 // --- LISTE DES MENUS ---
 typedef enum {
@@ -73,18 +74,12 @@ static const char* get_project_name(ProjectType p) {
     }
 }
 
-// Fonction locale utilitaire pour dessiner les couleurs de terrain en arrière-plan
-static void draw_terrain_primitive(SDL_Renderer *renderer, TerrainType type, SDL_Rect *rect) {
-    switch (type) {
-        case TERRAIN_EAU:      SDL_SetRenderDrawColor(renderer, 0, 102, 204, 255); break;  
-        case TERRAIN_PLAINE:   SDL_SetRenderDrawColor(renderer, 51, 153, 51, 255); break;  
-        case TERRAIN_FORET:    SDL_SetRenderDrawColor(renderer, 0, 102, 0, 255); break;    
-        case TERRAIN_MONTAGNE: SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255); break; 
-        case TERRAIN_DESERT:   SDL_SetRenderDrawColor(renderer, 230, 184, 0, 255); break;   
-        case TERRAIN_TOUNDRA:  SDL_SetRenderDrawColor(renderer, 220, 220, 240, 255); break; 
-        default:               SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255); break;
-    }
-    SDL_RenderFillRect(renderer, rect);
+// Fonction pour découper et dessiner un morceau de spritesheet (16x16)
+static void draw_texture_part(SDL_Renderer *renderer, SDL_Texture *tex, int src_x, int src_y, int dest_x, int dest_y) {
+    if (!tex) return;
+    SDL_Rect src = { src_x, src_y, 16, 16 };
+    SDL_Rect dest = { dest_x, dest_y, TILE_SIZE, TILE_SIZE };
+    SDL_RenderCopy(renderer, tex, &src, &dest);
 }
 
 // Fonction locale qui va permettre d'écrire du texte 
@@ -113,7 +108,9 @@ static void draw_text_centered(SDL_Renderer *renderer, TTF_Font *font, const cha
 
 // Fonction utilitaire pour bloquer la caméra (évite de "perdre" la map si on va trop loin)
 static void clamp_camera(int *x, int *y, int map_w, int map_h, int screen_w, int screen_h) {
-    int max_x = (map_w * TILE_SIZE) - screen_w;
+    int dashboard_width = 420;
+    // La zone visible s'arrête avant le dashboard
+    int max_x = (map_w * TILE_SIZE) - (screen_w - dashboard_width);
     int max_y = (map_h * TILE_SIZE) - screen_h;
 
     if (*x < 0) *x = 0;
@@ -132,7 +129,7 @@ static void attempt_move_sdl(GameState *game, int sel_unit_idx, int dx, int dy, 
     int target_y = unit->y + dy;
 
     if (target_x < 0 || target_x >= game->map.width || target_y < 0 || target_y >= game->map.height) {
-        strcpy(console_status, "Déplacement impossible : Bord de carte.");
+        strcpy(console_status, "Deplacement impossible : Bord de carte.");
         return;
     }
 
@@ -143,12 +140,34 @@ static void attempt_move_sdl(GameState *game, int sel_unit_idx, int dx, int dy, 
             resolve_combat(unit, target_tile->unit);
             unit->pm = 0; 
             sprintf(console_status, "Combat ! PV Vous: %d | PV Ennemi: %d", unit->hp, target_tile->unit->hp);
+            
+            // Nettoyage de l'ennemi s'il meurt
             if (target_tile->unit->hp <= 0) target_tile->unit = NULL;
+            // NOUVEAU : Nettoyage de ton unité si TU meurs en attaquant
+            if (unit->hp <= 0) game->map.tiles[unit->y][unit->x].unit = NULL;
+            
         } 
         else if (target_tile->city != NULL && target_tile->city->owner != &game->player) {
             resolve_combat_city(unit, target_tile->city);
             unit->pm = 0;
             sprintf(console_status, "Attaque de Ville ! PV Vous: %d | PV Ville: %d", unit->hp, target_tile->city->hp);
+            
+            // suppression de la ville
+            if (target_tile->city->hp <= 0) {
+                for (int i = 0; i < game->city_count; i++) {
+                    if (game->cities[i] == target_tile->city) {
+                        free(game->cities[i]); // Libère la RAM
+                        game->cities[i] = game->cities[game->city_count - 1]; // Remplace par la dernière
+                        game->cities[game->city_count - 1] = NULL;
+                        game->city_count--;
+                        break;
+                    }
+                }
+                target_tile->city = NULL; // Nettoyage visuel
+                strcat(console_status, " -> Ville detruite !");
+            }
+            // Nettoyage de ton unité si l'unité meurt contre les remparts
+            if (unit->hp <= 0) game->map.tiles[unit->y][unit->x].unit = NULL;
         }
         else {
             int cost = get_terrain_pm_cost(target_tile->type);
@@ -165,12 +184,12 @@ static void attempt_move_sdl(GameState *game, int sel_unit_idx, int dx, int dy, 
                 game->player.gold += 50; 
                 sprintf(console_status, "Camp détruit ! +50 Or.");
             } else {
-                sprintf(console_status, "Déplacement réussi. PM restants: %d", unit->pm);
+                sprintf(console_status, "Deplacement reussi. PM restants: %d", unit->pm);
             }
         }
     } else {
         if (unit->pm == 0) strcpy(console_status, "Plus de PM ! Passez votre tour.");
-        else strcpy(console_status, "Mouvement bloqué (Terrain, PM, ou Allié).");
+        else strcpy(console_status, "Mouvement bloque (Terrain, PM, ou Allie).");
     }
 }
 
@@ -309,7 +328,7 @@ static void render_score_history(SDL_Renderer *renderer, TTF_Font *font_normal, 
     draw_text_centered(renderer, font_title, "HISTORIQUE DES SCORES", center_x, 50, gold);
 
     int y = 180;
-    FILE *f = fopen("scores.txt", "r");
+    FILE *f = fopen("score_history.txt", "r");
     if (f) {
         char line[256];
         draw_text_centered(renderer, font_normal, "Voici les dernieres parties enregistrees :", center_x, y, gold);
@@ -390,10 +409,12 @@ static void render_tech_menu(SDL_Renderer *renderer, TTF_Font *font, GameState *
     int options_dispo = 0;
     for (int i = 0; i < MAX_TECHNOLOGIES; i++) {
         if (game->player.unlocked_techs[i]) {
+            // Technologie déjà acquise
             sprintf(buffer, "[X] %s (Acquis)", TECH_CATALOG[i].name);
             draw_text(renderer, font, buffer, x, y, gray);
             y += 40;
         } else if (can_research(&game->player, i)) {
+            // Technologie disponible à la recherche
             const char* desc = "";
             switch(i) {
                 case TECH_CHASSE: desc = "+1 Nourriture sur Foret"; break;
@@ -410,6 +431,23 @@ static void render_tech_menu(SDL_Renderer *renderer, TTF_Font *font, GameState *
             draw_text(renderer, font, buffer, x, y, cyan);
             y += 40;
             options_dispo++;
+        } else {
+            // Technologie bloquée
+            char req_str[128] = "";
+            int req1 = TECH_CATALOG[i].req1;
+            int req2 = TECH_CATALOG[i].req2;
+
+            if (req1 != TECH_NONE && req2 != TECH_NONE) {
+                sprintf(req_str, "Prerequis : %s et %s", TECH_CATALOG[req1].name, TECH_CATALOG[req2].name);
+            } else if (req1 != TECH_NONE) {
+                sprintf(req_str, "Prerequis : %s", TECH_CATALOG[req1].name);
+            } else if (req2 != TECH_NONE) {
+                sprintf(req_str, "Prerequis : %s", TECH_CATALOG[req2].name);
+            }
+
+            sprintf(buffer, "[_] %s [BLOQUE] - %s", TECH_CATALOG[i].name, req_str);
+            draw_text(renderer, font, buffer, x, y, gray);
+            y += 40;
         }
     }
     
@@ -523,10 +561,25 @@ static void render_city_menu(SDL_Renderer *renderer, TTF_Font *font, GameState *
 
     if (!city->has_granary)  { draw_text(renderer, font, "[3] Grenier (30 Prod)     - Bonus : +3 Nourriture/tour", x, y, action_color); y += 35; }
     if (!city->has_workshop) { draw_text(renderer, font, "[4] Atelier (40 Prod)     - Bonus : +3 Production/tour", x, y, action_color); y += 35; }
-    if (!city->has_library)  { draw_text(renderer, font, "[5] Bibliotheque (50 Prod)- Bonus : +4 Science/tour", x, y, action_color); y += 35; }
-    if (!city->has_market)   { draw_text(renderer, font, "[6] Marche (40 Prod)      - Bonus : +3 Or/tour", x, y, action_color); y += 35; }
+    if (!city->has_library) {
+        if (city->owner && city->owner->unlocked_techs[TECH_ECRITURE]) draw_text(renderer, font, "[5] Bibliotheque (50 Prod)- Bonus : +4 Science/tour", x, y, action_color);
+        else draw_text(renderer, font, "[5] [BLOQUE] Bibliotheque - Necessite Tech Ecriture", x, y, gray);
+        y += 35; 
+    }
+    
+    if (!city->has_market) {
+        if (city->owner && city->owner->unlocked_techs[TECH_COMMERCE]) draw_text(renderer, font, "[6] Marche (40 Prod)      - Bonus : +3 Or/tour", x, y, action_color);
+        else draw_text(renderer, font, "[6] [BLOQUE] Marche       - Necessite Tech Commerce", x, y, gray);
+        y += 35; 
+    }
+
     if (!city->has_barrack)  { draw_text(renderer, font, "[7] Caserne (60 Prod)     - Bonus : Permet de recruter des Guerriers", x, y, action_color); y += 35; }
-    if (!city->has_wall)     { draw_text(renderer, font, "[8] Muraille (80 Prod)    - Bonus : Double les PV max de la ville", x, y, action_color); y += 35; }
+    
+    if (!city->has_wall) {
+        if (city->owner && city->owner->unlocked_techs[TECH_MAÇONNERIE]) draw_text(renderer, font, "[8] Muraille (80 Prod)    - Bonus : Double les PV max de la ville", x, y, action_color);
+        else draw_text(renderer, font, "[8] [BLOQUE] Muraille     - Necessite Tech Maconnerie", x, y, gray);
+        y += 35; 
+    }
 
     if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_CHASSE]) {
         draw_text(renderer, font, "[9] Archer (55 Prod)      - Unite avancee (Force: 4, PM: 2)", x, y, action_color);
@@ -672,14 +725,16 @@ static void render_dashboard(SDL_Renderer *renderer, TTF_Font *font, GameState *
     draw_text(renderer, font, "[Maj+S] Save | [Echap] Menu", start_x, current_y, white);
 }
 
-void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui) {
+void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui, int* city_id_counter) {
     (void)nb_turns;
 
-    // --- TICKET 1 : INITIALISATION DE LA SDL ---
+    // --- INITIALISATION DE LA SDL ---
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         fprintf(stderr, "[SDL2 ERROR] Impossible d'initialiser la vidéo : %s\n", SDL_GetError());
         return;
     }
+    // Force la SDL à garder les pixels carrés et nets lors des redimensionnements
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
 
     if (TTF_Init() == -1) {
         fprintf(stderr, "[SDL_ttf ERROR] Impossible d'initialiser SDL_ttf: %s\n", TTF_GetError());
@@ -696,6 +751,14 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui) {
     snprintf(font_path, sizeof(font_path), "%s../assets/font.ttf", base_path);
     char bg_path[1024];
     snprintf(bg_path, sizeof(bg_path), "%s../assets/menu_bg.png", base_path);
+
+    // CHARGEMENT DES ASSETS
+    char main_path[1024], winter_path[1024], build_path[1024], horse_path[1024];
+    snprintf(main_path, sizeof(main_path), "%s../assets/AllAssetsPreview.png", base_path);
+    snprintf(winter_path, sizeof(winter_path), "%s../assets/WinterDeadTrees.png", base_path);
+    snprintf(build_path, sizeof(build_path), "%s../assets/AllBuildings-Preview.png", base_path);
+    snprintf(horse_path, sizeof(horse_path), "%s../assets/horse.png", base_path);
+
     SDL_free(base_path);
 
     // fonts pour le texte du jeu
@@ -728,6 +791,17 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui) {
         fprintf(stderr, "[SDL_image ERROR] Impossible de charger le fond : %s\n", IMG_GetError());
     }
 
+    // --- CHARGEMENT DES ASSETS DU JEU ---
+    SDL_Texture *tex_main = IMG_LoadTexture(renderer, main_path);
+    SDL_Texture *tex_winter = IMG_LoadTexture(renderer, winter_path);
+    SDL_Texture *tex_buildings = IMG_LoadTexture(renderer, build_path);
+    SDL_Texture *tex_horse = IMG_LoadTexture(renderer, horse_path);
+
+    if (!tex_main) printf("ERREUR AllAssetsPreview : %s\n", IMG_GetError());
+    if (!tex_winter) printf("ERREUR WinterDeadTrees : %s\n", IMG_GetError());
+    if (!tex_buildings) printf("ERREUR AllBuildings-Preview : %s\n", IMG_GetError());
+    if (!tex_horse) printf("ERREUR horse : %s\n", IMG_GetError());
+
     int camera_x = 0;
     int camera_y = 0;
     int camera_speed = 32; 
@@ -742,7 +816,7 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui) {
 
     int sel_unit_idx = -1;
     int sel_city_idx = -1;
-    char console_status[128] = "Mode Graphique actif. Cliquez sur une entité.";
+    char console_status[512] = "Mode Graphique actif. Cliquez sur une entite.";
 
     bool game_in_progress = false;
     FILE *tmp_file = fopen("current_game.tmp", "r");
@@ -872,10 +946,19 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui) {
                                 else { sprintf(console_status, "Impossible : Caserne requise !"); }
                             } else if (sym == SDLK_3) { city->current_project = PROJECT_GRANARY; city->production_stored = 0; sprintf(console_status, "Projet defini : Grenier"); current_view = VIEW_GAME; }
                             else if (sym == SDLK_4) { city->current_project = PROJECT_WORKSHOP; city->production_stored = 0; sprintf(console_status, "Projet defini : Atelier"); current_view = VIEW_GAME; }
-                            else if (sym == SDLK_5) { city->current_project = PROJECT_LIBRARY; city->production_stored = 0; sprintf(console_status, "Projet defini : Bibliotheque"); current_view = VIEW_GAME; }
-                            else if (sym == SDLK_6) { city->current_project = PROJECT_MARKET; city->production_stored = 0; sprintf(console_status, "Projet defini : Marche"); current_view = VIEW_GAME; }
+                            else if (sym == SDLK_5) { 
+                                if (city->owner->unlocked_techs[TECH_ECRITURE]) { city->current_project = PROJECT_LIBRARY; city->production_stored = 0; sprintf(console_status, "Projet defini : Bibliotheque"); current_view = VIEW_GAME; }
+                                else { sprintf(console_status, "Impossible : Ecriture requise !"); }
+                            }
+                            else if (sym == SDLK_6) { 
+                                if (city->owner->unlocked_techs[TECH_COMMERCE]) { city->current_project = PROJECT_MARKET; city->production_stored = 0; sprintf(console_status, "Projet defini : Marche"); current_view = VIEW_GAME; }
+                                else { sprintf(console_status, "Impossible : Commerce requis !"); }
+                            }
                             else if (sym == SDLK_7) { city->current_project = PROJECT_BARRACKS; city->production_stored = 0; sprintf(console_status, "Projet defini : Caserne"); current_view = VIEW_GAME; }
-                            else if (sym == SDLK_8) { city->current_project = PROJECT_WALL; city->production_stored = 0; sprintf(console_status, "Projet defini : Muraille"); current_view = VIEW_GAME; }
+                            else if (sym == SDLK_8) { 
+                                if (city->owner->unlocked_techs[TECH_MAÇONNERIE]) { city->current_project = PROJECT_WALL; city->production_stored = 0; sprintf(console_status, "Projet defini : Muraille"); current_view = VIEW_GAME; }
+                                else { sprintf(console_status, "Impossible : Maconnerie requise !"); }
+                            }
                             else if (sym == SDLK_9) {
                                 if (city->has_barrack && game->player.unlocked_techs[TECH_CHASSE]) { city->current_project = PROJECT_ARCHER; city->production_stored = 0; sprintf(console_status, "Projet defini : Archer"); current_view = VIEW_GAME; }
                                 else { sprintf(console_status, "Impossible : Archer requis Caserne + Chasse !"); }
@@ -896,19 +979,72 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui) {
                             break;
                         case SDLK_t: current_view = VIEW_TECH_MENU; break;
                         case SDLK_v: if (sel_city_idx != -1) current_view = VIEW_CITY_MENU; break;
+                        case SDLK_f: {
+                            if (sel_unit_idx != -1 && game->player_units[sel_unit_idx] && game->player_units[sel_unit_idx]->type == UNIT_SETTLER && game->player_units[sel_unit_idx]->pm > 0) {
+                                Unit *settler = game->player_units[sel_unit_idx];
+                                
+                                if (found_city(settler, &game->map, city_id_counter, game->cities, &game->city_count)) {
+                                    
+                                    // --- SUCCÈS ---
+                                    strcpy(console_status, "Ville fondee avec succes !");
+                                    
+                                    settler->hp = 0; 
+                                    sel_unit_idx = -1; 
+                                    
+                                } else {
+                                    // --- ÉCHEC ---
+                                    strcpy(console_status, "Impossible : Eau, Limite atteinte ou Trop proche !");
+                                }
+                            } else {
+                                strcpy(console_status, "Action impossible : Selectionnez un Colon.");
+                            }
+                            break;
+                        }  
                         case SDLK_n: 
                             next_turn(game); 
                             sel_unit_idx = -1; 
                             check_victory_and_defeat(game); 
-                            sprintf(console_status, "Tour %d terminé !", game->turn - 1); 
+                            if (game->combat_log_ready) {
+                                sprintf(console_status, "Tour %d | ENNEMI : %s", game->turn - 1, game->combat_log);
+                                game->combat_log_ready = 0; // On reset après affichage
+                            } else {
+                                sprintf(console_status, "Tour %d termine !", game->turn - 1); 
+                            }
                             break;
                         case SDLK_UP:    camera_y -= camera_speed; break;
                         case SDLK_DOWN:  camera_y += camera_speed; break;
                         case SDLK_LEFT:  camera_x -= camera_speed; break;
                         case SDLK_RIGHT: camera_x += camera_speed; break;
-                        case SDLK_z: attempt_move_sdl(game, sel_unit_idx, 0, -1, console_status); break;
-                        case SDLK_q: attempt_move_sdl(game, sel_unit_idx, -1, 0, console_status); break;
-                        case SDLK_d: attempt_move_sdl(game, sel_unit_idx, 1, 0, console_status); break;
+                        
+                        // Centrer la caméra avec la barre Espace pour éviter de se perdre avec une grande map
+                        case SDLK_SPACE:
+                            if (sel_unit_idx != -1 && game->player_units[sel_unit_idx]) {
+                                camera_x = (game->player_units[sel_unit_idx]->x * TILE_SIZE) - ((screen_w - 420) / 2);
+                                camera_y = (game->player_units[sel_unit_idx]->y * TILE_SIZE) - (screen_h / 2);
+                                strcpy(console_status, "Camera centree sur l'unite.");
+                            } else if (sel_city_idx != -1 && game->cities[sel_city_idx]) {
+                                camera_x = (game->cities[sel_city_idx]->x * TILE_SIZE) - ((screen_w - 420) / 2);
+                                camera_y = (game->cities[sel_city_idx]->y * TILE_SIZE) - (screen_h / 2);
+                                strcpy(console_status, "Camera centree sur la ville.");
+                            } else if (game->player_unit_count > 0) {
+                                camera_x = (game->player_units[0]->x * TILE_SIZE) - ((screen_w - 420) / 2);
+                                camera_y = (game->player_units[0]->y * TILE_SIZE) - (screen_h / 2);
+                                strcpy(console_status, "Camera centree sur votre point de depart.");
+                            }
+                            break;
+
+                        case SDLK_z: 
+                            attempt_move_sdl(game, sel_unit_idx, 0, -1, console_status); 
+                            if (sel_unit_idx != -1 && game->player_units[sel_unit_idx]->hp <= 0) sel_unit_idx = -1;
+                            break;
+                        case SDLK_q: 
+                            attempt_move_sdl(game, sel_unit_idx, -1, 0, console_status); 
+                            if (sel_unit_idx != -1 && game->player_units[sel_unit_idx]->hp <= 0) sel_unit_idx = -1;
+                            break;
+                        case SDLK_d: 
+                            attempt_move_sdl(game, sel_unit_idx, 1, 0, console_status); 
+                            if (sel_unit_idx != -1 && game->player_units[sel_unit_idx]->hp <= 0) sel_unit_idx = -1;
+                            break;
                         case SDLK_s: 
                             // Sauvegarde manuelle in-game
                             if (SDL_GetModState() & KMOD_SHIFT) {
@@ -916,6 +1052,7 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui) {
                                 strcpy(console_status, "Partie sauvegardee avec succes !");
                             } else {
                                 attempt_move_sdl(game, sel_unit_idx, 0, 1, console_status); 
+                                if (sel_unit_idx != -1 && game->player_units[sel_unit_idx]->hp <= 0) sel_unit_idx = -1;
                             }
                             break;
                         case SDLK_F11: {
@@ -961,6 +1098,10 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui) {
                         SDL_PushEvent(&enter_event);
                     } 
                     else if (current_view == VIEW_GAME) {
+                        if (event.button.x >= screen_w - 420) {
+                            continue;
+                        }
+
                         int click_grid_x = (event.button.x + camera_x) / TILE_SIZE;
                         int click_grid_y = (event.button.y + camera_y) / TILE_SIZE;
                         if (click_grid_x >= 0 && click_grid_x < game->map.width &&
@@ -999,57 +1140,103 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui) {
                 Tile *tile = &game->map.tiles[y][x];
                 int s_pos_x = (x * TILE_SIZE) - camera_x;
                 int s_pos_y = (y * TILE_SIZE) - camera_y;
-                if (s_pos_x + TILE_SIZE < 0 || s_pos_x > screen_w || s_pos_y + TILE_SIZE < 0 || s_pos_y > screen_h) continue;
                 
-                SDL_Rect visual_rect = { s_pos_x, s_pos_y, TILE_SIZE, TILE_SIZE };
-                draw_terrain_primitive(renderer, tile->type, &visual_rect);
+                // Optimisation : on ne dessine que ce qui est à l'écran
+                if (s_pos_x + TILE_SIZE < 0 || s_pos_x > screen_w || s_pos_y + TILE_SIZE < 0 || s_pos_y > screen_h) continue;
 
-                // Rendu des entités actives sur la tuile
+                // 1. DESSIN DU TERRAIN (Fond)
+                switch (tile->type) {
+                    case TERRAIN_EAU:      draw_texture_part(renderer, tex_main, 144, 240, s_pos_x, s_pos_y); break;
+                    case TERRAIN_PLAINE:   draw_texture_part(renderer, tex_main, 176, 240, s_pos_x, s_pos_y); break;
+                    case TERRAIN_DESERT:   draw_texture_part(renderer, tex_main, 160, 256, s_pos_x, s_pos_y); break;
+                    case TERRAIN_FORET:
+                        draw_texture_part(renderer, tex_main, 176, 240, s_pos_x, s_pos_y); // Fond plaine
+                        draw_texture_part(renderer, tex_main, 16, 240, s_pos_x, s_pos_y);  // Arbre
+                        break;
+                    case TERRAIN_MONTAGNE:
+                        draw_texture_part(renderer, tex_main, 176, 240, s_pos_x, s_pos_y); // Fond plaine
+                        draw_texture_part(renderer, tex_main, 80, 176, s_pos_x, s_pos_y);  // Rocher
+                        break;
+                    case TERRAIN_TOUNDRA:
+                        SDL_SetRenderDrawColor(renderer, 240, 240, 250, 255); // Fond Neige générique
+                        SDL_Rect bg = { s_pos_x, s_pos_y, TILE_SIZE, TILE_SIZE };
+                        SDL_RenderFillRect(renderer, &bg);
+                        draw_texture_part(renderer, tex_winter, 32, 0, s_pos_x, s_pos_y);  // Sapin
+                        break;
+                }
+
+                // 2. DESSIN DES ENTITÉS (Si la zone n'est pas dans le noir total)
                 if (tile->visibility != FOG_HIDDEN) {
                     
-                    // Affichage des ressources spéciales
+                    // Ressources spéciales
                     if (tile->special_ressources != SPRES_NONE && sres_visible(&game->player, tile->special_ressources)) {
-                        SDL_Rect res_box = { s_pos_x + 12, s_pos_y + 12, TILE_SIZE - 24, TILE_SIZE - 24 };
-                        if (tile->special_ressources == SPRES_WHEAT) SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255); 
-                        else if (tile->special_ressources == SPRES_IRON) SDL_SetRenderDrawColor(renderer, 150, 150, 150, 255); 
-                        else if (tile->special_ressources == SPRES_SPICES) SDL_SetRenderDrawColor(renderer, 255, 165, 0, 255); 
-                        else if (tile->special_ressources == SPRES_SPECIMENS) SDL_SetRenderDrawColor(renderer, 150, 255, 255, 255); 
-                        else SDL_SetRenderDrawColor(renderer, 150, 100, 50, 255); 
-                        SDL_RenderFillRect(renderer, &res_box);
+                        if (tile->special_ressources == SPRES_WHEAT) draw_texture_part(renderer, tex_main, 48, 256, s_pos_x, s_pos_y);
+                        else if (tile->special_ressources == SPRES_IRON) draw_texture_part(renderer, tex_main, 128, 176, s_pos_x, s_pos_y);
+                        else if (tile->special_ressources == SPRES_SPICES) draw_texture_part(renderer, tex_main, 192, 256, s_pos_x, s_pos_y);
+                        else if (tile->special_ressources == SPRES_HORSES) {
+                            SDL_Rect src_horse = { 256, 256, 1024, 1024 };
+                            
+                            SDL_Rect dest_horse = { s_pos_x, s_pos_y, TILE_SIZE+ 20, TILE_SIZE +20};
+                            
+                            SDL_RenderCopy(renderer, tex_horse, &src_horse, &dest_horse);
+                        } else if (tile->special_ressources == SPRES_SPECIMENS) draw_texture_part(renderer, tex_main, 720, 224, s_pos_x, s_pos_y);
                     }
 
                     // Merveilles
                     if (tile->wonder != WONDER_NONE) {
-                        SDL_Rect w_box = { s_pos_x + 6, s_pos_y + 6, TILE_SIZE - 12, TILE_SIZE - 12 };
-                        SDL_SetRenderDrawColor(renderer, 200, 150, 255, 255); 
-                        SDL_RenderFillRect(renderer, &w_box);
+                        draw_texture_part(renderer, tex_main, 80, 80, s_pos_x, s_pos_y);
                     }
 
-                    // Rendu de la ville
+                    // Camp Barbare
+                    if (tile->camp && tile->camp->destroyed == 0) {
+                        draw_texture_part(renderer, tex_buildings, 112, 112, s_pos_x, s_pos_y);
+                    }
+
+                    // Villes du joueur
                     if (tile->city && tile->city->hp > 0) {
-                        SDL_Rect c_box = { s_pos_x + 4, s_pos_y + 4, TILE_SIZE - 8, TILE_SIZE - 8 };
-                        SDL_SetRenderDrawColor(renderer, 245, 245, 245, 255); SDL_RenderFillRect(renderer, &c_box);
+                        if (tile->city->has_wall) draw_texture_part(renderer, tex_main, 0, 192, s_pos_x, s_pos_y);
+                        else draw_texture_part(renderer, tex_main, 144, 96, s_pos_x, s_pos_y);
                     }
 
-                    // Rendu des unités
+                    // Unités (Joueur et Ennemis)
                     if (tile->unit && tile->unit->hp > 0) {
-                        SDL_Rect u_box = { s_pos_x + 9, s_pos_y + 9, TILE_SIZE - 18, TILE_SIZE - 18 };
-                        if (tile->unit->owner == &game->player) {
-                            if (tile->unit->type == UNIT_SETTLER) SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
-                            else if (tile->unit->type == UNIT_ARCHER) SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255);
-                            else if (tile->unit->type == UNIT_CAVALIER) SDL_SetRenderDrawColor(renderer, 128, 0, 128, 255);
-                            else SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255); 
-                        } else SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);   
-                        SDL_RenderFillRect(renderer, &u_box);
+                        
+                        // teinte rouge si c'est une unité ennemie
+                        if (tile->unit->owner != &game->player && tile->unit->type != UNIT_BARBARIAN) {
+                            SDL_SetTextureColorMod(tex_main, 255, 100, 100); 
+                        }
+
+                        if (tile->unit->type == UNIT_SETTLER) draw_texture_part(renderer, tex_main, 272, 0, s_pos_x, s_pos_y);
+                        else if (tile->unit->type == UNIT_ARCHER) draw_texture_part(renderer, tex_main, 400, 0, s_pos_x, s_pos_y);
+                        else if (tile->unit->type == UNIT_CAVALIER) draw_texture_part(renderer, tex_main, 656, 0, s_pos_x, s_pos_y);
+                        else if (tile->unit->type == UNIT_WARRIOR) draw_texture_part(renderer, tex_main, 240, 0, s_pos_x, s_pos_y);
+                        else draw_texture_part(renderer, tex_main, 1040, 0, s_pos_x, s_pos_y); // Barbare;
+
+                        // On remet la couleur normale
+                        if (tile->unit->owner != &game->player) {
+                            SDL_SetTextureColorMod(tex_main, 255, 255, 255);
+                        }
                     }
                 }
 
-                if (tile->visibility == FOG_HIDDEN) { SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); SDL_RenderFillRect(renderer, &visual_rect); }
-                else if (tile->visibility == FOG_EXPLORED) { SDL_SetRenderDrawColor(renderer, 0, 0, 0, 160); SDL_RenderFillRect(renderer, &visual_rect); }
+                // 3. BROUILLARD DE GUERRE (overlay par-dessus tout le reste)
+                if (tile->visibility == FOG_HIDDEN) { 
+                    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); 
+                    SDL_Rect fog_rect = { s_pos_x, s_pos_y, TILE_SIZE, TILE_SIZE };
+                    SDL_RenderFillRect(renderer, &fog_rect); 
+                }
+                else if (tile->visibility == FOG_EXPLORED) { 
+                    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 160); // Filtre gris/noir semi-transparent
+                    SDL_Rect fog_rect = { s_pos_x, s_pos_y, TILE_SIZE, TILE_SIZE };
+                    SDL_RenderFillRect(renderer, &fog_rect); 
+                }
 
+                // Cadre de sélection
                 if ((sel_unit_idx != -1 && game->player_units[sel_unit_idx]->x == x && game->player_units[sel_unit_idx]->y == y) ||
                     (sel_city_idx != -1 && game->cities[sel_city_idx]->x == x && game->cities[sel_city_idx]->y == y)) {
-                    SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255); SDL_RenderDrawRect(renderer, &visual_rect);
+                    SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255); 
+                    SDL_Rect sel_rect = { s_pos_x, s_pos_y, TILE_SIZE, TILE_SIZE };
+                    SDL_RenderDrawRect(renderer, &sel_rect);
                 }
             }
         }
@@ -1062,11 +1249,25 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui) {
         else if (current_view == VIEW_GAME_OVER) render_game_over(renderer, font_normal, font_title, game, screen_w, screen_h);
         else if (current_view == VIEW_TECH_MENU) render_tech_menu(renderer, font_normal, game, screen_w, screen_h);
         else if (current_view == VIEW_CITY_MENU) render_city_menu(renderer, font_normal, game, sel_city_idx, screen_w, screen_h);
+        if (current_view == VIEW_GAME) {
+            // fond noir semi-transparent en bas de l'écran (qui s'arrête avant le dashboard)
+            SDL_Rect status_bg = { 0, screen_h - 40, screen_w - 420, 40 };
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 200);
+            SDL_RenderFillRect(renderer, &status_bg);
+
+            // statut des fights en jaune au centre de la barre
+            SDL_Color status_color = {255, 255, 100, 255}; 
+            draw_text_centered(renderer, font_normal, console_status, (screen_w - 420) / 2, screen_h - 35, status_color);
+        }
 
         SDL_RenderPresent(renderer);
     }
 
     // --- SÉCURITÉ ET LIQUIDATION ---
+    if(tex_main) SDL_DestroyTexture(tex_main);
+    if(tex_winter) SDL_DestroyTexture(tex_winter);
+    if(tex_buildings) SDL_DestroyTexture(tex_buildings);
+    if(tex_horse) SDL_DestroyTexture(tex_horse);
     SDL_DestroyRenderer(renderer); SDL_DestroyWindow(window);
     if(bg_texture) SDL_DestroyTexture(bg_texture);
     TTF_CloseFont(font_normal); TTF_CloseFont(font_large); TTF_CloseFont(font_title);

@@ -51,7 +51,7 @@ endif
 APP_OBJ := $(patsubst %.c,$(BUILD_DIR)/%.o,$(APP_SRC))
 TEST_OBJ := $(patsubst %.c,$(BUILD_DIR)/%.o,$(TEST_SRC))
 # On exclut main.c pour le binaire de tests, si on veut tester le reste du moteur
-CORE_SRC_NO_MAIN := $(filter-out $(SRC_DIR)/core/main.c,$(APP_SRC))
+CORE_SRC_NO_MAIN := $(filter-out %main.c, $(APP_SRC))
 CORE_OBJ_NO_MAIN := $(patsubst %.c,$(BUILD_DIR)/%.o,$(CORE_SRC_NO_MAIN))
 
 # Fichiers de dependances generes automatiquement par le compilateur

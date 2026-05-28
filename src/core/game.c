@@ -374,7 +374,7 @@ void check_victory_and_defeat(GameState *game) {
         return;
     }
 
-    if (game->turn > game->max_turns) {
+    if (game->max_turns > 0 && game->turn > game->max_turns) {
         game->game_over = 2;    // Défaite temps écoulé
         return;
     }
