@@ -49,16 +49,21 @@ La graine de génération utilisée est affichée en début de partie dans les l
 
 ---
 
-## 4. Dépendances
+## 4. Prérequis (Requirements)
 
-| Dépendance | Usage |
-|---|---|
-| GCC (C11), make, pkg-config | Compilation |
-| ncursesw | Mode CLI |
-| SDL2, SDL2_ttf, SDL2_image | Mode SDL uniquement |
+Le projet nécessite les outils et bibliothèques suivants :
 
+| Dépendance | Usage | Installation (Debian/Ubuntu) |
+|---|---|---|
+| **GCC** | Compilation | `sudo apt install build-essential` |
+| **SDL2** | Graphismes | `sudo apt install libsdl2-dev` |
+| **SDL2_ttf** | Polices | `sudo apt install libsdl2-ttf-dev` |
+| **SDL2_image**| Images | `sudo apt install libsdl2-image-dev` |
+| **Ncurses** | Mode CLI | `sudo apt install libncursesw5-dev` |
+
+Pour tout installer d'un coup :
 ```bash
-make req   # installe toutes les dépendances via apt
+make req
 ```
 
 ---
@@ -364,3 +369,11 @@ make test
 - Le mode SDL requiert une compilation séparée (`make sdl`) ; la cible `make` seule produit uniquement le binaire CLI.
 - L'historique des scores est stocké dans deux fichiers distincts selon le mode : `score_history.txt` (CLI) et `scores.txt` (SDL).
 - Le combat des unités barbares avancées (Archer barbare, Cavalier barbare) utilise les mêmes formules que le guerrier de base ; leur comportement de ciblage ne diffère pas.
+
+---
+
+## 23. Crédits et Outils externes
+
+- **Génération procédurale :** Utilisation de la bibliothèque *stb_perlin.h* (créée par **Sean Barrett**, disponible sur [GitHub](https://github.com/nothings/stb)). Cette bibliothèque est intégrée dans le dossier `include/core/`.
+- **Assets graphiques :** Spritesheets — [16x16 Mini World Sprites](https://merchant-shade.itch.io/16x16-mini-world-sprites)
+    - Licence : **CC0 / Public Domain** (Libre d'utilisation, de modification et de distribution sans attribution requise, mais créditée ici par rigueur professionnelle).

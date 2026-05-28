@@ -67,7 +67,7 @@ all: $(APP_BIN)
 help:
 	@echo "Cibles disponibles :"
 	@echo "  make        : compile le projet"
-	@echo "  make req    : verifie les dependances"
+	@echo "  make req    : verifie les dependances et installe si besoin"
 	@echo "  make cli    : lance en mode CLI"
 	@echo "  make sdl    : lance en mode SDL"
 	@echo "  make test   : lance les tests"
@@ -106,15 +106,18 @@ $(TEST_BIN): $(TEST_OBJ) $(CORE_OBJ_NO_MAIN)
 	@mkdir -p $(dir $@)
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
-# Verification rapide des outils installes sur la machine
+# Vérification et installation des dépendances
 req:
-	@echo "Verification des prerequis..."
+	@echo "Vérification et installation des dépendances..."
 	@command -v $(CC) >/dev/null 2>&1 || { echo "Erreur: $(CC) introuvable"; exit 1; }
-	@if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists sdl2 SDL2_ttf; then \
-		echo "SDL2 et SDL2_ttf detecte via pkg-config."; \
+	@command -v pkg-config >/dev/null 2>&1 || { echo "Erreur: pkg-config introuvable"; exit 1; }
+	
+	@# Vérification de SDL2 et Ncurses
+	@if ! pkg-config --exists sdl2 SDL2_ttf SDL2_image; then \
+		echo "SDL2 manquant. Tentative d'installation..."; \
+		sudo apt-get update && sudo apt-get install -y libsdl2-dev libsdl2-ttf-dev libsdl2-image-dev libncursesw5-dev; \
 	else \
-		echo "SDL2 ou SDL2_ttf non detecte automatiquement."; \
-		echo "Installez SDL2 (ex: sudo apt install libsdl2-dev libsdl2-ttf-dev)."; \
+		echo "Toutes les dépendances SDL2 sont déjà présentes."; \
 	fi
 
 # Nettoyage des fichiers de compilation et des binaires
@@ -123,7 +126,7 @@ clean:
 
 # Nettoyage complet : compilation + donnees generees
 reset: clean
-	rm -rf data/saves data/config data/scores
+	rm -f score_history.txt savegame.sav
 
 # Les dependances sont chargees seulement si elles existent deja
 -include $(APP_DEP)
