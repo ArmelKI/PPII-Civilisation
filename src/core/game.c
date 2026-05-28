@@ -259,7 +259,6 @@ void spawn_random_barbarian(GameState *game) {
 void move_barbarians_random(GameState *game) {
     compact_barbarians(game);
 
-    // Déplacement aléatoire d'une case : utile pour valider la phase Barbares.
     for (int i = 0; i < game->barbarian_count; ++i) {
         Unit *barb = game->barbarians[i];
         if (!barb || barb->hp <= 0) {
@@ -278,32 +277,8 @@ void move_barbarians_random(GameState *game) {
             continue;
         }
 
-        int dx = (rand() % 3) - 1;
-        int dy = (rand() % 3) - 1;
-        if (dx == 0 && dy == 0) {
-            continue;
-        }
-
-        int nx = barb->x + dx;
-        int ny = barb->y + dy;
-
-        if (nx < 0 || nx >= game->map.width || ny < 0 || ny >= game->map.height) {
-            continue;
-        }
-
-        if (game->map.tiles[ny][nx].type == TERRAIN_EAU) {
-            continue;
-        }
-
-        if (game->map.tiles[ny][nx].unit || game->map.tiles[ny][nx].city) {
-            continue;
-        }
-
-        game->map.tiles[barb->y][barb->x].unit = NULL;
-        barb->x = nx;
-        barb->y = ny;
-        barb->pm -= 1;
-        game->map.tiles[barb->y][barb->x].unit = barb;
+        barbares_move(barb, &game->map, game->cities, game->city_count,
+                      game->player_units, game->player_unit_count);
 
         combat_log[0] = '\0';
         if (barbares_attack_if_adjacent(barb, &game->map, game->cities, game->city_count,
