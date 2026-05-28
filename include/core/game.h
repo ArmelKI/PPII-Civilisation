@@ -55,6 +55,9 @@ typedef struct GameState {
     int wonder_x[NUM_WONDERS];           // coordonnées de la merveille (si built)
     int wonder_y[NUM_WONDERS];
     int wonder_host_city_id[NUM_WONDERS];// id de la ville qui héberge (pour gérer destruction)
+
+
+    char end_reason[256]; // Raison de la fin de partie (victoire/défaite) à afficher dans l'écran final
 } GameState;
 
 // --- FONCTIONS DE GESTION DU JEU ---

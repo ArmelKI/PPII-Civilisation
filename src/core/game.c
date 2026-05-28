@@ -371,11 +371,13 @@ void check_victory_and_defeat(GameState *game) {
     // CONDITIONS DE DEFAITE
     if (active_cities == 0) {
         game->game_over = 2;  // 1 = victoire, 2 = défaite donc Défaite plus de villes
+        strcpy(game->end_reason, "Votre civilisation a ete totalement detruite (Plus aucune ville) T'es vraiment guez.");
         return;
     }
 
     if (game->max_turns > 0 && game->turn > game->max_turns) {
         game->game_over = 2;    // Défaite temps écoulé
+        strcpy(game->end_reason, "Le temps imparti est ecoule. L'histoire vous a oublie.... Trop guez pour finir dans les temps.");
         return;
     }
 
@@ -384,6 +386,7 @@ void check_victory_and_defeat(GameState *game) {
         game->consecutive_zero_production_turns++;
         if (game->consecutive_zero_production_turns >= 5) {
             game->game_over = 2; // Défaite par faillite
+            strcpy(game->end_reason, "Votre economie s'est effondree (0 production pendant 5 tours). T'es vraiment guez.");
             return;
         }
     } else {
@@ -394,12 +397,14 @@ void check_victory_and_defeat(GameState *game) {
     // CONDITIONS DE VICTOIRE
     if (total_techs >= MAX_TECHNOLOGIES) {
         game->game_over = 1;        // Victoire scientifique
+        strcpy(game->end_reason, "Victoire Scientifique ! Vous avez maitrise toutes les technologies. T'es trop boosté pour perdre.");
         return;
     }
     if (active_cities >= 10) {
         game -> consecutive_turns_10_cities ++;
         if (game -> consecutive_turns_10_cities >= 5) {
             game->game_over = 1;        // Victoire territoriale
+            strcpy(game->end_reason, "Victoire Territoriale ! Votre empire domine le monde. T'es trop boosté");
             return;
         }
     } else {

@@ -696,6 +696,29 @@ int main(int argc, char **argv) {
             attroff(COLOR_PAIR(40));
 
             mvprintw(log_y, 0, "COMMANDES : [n] Finir Tour | [u] Choisir une unité | [c] Gerer Ville | [t] Technologies | [S] Sauvegarder (Maj+s) | [0] Voir les objectifs | [x] Quitter");
+            // --- ALERTES DE DEFAITE IMMINENTE ---
+            int alert_line = log_y - 4; // On place les alertes juste au dessus des logs
+
+            // Alerte 1 : La Faillite approche
+            if (game.consecutive_zero_production_turns >= 3) {
+                attron(COLOR_PAIR(20) | A_BOLD | A_BLINK); // Pair 20 = Rouge, A_BLINK = Clignotant !
+                mvprintw(alert_line++, ui_x, "/!\\ DANGER : Faillite dans %d tours !", 5 - game.consecutive_zero_production_turns);
+                attroff(COLOR_PAIR(20) | A_BOLD | A_BLINK);
+            }
+
+            // Alerte 2 : La fin du temps approche (ex: reste 10 tours ou moins)
+            if (nb_turns - game.turn <= 10) {
+                attron(COLOR_PAIR(20) | A_BOLD);
+                mvprintw(alert_line++, ui_x, "/!\\ TEMPS RESTANT : %d tours", nb_turns - game.turn);
+                attroff(COLOR_PAIR(20) | A_BOLD);
+            }
+
+            // Alerte 3 : Empire en détresse (1 seule ville restante et elle a moins de la moitié de ses PV)
+            if (game.city_count == 1 && game.cities[0] != NULL && game.cities[0]->hp < (game.cities[0]->population * 5)) {
+                attron(COLOR_PAIR(20) | A_BOLD | A_BLINK);
+                mvprintw(alert_line++, ui_x, "/!\\ VOTRE DERNIERE VILLE EST ATTAQUEE !");
+                attroff(COLOR_PAIR(20) | A_BOLD | A_BLINK);
+            }
             if (game.combat_log_ready) {
                 strncpy(status_msg, game.combat_log, sizeof(status_msg) - 1);
                 status_msg[sizeof(status_msg) - 1] = '\0';
@@ -1240,6 +1263,7 @@ int main(int argc, char **argv) {
                 printf("\033[1;31m                DEFAITE !                       \033[0m\n");
             }
             printf("======================================================\n");
+            printf("\033[1;37mRaison : %s\033[0m\n\n", game.end_reason);
             printf("Score final     : %d points\n", final_score);
             printf("Survie          : %d / %d tours\n", game.turn, nb_turns);
             printf("--------------------------------------------------\n");
