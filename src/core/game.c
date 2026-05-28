@@ -125,8 +125,8 @@ void init_game(GameState *game, int width, int height, int seed, int barbarian_c
     }
 
     // Initialisation Joueur
-    game->player.gold = 10;
-    game->player.science = 0;
+    game->player.gold = 50;
+    game->player.science = 80;
 
     // Initialisation de l'arbre technologique 
     game->player.current_research = TECH_NONE;

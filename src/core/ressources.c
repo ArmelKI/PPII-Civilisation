@@ -229,12 +229,25 @@ void process_city_growth(City *city,Map *map, GameState *game){
         attron(COLOR_PAIR(20) | A_BOLD);
         if (city -> population <= 0){ 
             printw("\nFAMINE : La ville en [%d, %d] a perdu son dernier habitant et disparait...\n", city->x, city->y);
+
+            // 1. Libérer la ville de la carte
             map->tiles[city->y][city->x].city = NULL; // peu être modififier pour faire un free
             /* la ville disparaît, on libère toutes les Merveilles
              * qu'elle hébergeait pour qu'elles puissent être reconstruites. */
             if (game) {
                 wonder_handle_city_destroyed(game, city->id);
+
+                for (int i = 0; i < game->city_count; i++) {
+                    if (game->cities[i] == city) {
+                        game->cities[i] = game->cities[game->city_count - 1];
+                        game->cities[game->city_count - 1] = NULL;
+                        game->city_count--;
+                        break;
+                    }
+                }
             }
+
+            free(city);
             printw("[Appuyez sur une touche pour continuer...]\n");
             attroff(COLOR_PAIR(20) | A_BOLD);
             refresh(); getch();

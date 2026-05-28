@@ -215,31 +215,32 @@ void display_map_color(Map* map, const Player *player, int sel_x, int sel_y) {
             
                 if (map->tiles[h][w].unit != NULL) {
 
+                   Unit *u = map->tiles[h][w].unit;
+                    
                     if (w == sel_x && h == sel_y) attron(A_REVERSE);
 
-                    switch (map->tiles[h][w].unit->type) {
-                        case UNIT_BARBARIAN:
-                            attron(COLOR_PAIR(20)); printw("B "); attroff(COLOR_PAIR(20)); // B pour les Barbares ennemis
-                            break;
-                        case UNIT_WARRIOR:
-                            attron(COLOR_PAIR(10)); printw("W "); attroff(COLOR_PAIR(10)); // W pour le Guerrier du Joueur
-                            break;
-                        case UNIT_ARCHER:
-                            attron(COLOR_PAIR(11)); printw("A "); attroff(COLOR_PAIR(11)); // A pour l'Archer
-                            break;
-                        case UNIT_CAVALIER:
-                            attron(COLOR_PAIR(12)); printw("V "); attroff(COLOR_PAIR(12)); // V pour le Cavalier en vert
-                            break;
-                        case UNIT_SETTLER:
-                            attron(COLOR_PAIR(13)); printw("S "); attroff(COLOR_PAIR(13)); // S Jaune brillant pour le Colon
-                            break;
-                        default:
-                            attron(COLOR_PAIR(14)); printw("U "); attroff(COLOR_PAIR(14)); // U Violet (Unité générique) (au cas où)
-                            break;
-                        // A MODIFIER SUREMENT APRES SI ON RAJOUTE LES ARCHERS, ETC
+                    if (u->owner == player) {
+                        // --- UNITÉS DU JOUEUR (Tes belles couleurs) ---
+                        switch (u->type) {
+                            case UNIT_WARRIOR:  attron(COLOR_PAIR(10)); printw("W "); attroff(COLOR_PAIR(10)); break;
+                            case UNIT_ARCHER:   attron(COLOR_PAIR(11)); printw("A "); attroff(COLOR_PAIR(11)); break;
+                            case UNIT_CAVALIER: attron(COLOR_PAIR(12)); printw("V "); attroff(COLOR_PAIR(12)); break;
+                            case UNIT_SETTLER:  attron(COLOR_PAIR(13)); printw("S "); attroff(COLOR_PAIR(13)); break;
+                            default:            attron(COLOR_PAIR(14)); printw("U "); attroff(COLOR_PAIR(14)); break;
+                        }
+                    } else {
+                        // --- UNITÉS BARBARES (Tout en rouge sang : COLOR_PAIR(20)) ---
+                        attron(COLOR_PAIR(20));
+                        switch (u->type) {
+                            case UNIT_ARCHER:   printw("a "); break; // Petit 'a' rouge pour archer ennemi
+                            case UNIT_CAVALIER: printw("c "); break; // Petit 'c' rouge pour cavalier ennemi
+                            default:            printw("B "); break; // 'B' pour le guerrier barbare de base
+                        }
+                        attroff(COLOR_PAIR(20));
                     }
+
                     if (w == sel_x && h == sel_y) attroff(A_REVERSE);
-                    continue; // Si il y a une unité on affiche que ça et on passe à la case suivante
+                    continue;
                 }
                 else if (map->tiles[h][w].city != NULL) {
 

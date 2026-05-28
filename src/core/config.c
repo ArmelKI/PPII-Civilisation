@@ -163,22 +163,24 @@ void game_config_apply_barbarian_stats(Unit *barbarian)
     }
 
     const GameConfig *cfg = game_config_get_active();
+
+    //sert à rendre les barbares plus fort en mode Difficile
     float multiplier = cfg ? cfg->barbarian_spawn_multiplier : 1.0f;
 
-    int base_hp = 15;
-    int base_attack = 3;
-    int base_defense = 2;
-    int base_pm = 3;
+    int base_hp = 8;
+    int base_attack = 2;
+    int base_defense = 1;
+    int base_pm = 1;
 
     if (barbarian->type == UNIT_ARCHER) {
-        base_hp = 12;
-        base_attack = 4;
-        base_defense = 1;
+        base_hp = 5;    //Archer très vulnerable
+        base_attack = 4;    //boosté offensivement
+        base_defense = 1;   //très faible en défense
         base_pm = 2;
     } else if (barbarian->type == UNIT_CAVALIER) {
-        base_hp = 15;
-        base_attack = 3;
-        base_defense = 3;
+        base_hp = 12;   //Cavalier plus robuste
+        base_attack = 3;   //attaque similaire au guerrier classique
+        base_defense = 3;  
         base_pm = 4;
     }
 
