@@ -564,8 +564,8 @@ static void render_city_menu(SDL_Renderer *renderer, TTF_Font *font, GameState *
     draw_text(renderer, font, "[0] Rien (Garder le projet actuel ou Annuler)", x, y, white); y += 35;
     draw_text(renderer, font, "[1] Colon (50 Prod)       - Fonde une nouvelle ville", x, y, action_color); y += 35;
 
-    if (city->has_barrack) draw_text(renderer, font, "[2] Guerrier (40 Prod)    - Unite militaire (Force: 3, PM: 3)", x, y, action_color);
-    else draw_text(renderer, font, "[2] [BLOQUE] Guerrier     - Necessite une Caserne", x, y, gray);
+    if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_ARTISANAT]) draw_text(renderer, font, "[2] Guerrier (40 Prod)    - Unite militaire (Force: 3, PM: 3)", x, y, action_color);
+    else draw_text(renderer, font, "[2] [BLOQUE] Guerrier     - Necessite Caserne + Tech Artisanat", x, y, gray);
     y += 35;
 
     if (!city->has_granary)  { draw_text(renderer, font, "[3] Grenier (30 Prod)     - Bonus : +3 Nourriture/tour", x, y, action_color); y += 35; }
@@ -986,8 +986,8 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui, int* city_i
                             } else if (sym == SDLK_1) {
                                 city->current_project = PROJECT_SETTLER; city->production_stored = 0; sprintf(console_status, "Projet defini : Colon"); current_view = VIEW_GAME;
                             } else if (sym == SDLK_2) {
-                                if (city->has_barrack) { city->current_project = PROJECT_WARRIOR; city->production_stored = 0; sprintf(console_status, "Projet defini : Guerrier"); current_view = VIEW_GAME; }
-                                else { sprintf(console_status, "Impossible : Caserne requise !"); }
+                                if (city->has_barrack && game->player.unlocked_techs[TECH_ARTISANAT]) { city->current_project = PROJECT_WARRIOR; city->production_stored = 0; sprintf(console_status, "Projet defini : Guerrier"); current_view = VIEW_GAME; }
+                                else { sprintf(console_status, "Impossible : Caserne + Artisanat requis !"); }
                             } else if (sym == SDLK_3) { city->current_project = PROJECT_GRANARY; city->production_stored = 0; sprintf(console_status, "Projet defini : Grenier"); current_view = VIEW_GAME; }
                             else if (sym == SDLK_4) { city->current_project = PROJECT_WORKSHOP; city->production_stored = 0; sprintf(console_status, "Projet defini : Atelier"); current_view = VIEW_GAME; }
                             else if (sym == SDLK_5) { 
