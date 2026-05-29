@@ -668,16 +668,22 @@ static void render_dashboard(SDL_Renderer *renderer, TTF_Font *font, GameState *
     int current_y = 30;
     int spacing = 40; 
 
+    // --- Calcul des prévisions et affichage ---
+    int proj_gold_gain = 0, proj_gold_maint = 0, proj_science = 0;
+    compute_turn_predictions(game, &proj_gold_gain, &proj_gold_maint, &proj_science);
+
     // Stats globales
     draw_text(renderer, font, "=== VOTRE EMPIRE ===", start_x, current_y, title_color);
     current_y += spacing + 10;
     sprintf(buffer, "Tour actuel : %d", game->turn);
     draw_text(renderer, font, buffer, start_x, current_y, white);
     current_y += spacing;
-    sprintf(buffer, "Or en banque : %d", game->player.gold);
+
+    sprintf(buffer, "Or : %d (+%d gains, -%d maint)", game->player.gold, proj_gold_gain, proj_gold_maint);
     draw_text(renderer, font, buffer, start_x, current_y, gold_color);
     current_y += spacing;
-    sprintf(buffer, "Science : %d", game->player.science);
+    
+    sprintf(buffer, "Science : %d (+%d/tour)", game->player.science, proj_science);
     draw_text(renderer, font, buffer, start_x, current_y, science_color);
     current_y += spacing * 2; 
 
