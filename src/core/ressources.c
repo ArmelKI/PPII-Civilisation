@@ -680,7 +680,6 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
     }
 }
 
-
 void control_city_project(City *city, const GameState *game) {
     if (!city) return;
 
@@ -753,27 +752,27 @@ void control_city_project(City *city, const GameState *game) {
     if (city->has_wall)     { printw("Muraille  "); has_buildings = 1; }
     if (!has_buildings) printw("Aucun");
 
-    /* On liste les Merveilles hébergées par cette ville. */
+    /* FIX : On liste les Merveilles hébergées en une seule ligne avec strcat */
     if (game) {
         int has_wonder_here = 0;
         char wonder_list[512] = "Merveilles hébergées : ";
+        
         for (int w = 0; w < NUM_WONDERS; w++) {
             if (game->wonder_built[w] && game->wonder_host_city_id[w] == city->id) {
-                
                 strcat(wonder_list, wonder_name((WonderType)w));
                 strcat(wonder_list, "  ");
                 has_wonder_here = 1;
             }
         }
+        
         if (has_wonder_here) {
-                move(line++, start_x);
-                attron(COLOR_PAIR(50) | A_BOLD);
-                printw("%s  ", wonder_list);
-                attroff(COLOR_PAIR(50) | A_BOLD);
-            }
+            move(line++, start_x);
+            attron(COLOR_PAIR(50) | A_BOLD);
+            printw("%s", wonder_list);
+            attroff(COLOR_PAIR(50) | A_BOLD);
+        }
     }
     
-
     line++;
 
     // --- PROJET ACTUEL ---
@@ -859,7 +858,6 @@ void control_city_project(City *city, const GameState *game) {
     }
 
     move(line++, start_x);
-
     if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_EQUITATION]) {
         printw("[c] Cavalier (60 Prod)    - Unite avancee (Force: 4, PM: 5)");
     } else {
@@ -869,7 +867,7 @@ void control_city_project(City *city, const GameState *game) {
     line++;
     move(line++, start_x);
 
-    /*  Bloc Merveilles: Touches P, B, C, T, J. */
+    /* Bloc Merveilles: Touches P, B, C, T, J. */
     line++;
     move(line++, start_x);
     attron(A_BOLD); printw("-- MERVEILLES DU MONDE --"); attroff(A_BOLD);
@@ -924,23 +922,23 @@ void control_city_project(City *city, const GameState *game) {
 
     line++;
     move(line++, start_x);
-
-    
     
     printw("Votre choix : ");
     refresh();
     
-    // Récupération du choix
+    // FIX : Récupération et traitement sécurisé du choix
     int ch = getch();
-
     move(line++, start_x);
 
-    /* On traite d'abord les touches lettre pour les Merveilles */
     WonderType picked_wonder = WONDER_NONE;
+    int is_cavalier = 0; 
+    
+    // 1. Détection des lettres (Merveilles + Cavalier)
     switch (ch) {
         case 'P': case 'p': picked_wonder = WONDER_PYRAMIDS;       break;
         case 'B': case 'b': picked_wonder = WONDER_GREAT_LIBRARY;  break;
-        case 'C':           picked_wonder = WONDER_COLISEUM;       break;
+        case 'C':           picked_wonder = WONDER_COLISEUM;       break; // Majuscule = Colisée
+        case 'c':           is_cavalier = 1;                       break; // Minuscule = Cavalier
         case 'T': case 't': picked_wonder = WONDER_BABEL;          break;
         case 'J': case 'j': picked_wonder = WONDER_HANGING_GARDEN; break;
         default: break;
@@ -961,7 +959,17 @@ void control_city_project(City *city, const GameState *game) {
                 printw("Projet defini : Merveille \"%s\" sur [%d,%d]", wonder_name(picked_wonder), tx, ty);
             }
         }
+    } else if (is_cavalier) {
+        // 2. Traitement du Cavalier
+        if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_EQUITATION]) {
+            city->current_project = PROJECT_CAVALIER;
+            city->production_stored = 0;
+            printw("Projet defini : Cavalier");
+        } else {
+            printw("Impossible : Cavalier requis Caserne + Technologie Equitation !");
+        }
     } else {
+        // 3. Traitement des Chiffres (0 à 9)
         int choix = ch - '0';
         if (choix < 0 || choix > 9) {
             printw("Entree invalide ou annulee.");
@@ -979,7 +987,7 @@ void control_city_project(City *city, const GameState *game) {
                         city->current_project = PROJECT_WARRIOR; city->production_stored = 0;
                         printw("Projet defini : Guerrier");
                     } else {
-                        printw("Impossible : Vous n'avez pas de caserne !");
+                        printw("Impossible : Vous n'avez pas de caserne ou technologie Artisanat !");
                     }
                     break;
                 case 3: city->current_project = PROJECT_GRANARY; city->production_stored = 0; printw("Projet defini : Grenier"); break;
@@ -1020,6 +1028,7 @@ void control_city_project(City *city, const GameState *game) {
             }
         }
     }
+    
     line++;
     move(line++, start_x);
     attron(COLOR_PAIR(3) | A_BOLD); // Couleur jaune pour mettre en évidence la sortie
