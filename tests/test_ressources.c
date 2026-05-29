@@ -570,6 +570,69 @@ static void test_wall_requires_maconnerie(void)
  * Orchestration
  * ============================================================ */
 
+ /* ============================================================
+ * Section H : Previsions des rendements (compute_turn_predictions)
+ * ============================================================ */
+
+static void test_compute_turn_predictions_values(void)
+{
+    /* On configure un GameState fictif pour simuler les rendements */
+    setup_default_config();
+    GameState game;
+    memset(&game, 0, sizeof(GameState));
+
+    /* Map 5x5 remplie de plaines par défaut */
+    init_map(&game.map, 5, 5);
+
+    /* On change une case du rayon (adjacente) en Eau pour generer 1 Or brut */
+    game.map.tiles[2][3].type = TERRAIN_EAU;
+
+    /* Configurer le joueur */
+    game.player.gold = 100;
+    game.player.science = 10;
+
+    /* Configurer la ville (Rayon 1 car pop 1) */
+    City city = {0};
+    city.x = 2; 
+    city.y = 2;
+    city.population = 1;
+    city.owner = &game.player;
+    
+    /* Batiments : Marche (+3 Or brut, 1 entretien) et Bibliotheque (+4 Sci, 1 entretien) */
+    city.has_market = 1;  
+    city.has_library = 1; 
+    
+    game.map.tiles[2][2].city = &city;
+    game.cities[0] = &city;
+    game.city_count = 1;
+
+    /* Configurer une unite active : Guerrier (1 entretien) */
+    Unit warrior = {0};
+    warrior.type = UNIT_WARRIOR;
+    warrior.x = 2; 
+    warrior.y = 2;
+    warrior.owner = &game.player;
+    
+    game.map.tiles[2][2].unit = &warrior;
+    game.player_units[0] = &warrior;
+    game.player_unit_count = 1;
+
+    /* Executer la fonction de prediction */
+    int gold_gain = 0, gold_maint = 0, science_gain = 0;
+    compute_turn_predictions(&game, &gold_gain, &gold_maint, &science_gain);
+
+    /* Verification des resultats attendus */
+    EXPECT(gold_gain == 4, 
+           "L'or brut gagne doit etre 4 (1 case Eau + 3 Marche)");
+    EXPECT(science_gain == 4, 
+           "La science gagnee doit etre 4 (0 terrain + 4 Bibliotheque)");
+    EXPECT(gold_maint == 3, 
+           "L'entretien doit etre 3 (1 Marche + 1 Bibliotheque + 1 Guerrier)");
+
+    /* Liberer la memoire de la map */
+    free_test_map(&game.map);
+}
+
 int run_test_ressources(void)
 {
     /* Section A : fonctions pures */
@@ -601,6 +664,9 @@ int run_test_ressources(void)
     test_library_requires_ecriture();
     test_market_requires_commerce();
     test_wall_requires_maconnerie();
+
+    /* Section H : Predictions */
+    test_compute_turn_predictions_values();
 
     if (g_failed == 0) {
         puts("[OK] Ressources tests passed.");
