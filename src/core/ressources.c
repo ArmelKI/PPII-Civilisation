@@ -6,6 +6,7 @@
 #include "../../include/core/config.h"
 #include "../../include/core/wonder.h"
 #include "../../include/core/special_ressources.h"
+#include "../../include/core/ressources.h"
 
 
 // mise en place du rendement en fonction du type de case
@@ -711,6 +712,17 @@ void control_city_project(City *city, const GameState *game) {
     // --- STATISTIQUES ---
     move(line++, start_x);
     printw("Population : %d    |    PV : %d", city->population, city->hp);
+
+    // Calcul et intégration des prévisions pour le tour
+    int proj_gold_gain = 0, proj_gold_maint = 0, proj_science = 0;
+    compute_turn_predictions(game, &proj_gold_gain, &proj_gold_maint, &proj_science);
+    int net_gold = proj_gold_gain - proj_gold_maint;
+
+    move(line++, start_x);
+    if (city->owner) {
+        printw("Trésor : %d Or (%+d net: +%d gains, -%d maintenance)  |  Science globale : +%d/tour", 
+               city->owner->gold, net_gold, proj_gold_gain, proj_gold_maint, proj_science);
+    }
     
     move(line++, start_x);
     if (city->food_stored < 0) {
@@ -1010,4 +1022,89 @@ void control_city_project(City *city, const GameState *game) {
     attroff(COLOR_PAIR(3) | A_BOLD);
     refresh();
     getch();
+}
+
+void compute_turn_predictions(const GameState *game, int *gold_gain, int *gold_maint, int *science_gain) {
+    if (!game || !gold_gain || !gold_maint || !science_gain) return;
+
+    *gold_gain = 0;
+    *gold_maint = 0;
+    *science_gain = 0;
+
+    const Map *map = &game->map;
+    const Player *player = &game->player;
+
+    // 1. Estimation des gains bruts par les villes
+    for (int i = 0; i < game->city_count; i++) {
+        City *city = game->cities[i];
+        if (!city || city->owner != player) continue;
+
+        int rayon = 1;
+        if (city->population >= 10 && city->population <= 25) rayon = 2;
+        else if (city->population > 25) rayon = 3;
+
+        int city_gold = 0;
+        int city_science = 0;
+
+        for (int dy = -rayon; dy <= rayon; dy++) {
+            for (int dx = -rayon; dx <= rayon; dx++) {
+                int target_x = city->x + dx;
+                int target_y = city->y + dy;
+
+                if (target_x >= 0 && target_x < map->width && target_y >= 0 && target_y < map->height) {
+                    // Utilisation d'un cast pour correspondre à la signature de get_tile_owner
+                    if (get_tile_owner(target_x, target_y, (Map*)map) == city) {
+                        Tile *t = &map->tiles[target_y][target_x];
+
+                        if (t->wonder == WONDER_NONE) {
+                            TileYield tile_y = get_terrain_yield(t->type);
+
+                            if (t->special_ressources != SPRES_NONE) {
+                                SpecialResourceType sr = (SpecialResourceType)t->special_ressources;
+                                TileYield bonus = sres_yield_for_player(sr, player);
+                                tile_y.gold    += bonus.gold;
+                                tile_y.science += bonus.science;
+                            }
+                            city_gold += tile_y.gold;
+                            city_science += tile_y.science;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Bonus fixes des bâtiments construits
+        if (city->has_market)  city_gold += 3;
+        if (city->has_library) city_science += 4;
+
+        // Bonus des merveilles globales applicables à la ville
+        city_gold += wonder_extra_gold_per_city(game);
+
+        *gold_gain += city_gold;
+        *science_gain += city_science;
+    }
+
+    // 2. Estimation de la maintenance (Bâtiments + Unités)
+    for (int y = 0; y < map->height; y++) {
+        for (int x = 0; x < map->width; x++) {
+            Tile *tile = &map->tiles[y][x];
+
+            if (tile->city != NULL && tile->city->owner == player) {
+                City *c = tile->city;
+                if (c->has_granary)  *gold_maint += 1;
+                if (c->has_workshop) *gold_maint += 1;
+                if (c->has_library)  *gold_maint += 1;
+                if (c->has_market)   *gold_maint += 1;
+                if (c->has_barrack)  *gold_maint += 2;
+                if (c->has_wall)     *gold_maint += 2;
+            }
+
+            if (tile->unit != NULL && tile->unit->owner == player) {
+                Unit *u = tile->unit;
+                if (u->type == UNIT_WARRIOR || u->type == UNIT_ARCHER || u->type == UNIT_CAVALIER) {
+                    *gold_maint += 1;
+                }
+            }
+        }
+    }
 }
