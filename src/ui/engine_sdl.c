@@ -879,6 +879,10 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui, int* city_i
             current_view = VIEW_GAME_OVER;
         }
 
+        if (sel_city_idx >= game->city_count || (sel_city_idx != -1 && game->cities[sel_city_idx] == NULL)) {
+            sel_city_idx = -1;
+        }
+
         // A. TRAITEMENT DES INPUTS ET DES ÉVÉNEMENTS
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) game->game_over = 3; 
@@ -1046,6 +1050,7 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui, int* city_i
                         case SDLK_n: 
                             next_turn(game); 
                             sel_unit_idx = -1; 
+                            sel_city_idx = -1;
                             check_victory_and_defeat(game); 
                             if (game->combat_log_ready) {
                                 sprintf(console_status, "Tour %d | ENNEMI : %s", game->turn - 1, game->combat_log);
