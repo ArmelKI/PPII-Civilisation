@@ -20,6 +20,10 @@ int main(void)
     extern void run_tech_tests(void);
     extern void run_save_tests(void);
 
+    extern int run_test_ressources(void);
+    extern int run_test_special_resources(void);
+    extern int run_test_wonders(void);
+
     // 2. EXÉCUTION
     printf("\n=== LANCEMENT DE LA SUITE DE TESTS GLOBALE ===\n\n");
 
@@ -36,6 +40,10 @@ int main(void)
     // Lancement de nos tests
     run_tech_tests();
     run_save_tests();
+
+    if (run_test_ressources() != 0) g_failed++;
+    if (run_test_special_resources() != 0) g_failed++;
+    if (run_test_wonders() != 0) g_failed++;
 
     // 3. BILAN FINAL
     printf("\n=======================================================\n");

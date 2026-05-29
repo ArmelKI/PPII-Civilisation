@@ -463,6 +463,12 @@ void process_city_production(City *city, Map *map, Unit **player_units, int *pla
         return;
     }
 
+    // Le guerrier nécessite la technologie Artisanat.
+    if (city->current_project == PROJECT_WARRIOR &&
+        (!city->owner || !city->owner->unlocked_techs[TECH_ARTISANAT])) {
+        return;
+    }
+
     // L'archer nécessite la technologie Chasse.
     if (city->current_project == PROJECT_ARCHER &&
         (!city->owner || !city->owner->unlocked_techs[TECH_CHASSE])) {
@@ -794,7 +800,7 @@ void control_city_project(City *city, const GameState *game) {
     move(line++, start_x); printw("[1] Colon (50 Prod)       - Fonde une nouvelle ville");
     
     move(line++, start_x);
-    if (city->has_barrack) {
+    if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_ARTISANAT]) {
         printw("[2] Guerrier (40 Prod)    - Unite militaire (Force: 3, PM: 3)");
     } else {
         attron(A_DIM); printw("[2] [BLOQUE] Guerrier     - Necessite une Caserne + la technologie Artisanat"); attroff(A_DIM);
@@ -818,7 +824,7 @@ void control_city_project(City *city, const GameState *game) {
             attron(A_DIM); printw("[6] [BLOQUE] Marché       - Necessite la technologie Commerce"); attroff(A_DIM);
         }
     }    
-    if (!city->has_barrack)  { move(line++, start_x); printw("[7] Caserne (60 Prod)     - Bonus : Permet de recruter des Guerriers"); }
+    if (!city->has_barrack )  { move(line++, start_x); printw("[7] Caserne (60 Prod)     - Bonus : Permet de recruter des Guerriers"); }
     if (!city->has_wall)     {
         move(line++, start_x);
         if (city->owner && city->owner->unlocked_techs[TECH_MAÇONNERIE]) {
@@ -952,7 +958,7 @@ void control_city_project(City *city, const GameState *game) {
                     printw("Projet defini : Colon"); 
                     break;
                 case 2: 
-                    if (city->has_barrack) {
+                    if (city->has_barrack && city->owner && city->owner->unlocked_techs[TECH_ARTISANAT]) {
                         city->current_project = PROJECT_WARRIOR; city->production_stored = 0;
                         printw("Projet defini : Guerrier");
                     } else {
