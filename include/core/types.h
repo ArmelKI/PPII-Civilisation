@@ -11,10 +11,10 @@ typedef enum {
     TERRAIN_MONTAGNE,
     TERRAIN_EAU,
     TERRAIN_DESERT,
-    TERRAIN_VILLE
+    TERRAIN_TOUNDRA,
 } TerrainType;
 
-/*enum pour dire qu'un terrain est dans cette zone et cette zone uniquement, utilse pour l'affichage et pour 
+/*enum pour dire qu'un terrain est dans cette zone et cette zone uniquement, utile pour l'affichage et pour 
 notre code*/ 
 
 /* 2. DÉCLARATION ANTICIPÉES*/
@@ -25,21 +25,67 @@ notre code*/
 typedef struct City City;
 typedef struct Unit Unit;
 typedef struct Player Player;
+typedef struct BarbarianCamp BarbarianCamp;
 
+
+//Énumération des technologies disponibles
+typedef enum {
+    TECH_NONE = -1,  //Aucune recherche en cours
+    TECH_CHASSE = 0,
+    TECH_AGRICULTURE = 1,
+    TECH_ARTISANAT = 2,
+    TECH_ECRITURE = 3,
+    TECH_EQUITATION = 4,
+    TECH_IRRIGATION = 5,
+    TECH_MAÇONNERIE = 6,
+    TECH_COMMERCE = 7,
+    TECH_BATEAU = 8,    //Ajout de la technologie bateau
+    MAX_TECHNOLOGIES = 9,
+} TechType;
+
+// Structure pour définir une technologie dans le catalogue
+typedef struct {
+    TechType id;                  // Identifiant de la technologie
+    const char* name;             // Nom de la technologie
+    int cost;                     // Coût en science pour débloquer la technologie
+    TechType req1;             // Première technologie prérequise (TECH_NONE si aucune)
+    TechType req2;             // Seconde technologie prérequise (Pour commerce notamment)
+} TechnologyDef;
 
 /* 3. STRUCTURES DE LA CARTE  */
+typedef enum{
+    FOG_HIDDEN = 0, // Noir total(jamais exploré)
+    FOG_EXPLORED = 1, // Grise (déja visité, on se souvient du terrain)
+    FOG_VISIBLE = 2, // Éclairé(champ de vision actuel d'une unité/ville)
+} FogState;
 
 typedef struct Tile{
     TerrainType type; // Type de terrain (Plaine, eau ..)
+    FogState visibility; // État de visibilité de la tuile (inexplorée, explorée, visible) 
     City* city;      // Pointeur vers la ville présente sur ce terrain (NULL si aucune)
     Unit* unit;      // Pointeur vers l'unité présente sur ce terrain (NULL si aucune)
-} Tile;
+    BarbarianCamp* camp; // Pointeur vers le camp de barbares présent sur ce terrain (NULL si aucun)
+    int wonder;     // -1 si aucune merveilles
+    int special_ressources; // -1 si aucune ressource spéciale
+} Tile; 
 
 typedef struct Map{
     int width;       // Largeur de la carte
     int height;      // Hauteur de la carte
     Tile** tiles;    // Grille de tuiles (2D array)
+
+    int start_x;     // Coordonnées de la ville de départ
+    int start_y;
 } Map;
+
+
+/* CAMPEMENT BARBARE */
+
+typedef struct BarbarianCamp {
+    int x, y;                // Coordonnées du campement sur la carte
+    int destroyed;           // 0 si actif, 1 si détruit
+    int id;                  // Identifiant unique (pour déboguer et tracker)
+} BarbarianCamp;
 
 
 /* 4. LA VILLE ET LE JOUEUR */
@@ -47,16 +93,49 @@ typedef struct Map{
 typedef struct Player {
     int gold;
     int science;
+    int camps_destroyed;
+
+    // Gestion des technologies
+    TechType current_research; // Technologie en cours de recherche
+    int unlocked_techs[MAX_TECHNOLOGIES]; // Tableau indiquant les technologies débloquées (1) ou non (0)
 
 } Player;
 
+typedef enum {
+    PROJECT_NONE = 0,   // Rien en cours
+    PROJECT_SETTLER,    // Colon (50 prod)
+    PROJECT_WARRIOR,    // Guerrier (40 prod)
+    PROJECT_ARCHER,     // Archer (55 prod)
+    PROJECT_CAVALIER,   // Cavalier (60 prod)
+    PROJECT_GRANARY,    // Grenier (30 prod)
+    PROJECT_WORKSHOP,   // Atelier (40 prod)
+    PROJECT_LIBRARY,    // Bibliothèque (50 prod)
+    PROJECT_MARKET,     // Marché (40 prod)
+    PROJECT_BARRACKS,   // Caserne (60 prod)
+    PROJECT_WALL,        // Muraille (80 prod)
+
+    PROJECT_WONDER_PYRAMIDS,        // 200 prod, Désert, +50% Nourriture globale
+    PROJECT_WONDER_GREAT_LIBRARY,   // 250 prod, Toundra, offre la techno en cours
+    PROJECT_WONDER_COLISEUM,        // 180 prod, Plaine, +2 Or/tour par ville
+    PROJECT_WONDER_BABEL,           // 300 prod, Montagne, -25% coût techs
+    PROJECT_WONDER_HANGING_GARDEN   // 220 prod, Forêt, -20% seuil de croissance
+} ProjectType;
+
 typedef struct City {
+    int id;                     // id unique repère d'ancienetté 0 pour la première +1 à chaque nouvelle ville
     int population;             // Nombre d'habitants
     int food_stored;            // Nourriture stockée pour faire agrandir la population
     int production_stored;      // Production stockée pour le projet en cours
     int hp;                     // Points de vie
-    int has_wall;              // Indique si la ville a une muraille (1) ou pas (0)
 
+    int has_wall;              // Indique si la ville a une muraille (1) ou pas (0)
+    int has_granary;           // Grenier
+    int has_workshop;          // Atelier
+    int has_library;           // Bibliothèque
+    int has_market;            // Marché
+    int has_barrack;           // caserne
+
+    ProjectType current_project;
     // Coordonnées de la ville sur la carte
     int x;
     int y;
@@ -71,12 +150,15 @@ typedef struct City {
 typedef enum {
     UNIT_SETTLER,       //Le colon (Fonde les villes, attaque 0, defense 1)
     UNIT_WARRIOR,        //Le guerrier du joueur(Militaire, attaque 3, defense 2)
+    UNIT_ARCHER,         //L'archer du joueur(Militaire a distance simplifie)
+    UNIT_CAVALIER,       //Le cavalier du joueur(Unité montée, haute mobilité)
     UNIT_BARBARIAN,       //Le Guerrier barbare (Ennemi contrôlé par le jeu)
 } UnitType;
 
 // Structure représentant une unité sur la carte
 
 typedef struct Unit {
+    int id;               // Identifiant unique pour les règles déterministes
     UnitType type;        // Type de l'unité (Colon, Guerrier du joueur, Barbarian)
 
     int hp;              // Points de vie de l'unité
@@ -94,6 +176,45 @@ typedef struct Unit {
 
     Player *owner;       // Pointeur vers le joueur propriétaire de l'unité (NULL pour les barbares)
 } Unit;
+
+/* 5. L'ARBRE TECHNOLOGIQUE(Graphe Orienté)*/
+
+
+// structure d'une technologie dans l'arbre technologique
+
+
+
+typedef struct {
+    int food;
+    int production;
+    int gold;
+    int science;
+} TileYield;             //permet de définir et manipuler le rendement d'une case
+
+
+/* Les 5 Merveilles du Monde. Une seule peut exister dans toute la partie. */
+typedef enum {
+    WONDER_NONE = -1,
+    WONDER_PYRAMIDS = 0,        // 200 prod, Désert, +50% Nourriture toutes villes
+    WONDER_GREAT_LIBRARY = 1,   // 250 prod, Toundra, offre la techno en cours
+    WONDER_COLISEUM = 2,        // 180 prod, Plaine, +2 Or/tour par ville
+    WONDER_BABEL = 3,           // 300 prod, Montagne, -25% coût futures techs
+    WONDER_HANGING_GARDEN = 4,  // 220 prod, Forêt, -20% seuil de croissance
+    NUM_WONDERS = 5
+} WonderType;
+
+/* Les 5 ressources spéciales. ~15% des tuiles éligibles en portent une. */
+typedef enum {
+    SPRES_NONE = -1,
+    SPRES_WHEAT = 0,     // Blé, Plaine, +3 Food, requiert Agriculture
+    SPRES_IRON = 1,      // Fer, Montagne, +3 Prod, requiert Artisanat
+    SPRES_SPICES = 2,    // Épices, Forêt ou Désert, +4 Or, requiert Commerce
+    SPRES_SPECIMENS = 3, // Spécimens, Toundra, +3 Science, requiert Écriture
+    SPRES_HORSES = 4,    // Chevaux, Plaine ou Toundra, +1 PM unités produites, requiert Équitation
+    NUM_SPECIAL_RESOURCES = 5
+} SpecialResourceType;
+
+
 
 
 #endif // CORE_TYPES_H

@@ -3,3 +3,9 @@ civ
 *.o
 .vscode/
 .DS_Store
+build/
+bin/
+*.o
+*.sav
+compile_flags.txt
+current_game.tmp

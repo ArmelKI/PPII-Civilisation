@@ -1,0 +1,4 @@
+[28/05/2026] | Joueur: Joueur_SDL | Score: 2050  | Tours: 6   | Issue: DEFAITE
+[28/05/2026] | Joueur: Joueur_SDL | Score: 2050  | Tours: 6   | Issue: DEFAITE
+[29/05/2026] | Joueur: Joueur_SDL | Score: 1950  | Tours: 30  | Issue: DEFAITE
+[29/05/2026] | Joueur: babsssssss | Score: 3330  | Tours: 111 | Issue: VICTOIRE

@@ -420,13 +420,16 @@ Les Barbares sont des **unités ennemies autonomes** présentes sur la carte dè
 
 - Chaque tour, chaque campement encore en vie **génère une unité Barbare** (un guerrier) si sa tuile est libre.
 - Le nombre d’unités barbares simultanément en vie est plafonné à `N × 3`.
+- Une partie des générations de barbares peut produire des unités avancées : **Archer barbare** ou **Cavalier barbare**.
+- Le Guerrier barbare reste l’unité la plus fréquente ; les unités avancées apparaissent avec une probabilité plus faible, renforcée en difficulté Difficile.
+- Les unités barbares avancées suivent les mêmes règles de déplacement et d’attaque que les autres barbares, mais avec leurs statistiques propres.
 
 #### 8.3 Comportement
 
 - Chaque tour, chaque unité barbare se déplace vers l’unité ou la ville du joueur la plus proche (à portée de ses PM).
 - Si une unité ou ville du joueur est adjacente, le Barbare l’attaque automatiquement.
 - Les Barbares ne fondent pas de villes et n’accumulent pas de ressources.
-- En cas de plusieurs cibles équidistantes, vous devez appliquer une règle de départage **déterministe** et la documenter.
+- En cas de plusieurs cibles équidistantes, la règle retenue est la suivante : priorité aux unités du joueur sur les villes, puis priorité aux Colon(s) sur les autres unités, puis choix de la cible la plus proche ; si l’égalité persiste, l’ordre de parcours des tableaux de cibles sert de départage déterministe.
 
 ---
 
