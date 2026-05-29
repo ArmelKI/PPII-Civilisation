@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ncurses.h>
+#include <string.h>
 #include "../../include/core/types.h"
 #include "../../include/core/game.h"
 #include "../../include/core/config.h"
@@ -737,19 +738,23 @@ void control_city_project(City *city, const GameState *game) {
     /* On liste les Merveilles hébergées par cette ville. */
     if (game) {
         int has_wonder_here = 0;
+        char wonder_list[512] = "Merveilles hébergées : ";
         for (int w = 0; w < NUM_WONDERS; w++) {
             if (game->wonder_built[w] && game->wonder_host_city_id[w] == city->id) {
-                if (!has_wonder_here) {
-                    move(line++, start_x);
-                    printw("Merveilles hébergées : ");
-                    has_wonder_here = 1;
-                }
-                attron(COLOR_PAIR(50) | A_BOLD);
-                printw("%s  ", wonder_name((WonderType)w));
-                attroff(COLOR_PAIR(50) | A_BOLD);
+                
+                strcat(wonder_list, wonder_name((WonderType)w));
+                strcat(wonder_list, "  ");
+                has_wonder_here = 1;
             }
         }
+        if (has_wonder_here) {
+                move(line++, start_x);
+                attron(COLOR_PAIR(50) | A_BOLD);
+                printw("%s  ", wonder_list);
+                attroff(COLOR_PAIR(50) | A_BOLD);
+            }
     }
+    
 
     line++;
 

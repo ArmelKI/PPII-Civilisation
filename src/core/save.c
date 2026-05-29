@@ -93,6 +93,13 @@ int save_game(const char*filename, GameState * state) {
     fwrite(state->wonder_y,             sizeof(int), NUM_WONDERS, file);
     fwrite(state->wonder_host_city_id,  sizeof(int), NUM_WONDERS, file);
 
+    // 7. Sauvegarde de l'état global des Merveilles.
+    // Ajouté pour assurer la persistance de l'affichage dans le menu Ville
+    fwrite(state->wonder_built,         sizeof(int), NUM_WONDERS, file);
+    fwrite(state->wonder_x,             sizeof(int), NUM_WONDERS, file);
+    fwrite(state->wonder_y,             sizeof(int), NUM_WONDERS, file);
+    fwrite(state->wonder_host_city_id,  sizeof(int), NUM_WONDERS, file);
+
     fclose(file);
 
     printf("Partie enregistrée avec succés dans le fichier au tour %d. !\n", state->turn);
@@ -201,6 +208,14 @@ int load_game(const char*filename, GameState *state) {
         int by = state->barbarians[i]->y;
         state->map.tiles[by][bx].unit = state->barbarians[i];
     }
+
+    // 11. Lecture et restauration de l'état global des Merveilles.
+    // Cela permet de reconnecter les villes à leurs Merveilles dans l'UI.
+    fread(state->wonder_built,         sizeof(int), NUM_WONDERS, file);
+    fread(state->wonder_x,             sizeof(int), NUM_WONDERS, file);
+    fread(state->wonder_y,             sizeof(int), NUM_WONDERS, file);
+    fread(state->wonder_host_city_id,  sizeof(int), NUM_WONDERS, file);
+
 
     fclose(file);
     printf("Parfait Lil bro, partie chargée avec succés depuis le fichier au tour %d !\n", state->turn);
