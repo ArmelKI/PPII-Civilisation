@@ -1025,6 +1025,23 @@ int main(int argc, char **argv) {
                             mvprintw(row++, 5, "[%d] %s (Coût: %d) -> %s", i, TECH_CATALOG[i].name, TECH_CATALOG[i].cost, desc);
                             attroff(A_BOLD);
                             options_dispo++;
+                        } else {
+                           char req_str[128] = "";
+                            int req1 = TECH_CATALOG[i].req1;
+                            int req2 = TECH_CATALOG[i].req2;
+
+                            if (req1 != TECH_NONE && req2 != TECH_NONE) {
+                                sprintf(req_str, "Necessite %s et %s", TECH_CATALOG[req1].name, TECH_CATALOG[req2].name);
+                            } else if (req1 != TECH_NONE) {
+                                sprintf(req_str, "Necessite %s", TECH_CATALOG[req1].name);
+                            } else if (req2 != TECH_NONE) {
+                                sprintf(req_str, "Necessite %s", TECH_CATALOG[req2].name);
+                            }
+
+                            // A_DIM permet d'afficher le texte en gris foncé dans le terminal !
+                            attron(A_DIM);
+                            mvprintw(row++, 5, "[%d] [BLOQUE] %s - %s", i, TECH_CATALOG[i].name, req_str);
+                            attroff(A_DIM); 
                         }
                     }
 
