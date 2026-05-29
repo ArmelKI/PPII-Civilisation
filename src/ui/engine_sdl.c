@@ -1028,7 +1028,10 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui, int* city_i
                                     // --- SUCCÈS ---
                                     strcpy(console_status, "Ville fondee avec succes !");
 
-                                    settler->hp = 0; 
+                                    game->player_units[sel_unit_idx] = game->player_units[game->player_unit_count - 1]; 
+                                    game->player_units[game->player_unit_count - 1] = NULL; 
+                                    game->player_unit_count--; 
+                                    
                                     sel_unit_idx = -1; 
                                     
                                 } else {
