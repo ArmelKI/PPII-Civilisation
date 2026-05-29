@@ -370,6 +370,15 @@ static void render_game_over(SDL_Renderer *renderer, TTF_Font *font_normal, TTF_
     draw_text_centered(renderer, font_normal, buffer, center_x, y, white);
 
     y += 100;
+
+    // --- AFFICHAGE DE LA RAISON DU GAME OVER ---
+    char reason_buffer[128];
+    SDL_Color reason_color = {200, 200, 200, 255}; // Gris clair
+
+    strcpy(reason_buffer, game->end_reason);
+    draw_text_centered(renderer, font_normal, reason_buffer, center_x, y, reason_color);
+
+    y += 80;
     draw_text_centered(renderer, font_normal, "Appuyez sur [Entree] pour enregistrer le score et revenir au menu.", center_x, y, gold);
 }
 
@@ -635,7 +644,7 @@ static void render_city_menu(SDL_Renderer *renderer, TTF_Font *font, GameState *
 }
 
 // Fonction locale qui va draw le dashboard
-static void render_dashboard(SDL_Renderer *renderer, TTF_Font *font, GameState *game, int sel_unit_idx, int sel_city_idx, int screen_w, int screen_h) {
+static void render_dashboard(SDL_Renderer *renderer, TTF_Font *font, GameState *game, int sel_unit_idx, int sel_city_idx, int screen_w, int screen_h, int nb_turns) {
     int panel_w = 420; 
     int panel_x = screen_w - panel_w; 
     
@@ -705,6 +714,32 @@ static void render_dashboard(SDL_Renderer *renderer, TTF_Font *font, GameState *
     } else {
         draw_text(renderer, font, "Aucune selection.", start_x, current_y, white);
     }
+
+    // --- ALERTES D'ÉTAT ---
+    current_y += spacing;
+    
+    // Alerte Faillite
+    if (game->consecutive_zero_production_turns >= 3) {
+        SDL_Color red = {255, 50, 50, 255};
+        sprintf(buffer, "[!] FAILLITE DANS %d TOURS", 5 - game->consecutive_zero_production_turns);
+        draw_text(renderer, font, buffer, start_x, current_y, red);
+        current_y += spacing;
+    }
+
+    // Alerte Temps restant
+    if (nb_turns - game->turn <= 10) {
+        SDL_Color yellow = {255, 255, 100, 255};
+        sprintf(buffer, "[!] TEMPS : %d tours restants", nb_turns - game->turn);
+        draw_text(renderer, font, buffer, start_x, current_y, yellow);
+        current_y += spacing;
+    }
+
+    // Alerte Dernière Ville
+    if (game->city_count == 1 && game->cities[0] != NULL && game->cities[0]->hp < (game->cities[0]->population * 5)) {
+        SDL_Color red = {255, 50, 50, 255};
+        draw_text(renderer, font, "[!] DERNIERE VILLE ATTAQUEE !", start_x, current_y, red);
+        current_y += spacing;
+    }
     
     current_y = screen_h - 260; 
     draw_text(renderer, font, "=== ACTIONS ===", start_x, current_y, title_color);
@@ -726,7 +761,6 @@ static void render_dashboard(SDL_Renderer *renderer, TTF_Font *font, GameState *
 }
 
 void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui, int* city_id_counter) {
-    (void)nb_turns;
 
     // --- INITIALISATION DE LA SDL ---
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -987,7 +1021,7 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui, int* city_i
                                     
                                     // --- SUCCÈS ---
                                     strcpy(console_status, "Ville fondee avec succes !");
-                                    
+
                                     settler->hp = 0; 
                                     sel_unit_idx = -1; 
                                     
@@ -1241,7 +1275,7 @@ void run_sdl_mode(GameState *game, int nb_turns, bool enable_fow_ui, int* city_i
             }
         }
 
-        if (current_view == VIEW_GAME) render_dashboard(renderer, font_normal, game, sel_unit_idx, sel_city_idx, screen_w, screen_h);
+        if (current_view == VIEW_GAME) render_dashboard(renderer, font_normal, game, sel_unit_idx, sel_city_idx, screen_w, screen_h, nb_turns);
         else if (current_view == VIEW_MAIN_MENU) render_main_menu(renderer, bg_texture, font_normal, font_large, font_title, screen_w, screen_h, main_menu_highlight, game_in_progress);
         else if (current_view == VIEW_OPTIONS_MENU) render_options_menu(renderer, font_normal, font_large, font_title, screen_w, screen_h, options_highlight, diff_level, enable_fow_ui);
         else if (current_view == VIEW_RULES_MENU) render_rules_menu(renderer, font_normal, font_title, screen_w, screen_h);

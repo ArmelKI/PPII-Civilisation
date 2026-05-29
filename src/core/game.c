@@ -397,7 +397,7 @@ void check_victory_and_defeat(GameState *game) {
     // CONDITIONS DE VICTOIRE
     if (total_techs >= MAX_TECHNOLOGIES) {
         game->game_over = 1;        // Victoire scientifique
-        strcpy(game->end_reason, "Victoire Scientifique ! Vous avez maitrise toutes les technologies. T'es trop boosté pour perdre.");
+        strcpy(game->end_reason, "Victoire Scientifique ! Vous avez maitrise toutes les technologies. T'es trop booste pour perdre.");
         return;
     }
     if (active_cities >= 10) {

@@ -9,7 +9,7 @@
 const WonderDef WONDER_CATALOG[NUM_WONDERS] = {
     { WONDER_PYRAMIDS,        "Pyramides",         200, TERRAIN_DESERT,   PROJECT_WONDER_PYRAMIDS,       "+50% Nourriture toutes villes" },
     { WONDER_GREAT_LIBRARY,   "Grande Bibliotheque",250, TERRAIN_TOUNDRA,  PROJECT_WONDER_GREAT_LIBRARY,  "Offre immediatement la techno en cours" },
-    { WONDER_COLISEUM,        "Colisee",           200, TERRAIN_PLAINE,   PROJECT_WONDER_COLISEUM,       "+2 Or/tour par ville" },
+    { WONDER_COLISEUM,        "Colisee",           180, TERRAIN_PLAINE,   PROJECT_WONDER_COLISEUM,       "+2 Or/tour par ville" },
     { WONDER_BABEL,           "Tour de Babel",     300, TERRAIN_MONTAGNE, PROJECT_WONDER_BABEL,          "-25% cout futures technos" },
     { WONDER_HANGING_GARDEN,  "Jardins suspendus", 220, TERRAIN_FORET,    PROJECT_WONDER_HANGING_GARDEN, "-20% seuil de croissance" }
 };
