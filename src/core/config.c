@@ -179,7 +179,7 @@ void game_config_apply_barbarian_stats(Unit *barbarian)
         base_pm = 2;
     } else if (barbarian->type == UNIT_CAVALIER) {
         base_hp = 12;   //Cavalier plus robuste
-        base_attack = 3;   //attaque similaire au guerrier classique
+        base_attack = 5;   //attaque similaire au guerrier classique
         base_defense = 3;  
         base_pm = 4;
     }

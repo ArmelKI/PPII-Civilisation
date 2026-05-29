@@ -401,20 +401,31 @@ static void test_integration_with_map_engine(void)
 
 int main(void)
 {
-    /* appeler les autres suites de tests intégrées */
+    // 1. DÉCLARATION DE TOUS LES TESTS EXTERNES
     extern int run_test_physique(void);
     extern int run_test_config(void);
     extern int run_test_archer(void);
     extern int run_test_cavalier(void);
+    extern int run_test_difficulty_effects(void);
+    
+    // Nos nouveaux tests
+    extern void run_tech_tests(void);
+    extern void run_save_tests(void);
+
+    // Les tests de tes camarades (si ces fonctions existent dans leurs fichiers)
+    // extern int run_test_ressources(void); 
+    // extern int run_test_wonders(void);
+
+    // 2. EXÉCUTION
+    printf("\n=== LANCEMENT DE LA SUITE DE TESTS GLOBALE ===\n\n");
+
     run_test_physique();
     run_test_config();
-    if (run_test_archer() != 0) {
-        g_failed++;
-    }
-    if (run_test_cavalier() != 0) {
-        g_failed++;
-    }
-    // Exécution séquentielle des tests unitaires du module.
+    
+    if (run_test_archer() != 0) g_failed++;
+    if (run_test_cavalier() != 0) g_failed++;
+    
+    // Tests internes de test_barbares.c
     test_init_camps();
     test_spawn_unit();
     test_move_barbarian();
@@ -422,16 +433,24 @@ int main(void)
     test_attack_and_destroy();
     test_game_spawn_from_camps();
     test_integration_with_map_engine();
-    extern int run_test_difficulty_effects(void);
-    if (run_test_difficulty_effects() != 0) {
-        g_failed++;
-    }
+    
+    if (run_test_difficulty_effects() != 0) g_failed++;
 
+    // Lancement de nos tests magnifiques !
+    run_tech_tests();
+    run_save_tests();
+
+    // Décommente ces lignes si tes camarades ont bien appelé leurs fonctions ainsi :
+    // if (run_test_ressources() != 0) g_failed++;
+    // if (run_test_wonders() != 0) g_failed++;
+
+    // 3. BILAN
+    printf("\n=======================================================\n");
     if (g_failed == 0) {
-        puts("[OK] Tous les tests barbares passent.");
+        printf("\033[1;32m[SUCCES TOTAL] Tous les modules sont operationnels.\033[0m\n");
         return 0;
     }
 
-    fprintf(stderr, "[FAIL] %d test(s) ont échoué.\n", g_failed);
+    fprintf(stderr, "\033[1;31m[ECHEC] %d test(s) ont echoue.\033[0m\n", g_failed);
     return 1;
 }

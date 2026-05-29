@@ -2,6 +2,7 @@
 #define TECH_H
 
 #include "types.h"
+#include "game.h"
 
 
 
